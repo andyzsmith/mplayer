@@ -314,6 +314,7 @@ Codecs:
   --disable-faac-lavc       disable support for FAAC in libavcodec [autodetect]
   --disable-ladspa          disable LADSPA plugin support [autodetect]
   --disable-libdv           disable libdv 0.9.5 en/decoding support [autodetect]
+  --disable-mch264dec       disable MainConcept H.264 decoding support [autodetect]
   --disable-mad             disable libmad (MPEG audio) support [autodetect]
   --disable-mp3lame         disable LAME MP3 encoding support [autodetect]
   --disable-mp3lame-lavc    disable LAME in libavcodec [autodetect]
@@ -656,6 +657,7 @@ _dynamic_plugins=no
 _crash_debug=no
 _sighandler=yes
 _libdv=auto
+_mch264dec=auto
 _cdparanoia=auto
 _cddb=auto
 _big_endian=auto
@@ -890,6 +892,8 @@ for ac_option do
   --disable-rtc)	_rtc=no	        ;;
   --enable-libdv)	_libdv=yes	;;
   --disable-libdv)	_libdv=no	;;
+  --enable-mch264dec)	_mch264dec=yes	;;
+  --disable-mch264dec)	_mch264dec=no	;;
   --enable-ossaudio)	_ossaudio=yes	;;
   --disable-ossaudio)	_ossaudio=no	;;
   --enable-arts)	_arts=yes	;;
@@ -6537,6 +6541,24 @@ else
 fi
 echores "$_libdv"
 
+echocheck "mch264dec"
+if test "$_mch264dec" = auto ; then
+  _mch264dec=no
+  cat > $TMPC <<EOF
+#include "h264vdec.hpp"
+int main(void) { bufstream_tt *dec = open_h264in_Video_stream(); return 0; }
+EOF
+  cc_check -framework demoh264dec && _mch264dec=yes
+fi
+if test "$_mch264dec" = yes ; then
+  _def_mch264dec='#define HAVE_MCH264DEC 1'
+  _ld_extra="$_ld_extra -framework demoh264dec"
+  _codecmodules="mch264dec $_codecmodules"
+else
+  _def_mch264dec='#undef HAVE_MCH264DEC'
+  _nocodecmodules="mch264dec $_nocodecmodules"
+fi
+echores "$_mch264dec"
 
 echocheck "Xvid"
 if test "$_xvid" = auto ; then
@@ -7682,6 +7704,7 @@ LADSPA = $_ladspa
 LIBASS = $_ass
 LIBDCA = $_libdca
 LIBDV = $_libdv
+MCH264DEC = $_mch264dec
 LIBDVDCSS_INTERNAL = $_libdvdcss_internal
 LIBLZO = $_liblzo
 LIBMAD = $_mad
@@ -7948,6 +7971,9 @@ $_def_libnut
 
 /* Define to include support for libdv-0.9.5 */
 $_def_libdv
+
+/* Define to include support for MainConcept H.264 */
+$_dev_mch264dec
 
 /* If build mencoder */
 $_mencoder_flag

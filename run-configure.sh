@@ -3,11 +3,13 @@
 # --enable-debug breaks build, recompile failed file with -fomit-frame-pointer
 # http://lists.mplayerhq.hu/pipermail/mplayer-dev-eng/2006-November/047633.html
 
+MCROOT=/Users/aw/Projects/motionbox/encoder/rendermix/demo_codec_sdk_v7.5_release
 ./configure \
   --prefix=/Users/aw/Projects/software/encoding/installed \
   --codecsdir=/Users/aw/Projects/software/encoding/installed/codecs \
   --with-extralibdir=/Users/aw/Projects/software/encoding/installed/lib:/opt/local/lib \
-  --with-extraincdir=/Users/aw/Projects/software/encoding/installed/include:/opt/local/include\
+  --with-extraincdir=/Users/aw/Projects/software/encoding/installed/include:/opt/local/include:"$MCROOT/include" \
+  --extra-libs=-F"$MCROOT/Frameworks" \
   --disable-radio-v4l2 \
   --disable-radio-bsdbt848 \
   --disable-tv \
@@ -23,6 +25,7 @@
   --disable-bitmap-font \
   --disable-freetype \
   --disable-fontconfig \
+  --enable-mch264dec \
   --enable-xmms \
   --enable-gif \
   --enable-png \

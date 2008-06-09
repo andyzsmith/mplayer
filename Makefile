@@ -298,6 +298,7 @@ SRCS_COMMON-$(LIBDCA)                += libmpcodecs/ad_libdca.c
 SRCS_COMMON-$(LIBDV)                 += libmpcodecs/ad_libdv.c \
                                         libmpcodecs/vd_libdv.c \
                                         libmpdemux/demux_rawdv.c
+SRCS_COMMON-$(MCH264DEC)             += libmpcodecs/vd_mch264.c
 SRCS_COMMON-$(LIBDVDCSS_INTERNAL)    += libdvdcss/css.c \
                                         libdvdcss/device.c \
                                         libdvdcss/error.c \

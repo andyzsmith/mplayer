@@ -48,6 +48,7 @@ extern vd_functions_t mpcodecs_vd_xvid;
 extern vd_functions_t mpcodecs_vd_libdv;
 extern vd_functions_t mpcodecs_vd_lzo;
 extern vd_functions_t mpcodecs_vd_qtvideo;
+extern vd_functions_t mpcodecs_vd_mch264;
 
 /* Please do not add any new decoders here. If you want to implement a new
  * decoder, add it to libavcodec, except for wrappers around external
@@ -101,6 +102,7 @@ vd_functions_t* mpcodecs_vd_drivers[] = {
 #ifdef USE_QTX_CODECS
 	&mpcodecs_vd_qtvideo,
 #endif
+    &mpcodecs_vd_mch264,
     /* Please do not add any new decoders here. If you want to implement a new
      * decoder, add it to libavcodec, except for wrappers around external
      * libraries and decoders requiring binary support. */
