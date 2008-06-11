@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# --enable-debug breaks build, recompile failed file with -fomit-frame-pointer
+# --enable-debug breaks build, recompile failed file (libavcodec/cavsdsp_mmx.c)
+# with -fomit-frame-pointer
 # http://lists.mplayerhq.hu/pipermail/mplayer-dev-eng/2006-November/047633.html
+# http://wiki.multimedia.cx/index.php?title=MPlayer_FAQ#Build_questions.2Fcrashes
 
 MCROOT=/Users/aw/Projects/motionbox/encoder/rendermix/demo_codec_sdk_v7.5_release
 ./configure \
@@ -34,4 +36,5 @@ MCROOT=/Users/aw/Projects/motionbox/encoder/rendermix/demo_codec_sdk_v7.5_releas
   --enable-theora \
   --enable-faad-external \
   --disable-apple-remote \
+  --enable-debug \
 ;
