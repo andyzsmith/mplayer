@@ -63,8 +63,10 @@ static int init(sh_video_t *sh) {
     
     //XXX AVCHD sh->format = 0x10000005 (es_stream_type_t==VIDEO_H264)
     //XXX so not avc1, so uses 3 byte start codes etc?
+    //XXX we may have extradata on sh->bih, see vlc/ff - just need to decode_nal_units from it if so
+    //XXX see decode_nal_units "start code prefix search" in ff h264.c
     
-
+    
     // For avc1, we need to prefix all SPS and PPS with startcode.
     // This is H.264 AnnexB format that MainConcept requires.
     // See vlc/modules/packetizer/h264.c#Open
@@ -206,7 +208,7 @@ static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 decode %d bytes\n", length);//XXX
     
     write(XXXdump_fd, data, length);
-
+    return NULL;//XXX
     do {
         uint32_t consumed = dec->copybytes(dec, data, length);
         data += consumed;
