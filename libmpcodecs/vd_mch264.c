@@ -188,9 +188,9 @@ static mp_image_t *decode_image(sh_video_t *sh) {
         state = dec->auxinfo(dec, 0, CLEAN_PARSE_STATE, NULL, 0);
         mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 state %x\n", state);//XXX
         if (state & (PIC_VALID_FLAG|PIC_FULL_FLAG)) {
-            struct SEQ_ParamsEx seq_par_set;//XXX not clear if this should be ptr or struct
+            struct SEQ_ParamsEx *seq_par_set;//XXX not clear if this should be ptr or struct
             if (BS_OK == dec->auxinfo(dec, 0, GET_SEQ_PARAMSP, &seq_par_set, sizeof(seq_par_set))) {
-                return create_image(sh, &seq_par_set);
+                return create_image(sh, seq_par_set);
             }
         }
     } while (state);
@@ -208,7 +208,7 @@ static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 decode %d bytes\n", length);//XXX
     
     write(XXXdump_fd, data, length);
-    return NULL;//XXX
+
     do {
         uint32_t consumed = dec->copybytes(dec, data, length);
         data += consumed;
