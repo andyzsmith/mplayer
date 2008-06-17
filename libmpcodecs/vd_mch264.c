@@ -116,67 +116,27 @@ static void dump_state(uint32_t state) {
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "\n");
 }
 
-// Table E-1 from H.264 spec used to interpret aspect_ratio_information
-// http://www.itu.int/rec/T-REC-H.264
-static const double tableE1[17] = {
-    0,
-    1/1,
-    12/11.0,
-    10/11.0,
-    16/11.0,
-    40/33.0,
-    24/11.0,
-    20/11.0,
-    32/11.0,
-    80/33.0,
-    18/11.0,
-    15/11.0,
-    64/33.0,
-    160/99.0,
-    4/3.0,
-    3/2.0,
-    2/1
-};
-
-static float compute_aspect_ratio(struct SEQ_ParamsEx *seq_params) {
-    uint32_t width = seq_params->horizontal_size;
-    uint32_t height = seq_params->vertical_size;
-    double sar;
-    
-    // Custom sar
-    if (seq_params->aspect_ratio_information == 255)
-        sar = seq_params->aspect_ratio_width / (double)seq_params->aspect_ratio_height;
-    // Lookup sample aspect ration in table E1
-    else if (seq_params->aspect_ratio_information < sizeof(tableE1)/sizeof(*tableE1))
-        sar = tableE1[seq_params->aspect_ratio_information];
-    else
-        sar = 0;
-    
-    // Compute display aspect ratio
-    return sar * width / (double)height;
-}
-
 static mp_image_t *create_image(sh_video_t *sh) {
     mch264_ctx *ctx = (mch264_ctx *)sh->context;
     bufstream_tt *dec = ctx->dec;
     struct SEQ_ParamsEx *seq_params = ctx->seq_params;
-    uint32_t dim_x;
-    uint32_t dim_y;
+    uint32_t width;
+    uint32_t height;
     frame_tt frame = { 0 };
     mp_image_t *mpi;
 
     if (!seq_params)
         return NULL;
 
-    dim_x = seq_params->horizontal_size;
-    dim_y = seq_params->vertical_size;
+    width = seq_params->horizontal_size;
+    height = seq_params->vertical_size;
 
-    mpi = mpcodecs_get_image(sh, MP_IMGTYPE_TEMP, MP_IMGFLAG_ACCEPT_STRIDE, dim_x, dim_y);
+    mpi = mpcodecs_get_image(sh, MP_IMGTYPE_TEMP, MP_IMGFLAG_ACCEPT_STRIDE, width, height);
     if (!mpi) return NULL;
 
     frame.four_cc = FOURCC_YV12;
-    frame.width = dim_x;
-    frame.height = dim_y;
+    frame.width = width;
+    frame.height = height;
     frame.stride[0] = mpi->stride[0];
     frame.plane[0] = mpi->planes[0];
     // Swap U and V
@@ -217,10 +177,16 @@ static mp_image_t* decode(sh_video_t *sh, void *data, int length, int flags) {
             //XXX hit this state all the time - constantly reconfiguring
             if (state & (PARSE_DONE_FLAG|SEQ_HDR_FLAG)) {
                 if (BS_OK == dec->auxinfo(dec, 0, GET_SEQ_PARAMSPEX, &ctx->seq_params, sizeof(ctx->seq_params))) {
-                    sh->aspect = compute_aspect_ratio(ctx->seq_params);
-                    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 aspect %f\n", sh->aspect);
-                    if (!mpcodecs_config_vo(sh, ctx->seq_params->horizontal_size, ctx->seq_params->vertical_size, IMGFMT_YV12))
-                        mp_msg(MSGT_DECVIDEO, MSGL_ERR, "mch264 failed to config vo\n");
+                    // These values appear to be display aspect ratio, not sample aspect ratio.
+                    float dar = ctx->seq_params->aspect_ratio_width / (float)ctx->seq_params->aspect_ratio_height;
+                    uint32_t width = ctx->seq_params->horizontal_size;
+                    uint32_t height = ctx->seq_params->vertical_size;
+                    if (sh->aspect != dar || width != sh->disp_w || height != sh->disp_h) {
+                        sh->aspect = dar;
+                        mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 aspect %f\n", dar);
+                        if (!mpcodecs_config_vo(sh, width, height, IMGFMT_YV12))
+                            mp_msg(MSGT_DECVIDEO, MSGL_ERR, "mch264 failed to config vo\n");
+                    }
                 }
             }
             
