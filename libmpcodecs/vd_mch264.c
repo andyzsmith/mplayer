@@ -18,6 +18,10 @@ static vd_info_t info = {
 
 LIBVD_EXTERN(mch264)
 
+typedef struct mch264_ctx {
+    bufstream_tt *dec;
+    struct SEQ_ParamsEx *seq_params;
+} mch264_ctx;
 
 // Set/get/query special features/parameters
 static int control(sh_video_t *sh, int cmd, void* arg, ...) {
@@ -28,23 +32,22 @@ static int control(sh_video_t *sh, int cmd, void* arg, ...) {
 
 // Init driver
 static int init(sh_video_t *sh) {
+    mch264_ctx *ctx;
     bufstream_tt *dec;
 
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 init\n");//XXX
-
-    //XXX size is zero - who computes display size and configures aspect?
-    //XXX looks like we should if unset, and store back in sh
-    //XXX set sh->aspect when we know it
-    //if (!mpcodecs_config_vo(sh, sh->disp_w, sh->disp_h, IMGFMT_YV12))
-    if (!mpcodecs_config_vo(sh, 1440, 1080, IMGFMT_YV12))//XXX
-        return 0;
     
     //XXX use get_rc to provide message printing routines
     if (!(dec = open_h264in_Video_stream())) {
         mp_msg(MSGT_DECVIDEO, MSGL_ERR, "Failed to initialize h264 bufstream");
         return 0;
     }
-    sh->context = dec;
+    
+    ctx = malloc(sizeof(mch264_ctx));
+    ctx->dec = dec;
+    ctx->seq_params = NULL;
+    
+    sh->context = ctx;
 
     dec->auxinfo(dec, 0, PARSE_INIT, NULL, 0);
     dec->auxinfo(dec, DEINTERLACING_FLAG|INTERN_REORDERING_FLAG, PARSE_OPTIONS, NULL, 0);
@@ -62,53 +65,112 @@ static int init(sh_video_t *sh) {
 
 // Uninit driver
 static void uninit(sh_video_t *sh) {
-    bufstream_tt *dec = (bufstream_tt *)sh->context;
+    mch264_ctx *ctx = (mch264_ctx *)sh->context;
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 uninit\n");//XXX
-    if (dec)
-        dec->done(dec, 0);
-}
-
-// Convert sample aspect ratio to display aspect ratio
-static inline float sar2dar(float aspect_numerator, float aspect_denominator, float width, float height) {
-    return (aspect_numerator / aspect_denominator) * width / height;
-}
-
-static float compute_aspect_ratio(struct SEQ_ParamsEx *seq_par_set) {
-    uint8_t width = seq_par_set->horizontal_size;
-    uint8_t height = seq_par_set->vertical_size;
-
-    // Use Table E-1 from H.264 spec to interpret aspect_ratio_information
-    // http://www.itu.int/rec/T-REC-H.264
-    switch (seq_par_set->aspect_ratio_information) {
-        case 1: return sar2dar(1, 1, width, height);
-        case 2: return sar2dar(12, 11, width, height);
-        case 3: return sar2dar(10, 11, width, height);
-        case 4: return sar2dar(16, 11, width, height);
-        case 5: return sar2dar(40, 33, width, height);
-        case 6: return sar2dar(24, 11, width, height);
-        case 7: return sar2dar(20, 11, width, height);
-        case 8: return sar2dar(32, 11, width, height);
-        case 9: return sar2dar(80, 33, width, height);
-        case 10: return sar2dar(18, 11, width, height);
-        case 11: return sar2dar(15, 11, width, height);
-        case 12: return sar2dar(64, 33, width, height);
-        case 13: return sar2dar(160, 99, width, height);
-        case 14: return sar2dar(4, 3, width, height);
-        case 15: return sar2dar(3, 2, width, height);
-        case 16: return sar2dar(2, 1, width, height);
-        case 255: return sar2dar(seq_par_set->aspect_ratio_width, seq_par_set->aspect_ratio_height, width, height);
+    if (ctx) {
+        if (ctx->dec)
+            ctx->dec->done(ctx->dec, 0);
+        free(ctx);
     }
 }
 
-static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set) {    
-    bufstream_tt *dec = (bufstream_tt *)sh->context;
-    //XXX do we need to take into account aspect and store display size in here?
-    uint32_t dim_x = seq_par_set->horizontal_size;
-    uint32_t dim_y = seq_par_set->vertical_size;
+static void dump_state(uint32_t state) {
+    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 state %x", state);
+    if (state & PARSE_DONE_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PARSE_DONE_FLAG");
+    if (state & PARSE_ERR_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PARSE_ERR_FLAG");
+    if (state & SEQ_HDR_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SEQ_HDR_FLAG");
+    if (state & EXT_CODE_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " EXT_CODE_FLAG");
+    if (state & GOP_HDR_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " GOP_HDR_FLAG");
+    if (state & PIC_HDR_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_HDR_FLAG");
+    if (state & USER_DATA_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " USER_DATA_FLAG");
+    if (state & SEQ_END_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SEQ_END_FLAG");
+    if (state & SLICE_START_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SLICE_START_FLAG");
+    if (state & UNKNOWN_CODE_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " UNKNOWN_CODE_FLAG");
+    if (state & START_CODE_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " START_CODE_FLAG");
+    if (state & SEQ_EXT_HDR_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SEQ_EXT_HDR_FLAG");
+    if (state & PIC_DECODED_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_DECODED_FLAG");
+    if (state & PIC_FULL_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_FULL_FLAG");
+    if (state & PIC_VALID_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_VALID_FLAG");
+    if (state & FRAME_BUFFERED_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " FRAME_BUFFERED_FLAG");
+    if (state & PIC_ERROR_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_ERROR_FLAG");
+    if (state & PIC_MV_ERROR_FLAG)
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_MV_ERROR_FLAG");
+
+    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "\n");
+}
+
+// Table E-1 from H.264 spec used to interpret aspect_ratio_information
+// http://www.itu.int/rec/T-REC-H.264
+static const double tableE1[17] = {
+    0,
+    1/1,
+    12/11.0,
+    10/11.0,
+    16/11.0,
+    40/33.0,
+    24/11.0,
+    20/11.0,
+    32/11.0,
+    80/33.0,
+    18/11.0,
+    15/11.0,
+    64/33.0,
+    160/99.0,
+    4/3.0,
+    3/2.0,
+    2/1
+};
+
+static float compute_aspect_ratio(struct SEQ_ParamsEx *seq_params) {
+    uint32_t width = seq_params->horizontal_size;
+    uint32_t height = seq_params->vertical_size;
+    double sar;
+    
+    // Custom sar
+    if (seq_params->aspect_ratio_information == 255)
+        sar = seq_params->aspect_ratio_width / (double)seq_params->aspect_ratio_height;
+    // Lookup sample aspect ration in table E1
+    else if (seq_params->aspect_ratio_information < sizeof(tableE1)/sizeof(*tableE1))
+        sar = tableE1[seq_params->aspect_ratio_information];
+    else
+        sar = 0;
+    
+    // Compute display aspect ratio
+    return sar * width / (double)height;
+}
+
+static mp_image_t *create_image(sh_video_t *sh) {
+    mch264_ctx *ctx = (mch264_ctx *)sh->context;
+    bufstream_tt *dec = ctx->dec;
+    struct SEQ_ParamsEx *seq_params = ctx->seq_params;
+    uint32_t dim_x;
+    uint32_t dim_y;
     frame_tt frame = { 0 };
     mp_image_t *mpi;
 
-    //XXX should use disp_x etc.? so codec resizes and renders to full display size? or does horizontal_size etc. account for that?
+    if (!seq_params)
+        return NULL;
+
+    dim_x = seq_params->horizontal_size;
+    dim_y = seq_params->vertical_size;
+
     mpi = mpcodecs_get_image(sh, MP_IMGTYPE_TEMP, MP_IMGFLAG_ACCEPT_STRIDE, dim_x, dim_y);
     if (!mpi) return NULL;
 
@@ -129,52 +191,43 @@ static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set
     return NULL;
 }
 
-static mp_image_t *decode_image(sh_video_t *sh) {
-    bufstream_tt *dec = (bufstream_tt *)sh->context;
-    uint32_t state;
-    do {
-        state = dec->auxinfo(dec, 0, CLEAN_PARSE_STATE, NULL, 0);
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 state %x\n", state);//XXX
-        if (state & (PIC_VALID_FLAG|PIC_FULL_FLAG)) {
-            struct SEQ_ParamsEx *seq_par_set;
-            if (BS_OK == dec->auxinfo(dec, 0, GET_SEQ_PARAMSPEX, &seq_par_set, sizeof(seq_par_set))) {
-                return create_image(sh, seq_par_set);
-            }
-        }
-    } while (state);
-    return NULL;
-}
-
 // Decode a frame
-static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
-    bufstream_tt *dec = (bufstream_tt *)sh->context;
-    int bytes_left;
+static mp_image_t* decode(sh_video_t *sh, void *data, int length, int flags) {
+    mch264_ctx *ctx = (mch264_ctx *)sh->context;
+    bufstream_tt *dec = ctx->dec;
     mp_image_t *mpi = NULL;
 
-    if (length<=0) return NULL; // skipped frame
+    if (length <= 0) return NULL; // skipped frame
 
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 decode %d bytes\n", length);//XXX
 
     do {
+        uint32_t state = 0;
         uint32_t consumed = dec->copybytes(dec, data, length);
         data += consumed;
         length -= consumed;
 
         mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 consumed %d bytes\n", consumed);//XXX
         
-        // Decode an image if we haven't already.
-        // Otherwise just keep pushing data until finished.
-        if (!mpi)
-            mpi = decode_image(sh);
+        do {
+            state = dec->auxinfo(dec, 0, CLEAN_PARSE_STATE, NULL, 0);
+            dump_state(state);
+            //mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 state %x\n", state);//XXX
+
+            //XXX hit this state all the time - constantly reconfiguring
+            if (state & (PARSE_DONE_FLAG|SEQ_HDR_FLAG)) {
+                if (BS_OK == dec->auxinfo(dec, 0, GET_SEQ_PARAMSPEX, &ctx->seq_params, sizeof(ctx->seq_params))) {
+                    sh->aspect = compute_aspect_ratio(ctx->seq_params);
+                    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 aspect %f\n", sh->aspect);
+                    if (!mpcodecs_config_vo(sh, ctx->seq_params->horizontal_size, ctx->seq_params->vertical_size, IMGFMT_YV12))
+                        mp_msg(MSGT_DECVIDEO, MSGL_ERR, "mch264 failed to config vo\n");
+                }
+            }
+            
+            if (!mpi && (state & (PIC_VALID_FLAG|PIC_FULL_FLAG)))
+                mpi = create_image(sh);
+        } while (state);
     } while (length);
-    
-    //XXX this causes crash
-    // We consumed data, now flush internal bufstream
-    // do {
-    //  bytes_left = dec->copybytes(dec, NULL, 0);
-    //         if ((mpi = decode_image(sh)))
-    //             return mpi;
-    // } while (bytes_left);
 
     return mpi;
 }
