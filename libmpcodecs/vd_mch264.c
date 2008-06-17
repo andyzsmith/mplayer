@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <h264vdec.hpp>
-
 #include "config.h"
 #include "mp_msg.h"
 
 #include "vd_internal.h"
+
+#include <h264vdec.hpp>
 
 static vd_info_t info = {
     "MainConcept H.264 Video",
@@ -40,8 +40,9 @@ static int init(sh_video_t *sh) {
 
     //XXX size is zero - who computes display size and configures aspect?
     //XXX looks like we should if unset, and store back in sh
+    //XXX set sh->aspect when we know it
     //if (!mpcodecs_config_vo(sh, sh->disp_w, sh->disp_h, IMGFMT_YV12))
-    if (!mpcodecs_config_vo(sh, 1920, 1280, IMGFMT_YV12))//XXX
+    if (!mpcodecs_config_vo(sh, 1440, 1080, IMGFMT_YV12))//XXX
         return 0;
     
     //XXX use get_rc to provide message printing routines
@@ -52,7 +53,8 @@ static int init(sh_video_t *sh) {
     sh->context = dec;
 
     dec->auxinfo(dec, 0, PARSE_INIT, NULL, 0);
-    dec->auxinfo(dec, INTERN_REORDERING_FLAG, PARSE_OPTIONS, NULL, 0);
+    dec->auxinfo(dec, DEINTERLACING_FLAG|INTERN_REORDERING_FLAG, PARSE_OPTIONS, NULL, 0);
+    //XXXdec->auxinfo(dec, 0, PARSE_OPTIONS, NULL, 0);
     dec->auxinfo(dec, H264VD_SMP_AUTO, SET_SMP_MODE, NULL ,0);
     dec->auxinfo(dec, 2, SET_CPU_NUM, NULL, 0);
     dec->auxinfo(dec, H264VD_LF_STANDARD, SET_LOOP_FILTER_MODE, NULL, 0);
@@ -60,84 +62,10 @@ static int init(sh_video_t *sh) {
 
 
     XXXdump_fd = open("/tmp/mplayer-mch264-dump.jsv", O_CREAT|O_TRUNC|O_WRONLY, 0644);
-    
-    //XXX AVCHD sh->format = 0x10000005 (es_stream_type_t==VIDEO_H264)
-    //XXX so not avc1, so uses 3 byte start codes etc?
-    //XXX we may have extradata on sh->bih, see vlc/ff - just need to decode_nal_units from it if so
-    //XXX see decode_nal_units "start code prefix search" in ff h264.c
-    
-    
-    // For avc1, we need to prefix all SPS and PPS with startcode.
-    // This is H.264 AnnexB format that MainConcept requires.
-    // See vlc/modules/packetizer/h264.c#Open
-    // See mplayer/libmpcodecs/vd_ffmpeg.c#init for how sh->bih is setup.
-    if (sh->format == mmioFOURCC('a', 'v', 'c', '1') && sh->bih && sh->bih->biSize > sizeof(BITMAPINFOHEADER)) {
-        // This contains the avcC
-        uint8_t *extradata = (uint8_t *)(sh->bih+1);
-        int extradata_size = sh->bih->biSize - sizeof(BITMAPINFOHEADER);
-        uint8_t startcode[] = { 0x00, 0x00, 0x00, 0x01 };
-        uint8_t *p = extradata;
-        int i_sps, i_pps, i;
 
-        if (extradata_size < 7) {
-            mp_msg(MSGT_DECVIDEO, MSGL_ERR, "h264 avcC header data too short %d\n", extradata_size);
-            uninit(sh);
-            return 0;
-        }
-        if (*p != 1) {
-            mp_msg(MSGT_DECVIDEO, MSGL_ERR, "Unknown avcC version %d\n", *p);
-            uninit(sh);
-            return 0;
-        }
-
-        // Read SPS
-        i_sps = *(p+5) & 0x1f;
-        p += 6;
-        for (i = 0; i < i_sps; i++) {
-            uint16_t i_length = U16_AT(p);
-            p += 2;
-            if (i_length > (uint8_t *)extradata + extradata_size - p) {
-                mp_msg(MSGT_DECVIDEO, MSGL_ERR, "Decoding sps %d from avcC failed\n", i);
-                uninit(sh);
-                return 0;
-            }
-            // Send SPS prefixed with startcode to decoder
-            dec->copybytes(dec, startcode, sizeof(startcode));
-            write(XXXdump_fd, startcode, sizeof(startcode));
-            dec->copybytes(dec, p, i_length);
-            write(XXXdump_fd, p, i_length);
-            p += i_length;
-        }
-        
-        // Read PPS
-        i_pps = *p++;
-        for (i = 0; i < i_pps; i++) {
-            uint16_t i_length = U16_AT(p);
-            p += 2;
-            if (i_length > (uint8_t *)extradata + extradata_size - p) {
-                mp_msg(MSGT_DECVIDEO, MSGL_ERR, "Decoding pps %d from avcC failed\n", i);
-                uninit(sh);
-                return 0;
-            }
-            // Send PPS prefixed with startcode to decoder
-            dec->copybytes(dec, startcode, sizeof(startcode));
-            write(XXXdump_fd, startcode, sizeof(startcode));
-            dec->copybytes(dec, p, i_length);
-            write(XXXdump_fd, p, i_length);
-            p += i_length;
-        }
-        
-        //XXX see packetizeAVC1 in vlc - takes VCL blocks (raw h264) creates annexB
-        //XXX prefixes startcodes and prepends SPS and PPS before each keyframe
-        //XXX need to store nal_length_size here - see libavcodec/h264.c#7731 and decode_nal_units
-        //XXX then we can decode nal_length, then check if nal is keyframe and prepend sps/pps?
-        //XXX or perhaps every call to decode is a NAL and just needs startcode prefix?
-        //XXX need flags like vlc i_flags from demuxer - maybe in sh?
-        
-        //XXX can we use MainConcept at a lower level to decode some of this?
-    }
-    //XXX else, handle the other fourccs - see vlc
-
+    // Copy any extra data appended to bih
+    if (sh->bih && sh->bih->biSize > sizeof(BITMAPINFOHEADER))
+        dec->copybytes(dec, (uint8_t *)(sh->bih+1), sh->bih->biSize - sizeof(BITMAPINFOHEADER));
 
     return 1;
 }
@@ -175,8 +103,17 @@ static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set
     }
 
     if (BS_OK == dec->auxinfo(dec, 0, GET_PIC, &frame, sizeof(frame))) {
+        struct PIC_ParamsEx *pic_params;
         mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 got pic\n");//XXX
-        return mpi;
+        if (BS_OK == dec->auxinfo(dec, 0, GET_PIC_PARAMSPEX, &pic_params, sizeof(pic_params))) {
+            //mpi->qscale_type = pic_params->q_scale_type;
+            mpi->pict_type = pic_params->picture_type;
+            mpi->fields = MP_IMGFIELD_ORDERED;
+            if (!pic_params->progressive_frame) mpi->fields |= MP_IMGFIELD_INTERLACED;
+            if (pic_params->top_field_first) mpi->fields |= MP_IMGFIELD_TOP_FIRST;
+            if (pic_params->repeat_first_field == 1) mpi->fields |= MP_IMGFIELD_REPEAT_FIRST;
+            return mpi;   
+        }
     }
     return NULL;
 }
@@ -188,8 +125,8 @@ static mp_image_t *decode_image(sh_video_t *sh) {
         state = dec->auxinfo(dec, 0, CLEAN_PARSE_STATE, NULL, 0);
         mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 state %x\n", state);//XXX
         if (state & (PIC_VALID_FLAG|PIC_FULL_FLAG)) {
-            struct SEQ_ParamsEx *seq_par_set;//XXX not clear if this should be ptr or struct
-            if (BS_OK == dec->auxinfo(dec, 0, GET_SEQ_PARAMSP, &seq_par_set, sizeof(seq_par_set))) {
+            struct SEQ_ParamsEx *seq_par_set;
+            if (BS_OK == dec->auxinfo(dec, 0, GET_SEQ_PARAMSPEX, &seq_par_set, sizeof(seq_par_set))) {
                 return create_image(sh, seq_par_set);
             }
         }
@@ -206,7 +143,6 @@ static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
     if (length<=0) return NULL; // skipped frame
 
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 decode %d bytes\n", length);//XXX
-    
     write(XXXdump_fd, data, length);
 
     do {
