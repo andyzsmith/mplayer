@@ -54,7 +54,6 @@ static int init(sh_video_t *sh) {
 
     dec->auxinfo(dec, 0, PARSE_INIT, NULL, 0);
     dec->auxinfo(dec, DEINTERLACING_FLAG|INTERN_REORDERING_FLAG, PARSE_OPTIONS, NULL, 0);
-    //XXXdec->auxinfo(dec, 0, PARSE_OPTIONS, NULL, 0);
     dec->auxinfo(dec, H264VD_SMP_AUTO, SET_SMP_MODE, NULL ,0);
     dec->auxinfo(dec, 2, SET_CPU_NUM, NULL, 0);
     dec->auxinfo(dec, H264VD_LF_STANDARD, SET_LOOP_FILTER_MODE, NULL, 0);
@@ -88,7 +87,6 @@ static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set
     uint32_t dim_y = seq_par_set->vertical_size;
     frame_tt frame = { 0 };
     mp_image_t *mpi;
-    int i;
 
     //XXX should use disp_x etc.? so codec resizes and renders to full display size? or does horizontal_size etc. account for that?
     mpi = mpcodecs_get_image(sh, MP_IMGTYPE_TEMP, MP_IMGFLAG_ACCEPT_STRIDE, dim_x, dim_y);
@@ -97,24 +95,16 @@ static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set
     frame.four_cc = FOURCC_YV12;
     frame.width = dim_x;
     frame.height = dim_y;
-    for (i = 0; i < 3; i++) {
-        frame.stride[i] = mpi->stride[i];
-        frame.plane[i] = mpi->planes[i];
-    }
+    frame.stride[0] = mpi->stride[0];
+    frame.plane[0] = mpi->planes[0];
+    frame.stride[1] = mpi->stride[2];
+    frame.plane[1] = mpi->planes[2];
+    frame.stride[2] = mpi->stride[1];
+    frame.plane[2] = mpi->planes[1];
 
-    if (BS_OK == dec->auxinfo(dec, 0, GET_PIC, &frame, sizeof(frame))) {
-        struct PIC_ParamsEx *pic_params;
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 got pic\n");//XXX
-        if (BS_OK == dec->auxinfo(dec, 0, GET_PIC_PARAMSPEX, &pic_params, sizeof(pic_params))) {
-            //mpi->qscale_type = pic_params->q_scale_type;
-            mpi->pict_type = pic_params->picture_type;
-            mpi->fields = MP_IMGFIELD_ORDERED;
-            if (!pic_params->progressive_frame) mpi->fields |= MP_IMGFIELD_INTERLACED;
-            if (pic_params->top_field_first) mpi->fields |= MP_IMGFIELD_TOP_FIRST;
-            if (pic_params->repeat_first_field == 1) mpi->fields |= MP_IMGFIELD_REPEAT_FIRST;
-            return mpi;   
-        }
-    }
+    if (BS_OK == dec->auxinfo(dec, 0, GET_PIC, &frame, sizeof(frame)))
+        return mpi;   
+
     return NULL;
 }
 
@@ -138,7 +128,7 @@ static mp_image_t *decode_image(sh_video_t *sh) {
 static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
     bufstream_tt *dec = (bufstream_tt *)sh->context;
     int bytes_left;
-    mp_image_t *mpi;
+    mp_image_t *mpi = NULL;
 
     if (length<=0) return NULL; // skipped frame
 
@@ -152,8 +142,10 @@ static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
 
         mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 consumed %d bytes\n", consumed);//XXX
         
-        if ((mpi = decode_image(sh)))
-            return mpi; //XXX need to continue pumping data even after we get mpi?
+        // Decode an image if we haven't already.
+        // Otherwise just keep pushing data until finished.
+        if (!mpi)
+            mpi = decode_image(sh);
     } while (length);
     
     //XXX this causes crash
@@ -164,5 +156,5 @@ static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
     //             return mpi;
     // } while (bytes_left);
 
-    return NULL;
+    return mpi;
 }
