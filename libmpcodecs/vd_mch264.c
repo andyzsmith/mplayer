@@ -18,12 +18,6 @@ static vd_info_t info = {
 
 LIBVD_EXTERN(mch264)
 
-static int XXXdump_fd = 0;//XXX hack
-
-static inline uint16_t U16_AT(const void * _p) {
-    const uint8_t * p = (const uint8_t *)_p;
-    return ( ((uint16_t)p[0] << 8) | p[1] );
-}
 
 // Set/get/query special features/parameters
 static int control(sh_video_t *sh, int cmd, void* arg, ...) {
@@ -59,9 +53,6 @@ static int init(sh_video_t *sh) {
     dec->auxinfo(dec, H264VD_LF_STANDARD, SET_LOOP_FILTER_MODE, NULL, 0);
     dec->auxinfo(dec, SKIP_NONE, PARSE_FRAMES, NULL ,0);
 
-
-    XXXdump_fd = open("/tmp/mplayer-mch264-dump.jsv", O_CREAT|O_TRUNC|O_WRONLY, 0644);
-
     // Copy any extra data appended to bih
     if (sh->bih && sh->bih->biSize > sizeof(BITMAPINFOHEADER))
         dec->copybytes(dec, (uint8_t *)(sh->bih+1), sh->bih->biSize - sizeof(BITMAPINFOHEADER));
@@ -77,10 +68,39 @@ static void uninit(sh_video_t *sh) {
         dec->done(dec, 0);
 }
 
-static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set) {
+// Convert sample aspect ratio to display aspect ratio
+static inline float sar2dar(float aspect_numerator, float aspect_denominator, float width, float height) {
+    return (aspect_numerator / aspect_denominator) * width / height;
+}
 
-    //XXX set interlace flags etc. - or make decoder deint internally (simpler)
-    
+static float compute_aspect_ratio(struct SEQ_ParamsEx *seq_par_set) {
+    uint8_t width = seq_par_set->horizontal_size;
+    uint8_t height = seq_par_set->vertical_size;
+
+    // Use Table E-1 from H.264 spec to interpret aspect_ratio_information
+    // http://www.itu.int/rec/T-REC-H.264
+    switch (seq_par_set->aspect_ratio_information) {
+        case 1: return sar2dar(1, 1, width, height);
+        case 2: return sar2dar(12, 11, width, height);
+        case 3: return sar2dar(10, 11, width, height);
+        case 4: return sar2dar(16, 11, width, height);
+        case 5: return sar2dar(40, 33, width, height);
+        case 6: return sar2dar(24, 11, width, height);
+        case 7: return sar2dar(20, 11, width, height);
+        case 8: return sar2dar(32, 11, width, height);
+        case 9: return sar2dar(80, 33, width, height);
+        case 10: return sar2dar(18, 11, width, height);
+        case 11: return sar2dar(15, 11, width, height);
+        case 12: return sar2dar(64, 33, width, height);
+        case 13: return sar2dar(160, 99, width, height);
+        case 14: return sar2dar(4, 3, width, height);
+        case 15: return sar2dar(3, 2, width, height);
+        case 16: return sar2dar(2, 1, width, height);
+        case 255: return sar2dar(seq_par_set->aspect_ratio_width, seq_par_set->aspect_ratio_height, width, height);
+    }
+}
+
+static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set) {    
     bufstream_tt *dec = (bufstream_tt *)sh->context;
     //XXX do we need to take into account aspect and store display size in here?
     uint32_t dim_x = seq_par_set->horizontal_size;
@@ -97,6 +117,7 @@ static mp_image_t *create_image(sh_video_t *sh, struct SEQ_ParamsEx *seq_par_set
     frame.height = dim_y;
     frame.stride[0] = mpi->stride[0];
     frame.plane[0] = mpi->planes[0];
+    // Swap U and V
     frame.stride[1] = mpi->stride[2];
     frame.plane[1] = mpi->planes[2];
     frame.stride[2] = mpi->stride[1];
@@ -133,7 +154,6 @@ static mp_image_t* decode(sh_video_t *sh, void* data, int length, int flags) {
     if (length<=0) return NULL; // skipped frame
 
     mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 decode %d bytes\n", length);//XXX
-    write(XXXdump_fd, data, length);
 
     do {
         uint32_t consumed = dec->copybytes(dec, data, length);
