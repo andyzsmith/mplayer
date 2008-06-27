@@ -6541,25 +6541,6 @@ else
 fi
 echores "$_libdv"
 
-echocheck "mch264dec"
-if test "$_mch264dec" = auto ; then
-  _mch264dec=no
-  cat > $TMPC <<EOF
-#include "h264vdec.hpp"
-int main(void) { bufstream_tt *dec = open_h264in_Video_stream(); return 0; }
-EOF
-  cc_check -framework demoh264dec && _mch264dec=yes
-fi
-if test "$_mch264dec" = yes ; then
-  _def_mch264dec='#define HAVE_MCH264DEC 1'
-  _ld_extra="$_ld_extra -framework demoh264dec"
-  _codecmodules="mch264dec $_codecmodules"
-else
-  _def_mch264dec='#undef HAVE_MCH264DEC'
-  _nocodecmodules="mch264dec $_nocodecmodules"
-fi
-echores "$_mch264dec"
-
 echocheck "Xvid"
 if test "$_xvid" = auto ; then
   _xvid=no
@@ -7588,6 +7569,25 @@ else
   _noinputmodules="dvdnav $_noinputmodules"
 fi
 echores "$_dvdnav"
+
+echocheck "mch264dec"
+if test "$_mch264dec" = auto ; then
+  _mch264dec=no
+  cat > $TMPC <<EOF
+#include "h264vdec.hpp"
+int main(void) { bufstream_tt *dec = open_h264in_Video_stream(); return 0; }
+EOF
+  cc_check -framework demoh264dec && _mch264dec=yes
+fi
+if test "$_mch264dec" = yes ; then
+  _def_mch264dec='#define HAVE_MCH264DEC 1'
+  _ld_extra="$_ld_extra -framework demoh264dec"
+  _codecmodules="mch264dec $_codecmodules"
+else
+  _def_mch264dec='#undef HAVE_MCH264DEC'
+  _nocodecmodules="mch264dec $_nocodecmodules"
+fi
+echores "$_mch264dec"
 
 #############################################################################
 echo "Creating config.mak"
