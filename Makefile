@@ -522,7 +522,6 @@ SRCS_MPLAYER = mplayer.c \
                libvo/video_out.c \
                libvo/vo_mpegpes.c \
                libvo/vo_null.c \
-               libvo/vo_yuv4mpeg.c \
                $(addprefix libvo/,$(VO_SRCS)) \
 
 SRCS_MPLAYER-$(APPLE_IR)     += input/appleir.c
@@ -579,7 +578,7 @@ SRCS_MPLAYER-$(LIBMENU_DVBIN) += libmenu/menu_dvbin.c
 SRCS_MPLAYER-$(LIRC)          += input/lirc.c
 
 SRCS_MPLAYER-$(VIDIX)         += libvo/vosub_vidix.c \
-                                 vidix/vidixlib.c \
+                                 vidix/vidix.c \
                                  vidix/drivers.c \
                                  vidix/dha.c \
                                  vidix/mtrr.c \
@@ -737,8 +736,9 @@ dep depend: $(DEPS)
 
 ALLPARTLIBS = $(foreach part, $(PARTS), $(part)/$(part).a)
 
-$(ALLPARTLIBS): recurse
+$(ALLPARTLIBS): libavutil/*.[ch] libavcodec/*.[ch] libavcodec/*/*.[chS] libavformat/*.[ch] libpostproc/*.[ch] libswscale/*.[chS] libvo/fastmemcpy.h config.h
 	$(MAKE) -C $(@D)
+	touch $@
 
 mplayer$(EXESUF): $(MPLAYER_DEPS)
 	$(CC) -o $@ $^ $(LDFLAGS_MPLAYER)
@@ -1053,5 +1053,5 @@ dhahelperwinclean:
 
 -include $(DEPS)
 
-.PHONY: all doxygen *install* recurse *tools drivers dhahelper*
+.PHONY: all doxygen *install* *tools drivers dhahelper*
 .PHONY: checkheaders *clean dep depend tests
