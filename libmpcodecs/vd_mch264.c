@@ -32,7 +32,6 @@ static int control(sh_video_t *sh, int cmd, void *arg __attribute__ ((unused)), 
     mch264_ctx *ctx = (mch264_ctx *)sh->context;
     bufstream_tt *dec = ctx->dec;
 
-    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 control\n");//XXX
     switch (cmd) {
     case VDCTRL_RESYNC_STREAM:
         dec->auxinfo(dec, 0, PARSE_INIT, NULL, 0);
@@ -47,7 +46,6 @@ static int init(sh_video_t *sh) {
     mch264_ctx *ctx;
     bufstream_tt *dec;
     uint32_t parse_options = INTERN_REORDERING_FLAG;
-    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 init\n");//XXX
     
     //XXX use get_rc to provide message printing routines
     if (!(dec = open_h264in_Video_stream())) {
@@ -82,7 +80,6 @@ static int init(sh_video_t *sh) {
 // Uninit driver
 static void uninit(sh_video_t *sh) {
     mch264_ctx *ctx = (mch264_ctx *)sh->context;
-    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 uninit\n");//XXX
     if (ctx) {
         if (ctx->dec)
             ctx->dec->done(ctx->dec, 0);
@@ -90,47 +87,46 @@ static void uninit(sh_video_t *sh) {
     }
 }
 
-//XXX ifdef this out in production code
-static void dump_state(uint32_t state) {
-    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 state %x", state);
+static void dump_state(int level, uint32_t state) {
+    mp_msg(MSGT_DECVIDEO, level, "mch264 state %x", state);
     if (state & PARSE_DONE_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PARSE_DONE_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PARSE_DONE_FLAG");
     if (state & PARSE_ERR_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PARSE_ERR_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PARSE_ERR_FLAG");
     if (state & SEQ_HDR_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SEQ_HDR_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " SEQ_HDR_FLAG");
     if (state & EXT_CODE_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " EXT_CODE_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " EXT_CODE_FLAG");
     if (state & GOP_HDR_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " GOP_HDR_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " GOP_HDR_FLAG");
     if (state & PIC_HDR_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_HDR_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PIC_HDR_FLAG");
     if (state & USER_DATA_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " USER_DATA_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " USER_DATA_FLAG");
     if (state & SEQ_END_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SEQ_END_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " SEQ_END_FLAG");
     if (state & SLICE_START_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SLICE_START_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " SLICE_START_FLAG");
     if (state & UNKNOWN_CODE_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " UNKNOWN_CODE_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " UNKNOWN_CODE_FLAG");
     if (state & START_CODE_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " START_CODE_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " START_CODE_FLAG");
     if (state & SEQ_EXT_HDR_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " SEQ_EXT_HDR_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " SEQ_EXT_HDR_FLAG");
     if (state & PIC_DECODED_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_DECODED_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PIC_DECODED_FLAG");
     if (state & PIC_FULL_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_FULL_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PIC_FULL_FLAG");
     if (state & PIC_VALID_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_VALID_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PIC_VALID_FLAG");
     if (state & FRAME_BUFFERED_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " FRAME_BUFFERED_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " FRAME_BUFFERED_FLAG");
     if (state & PIC_ERROR_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_ERROR_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PIC_ERROR_FLAG");
     if (state & PIC_MV_ERROR_FLAG)
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, " PIC_MV_ERROR_FLAG");
+        mp_msg(MSGT_DECVIDEO, level, " PIC_MV_ERROR_FLAG");
 
-    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "\n");
+    mp_msg(MSGT_DECVIDEO, level, "\n");
 }
 
 static mp_image_t *create_image(sh_video_t *sh) {
@@ -187,22 +183,17 @@ static mp_image_t* decode(sh_video_t *sh, void *data, int length, int flags __at
 
     if (length <= 0) return NULL; // skipped frame
 
-    mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 decode %d bytes\n", length);//XXX
-
     do {
         uint32_t state = 0;
         uint32_t consumed = dec->copybytes(dec, data, length);
         data += consumed;
         length -= consumed;
 
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 consumed %d bytes\n", consumed);//XXX
-        
         do {
             state = dec->auxinfo(dec, 0, CLEAN_PARSE_STATE, NULL, 0);
-            dump_state(state);
-            //mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 state %x\n", state);//XXX
+            if (mp_msg_test(MSGT_DECVIDEO, MSGL_DBG3))
+                dump_state(MSGL_DBG3, state);
 
-            //XXX hit this state all the time - constantly reconfiguring
             if (state & (PARSE_DONE_FLAG|SEQ_HDR_FLAG)) {
                 if (BS_OK == dec->auxinfo(dec, 0, GET_SEQ_PARAMSPEX, &ctx->seq_params, sizeof(ctx->seq_params))) {
                     // These values appear to be display aspect ratio, not sample aspect ratio.
@@ -211,7 +202,7 @@ static mp_image_t* decode(sh_video_t *sh, void *data, int length, int flags __at
                     int height = ctx->seq_params->vertical_size;
                     if (sh->aspect != dar || width != sh->disp_w || height != sh->disp_h) {
                         sh->aspect = dar;
-                        mp_msg(MSGT_DECVIDEO, MSGL_INFO, "mch264 aspect %f\n", dar);
+                        mp_msg(MSGT_DECVIDEO, MSGL_DBG2, "mch264 aspect %f\n", dar);
                         if (!mpcodecs_config_vo(sh, width, height, IMGFMT_YV12))
                             mp_msg(MSGT_DECVIDEO, MSGL_ERR, "mch264 failed to config vo\n");
                     }
