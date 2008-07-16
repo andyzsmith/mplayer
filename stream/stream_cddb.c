@@ -390,7 +390,7 @@ cddb_write_cache(cddb_data_t *cddb_data) {
 	
 	sprintf( file_name, "%s%08lx", cddb_data->cache_dir, cddb_data->disc_id );
 	
-	file_fd = creat(file_name, S_IREAD|S_IWRITE);
+	file_fd = creat(file_name, S_IRUSR|S_IWUSR);
 	if( file_fd<0 ) {
 		perror("create");
 		return -1;
@@ -718,6 +718,8 @@ cddb_resolve(const char *dev, char **xmcd_file) {
 	cddb_data.tracks = cdtoc_last_track;
 	cddb_data.disc_id = cddb_discid(cddb_data.tracks);
 	cddb_data.anonymous = 1;	// Don't send user info by default
+
+	mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_CDDB_DISCID=%08lx\n", cddb_data.disc_id);
 
 	// Check if there is a CD in the drive
 	// FIXME: That's not really a good way to check

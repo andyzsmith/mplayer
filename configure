@@ -1577,6 +1577,7 @@ if x86 && test "$_runtime_cpudetection" = no ; then
     if test "$1" = kernel_check ; then
       echocheck "kernel support of $2"
       cat > $TMPC <<EOF
+#include <stdlib.h>
 #include <signal.h>
 void catch() { exit(1); }
 int main(void) {
@@ -2414,7 +2415,7 @@ echocheck ".align is a power of two"
 if test "$_asmalign_pot" = auto ; then
 _asmalign_pot=no
 cat > $TMPC << EOF
-main(void) { asm (".align 3"); }
+int main(void) { asm (".align 3"); return 0; }
 EOF
 cc_check && _asmalign_pot=yes
 fi
@@ -2463,7 +2464,7 @@ EOF
     cat > $TMPC << EOF
 $inc_altivec_h
 #define AVV(x...) {x}
-int main (void) { (vector int) AVV(1); return 0; }
+int main(void) { (vector int) AVV(1); return 0; }
 EOF
     cc_check $_altivec_gcc_flags &&
         _def_altivec_vector_braces='#define HAVE_ALTIVEC_VECTOR_BRACES 1'
@@ -2485,7 +2486,7 @@ if arm ; then
   echocheck "ARMv5TE (Enhanced DSP Extensions)"
   if test $_armv5te = "auto" ; then
     cat > $TMPC << EOF
-int main(void) { __asm__ __volatile__ ("qadd r0, r0, r0"); }
+int main(void) { __asm__ __volatile__ ("qadd r0, r0, r0"); return 0; }
 EOF
     _armv5te=no
     cc_check && _armv5te=yes
@@ -2495,7 +2496,7 @@ EOF
   echocheck "ARMv6 (SIMD instructions)"
   if test $_armv6 = "auto" ; then
     cat > $TMPC << EOF
-int main(void) { __asm__ __volatile__ ("sadd16 r0, r0, r0"); }
+int main(void) { __asm__ __volatile__ ("sadd16 r0, r0, r0"); return 0; }
 EOF
     _armv6=no
     cc_check && _armv6=yes
@@ -2505,7 +2506,7 @@ EOF
   echocheck "iWMMXt (Intel XScale SIMD instructions)"
   if test $_iwmmxt = "auto" ; then
     cat > $TMPC << EOF
-int main(void) { __asm__ __volatile__ ("wunpckelub wr6, wr4"); }
+int main(void) { __asm__ __volatile__ ("wunpckelub wr6, wr4"); return 0; }
 EOF
     _iwmmxt=no
     cc_check && _iwmmxt=yes
@@ -2650,7 +2651,7 @@ echores "$_runtime_cpudetection"
 
 echocheck "restrict keyword"
 for restrict_keyword in restrict __restrict __restrict__ ; do
-  echo "void foo(char * $restrict_keyword p); int main(void) {}" > $TMPC
+  echo "void foo(char * $restrict_keyword p); int main(void) { return 0; }" > $TMPC
   if cc_check; then
     _def_restrict_keyword=$restrict_keyword
     break;
@@ -3019,8 +3020,9 @@ fi
 
 echocheck "dynamic loader"
 cat > $TMPC << EOF
+#include <stddef.h>
 #include <dlfcn.h>
-int main(void) { dlopen(0, 0); dlclose(0); dlsym(0, 0); return 0; }
+int main(void) { dlopen(NULL, 0); dlclose(NULL); dlsym(NULL, NULL); return 0; }
 EOF
 _dl=no
 for _ld_tmp in "" "-ldl" ; do
@@ -3128,6 +3130,7 @@ int main(void) {
     if (iconv_close(icdsc) == -1)
       ;
   }
+  return 0;
 }
 EOF
   _iconv=no
@@ -3287,7 +3290,9 @@ fi #if sunos
 echocheck "termcap"
 if test "$_termcap" = auto ; then
   cat > $TMPC <<EOF
-int main(void) { tgetent(); return 0; }
+#include <stddef.h>
+#include <term.h>
+int main(void) { tgetent(NULL, NULL); return 0; }
 EOF
   _termcap=no
   for _ld_tmp in "-lncurses" "-ltinfo" "-ltermcap"; do
@@ -3533,6 +3538,7 @@ int main(void) {
     EnterMovies();
     ExitMovies();
     CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, false);
+    return 0;
 }
 EOF
   if cc_check -framework Carbon -framework QuickTime -framework CoreAudio; then
@@ -3557,7 +3563,7 @@ EOF
 cat > $TMPC <<EOF
 #include <Carbon/Carbon.h>
 #include <QuartzCore/CoreVideo.h>
-int main(void) {}
+int main(void) { return 0; }
 EOF
 	if cc_check -framework Carbon -framework QuartzCore -framework OpenGL; then
 		_vosrc="$_vosrc vo_macosx.m"
@@ -3749,6 +3755,7 @@ struct vis_identifier ident;
 struct fbgattr attr;
 ioctl(0, VIS_GETIDENTIFIER, &ident);
 ioctl(0, FBIOGATTR, &attr);
+return 0;
 }
 EOF
   _xvr100=no
@@ -3961,13 +3968,13 @@ if test "$_x11" = yes ; then
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/dpms.h>
-int main(void) { (void) DPMSQueryExtension(0, 0, 0); }
+int main(void) { (void) DPMSQueryExtension(0, 0, 0); return 0; }
 EOF
   cc_check -lXdpms && _xdpms3=yes
   cat > $TMPC <<EOF
 #include <X11/Xlib.h>
 #include <X11/extensions/dpms.h>
-int main(void) { (void) DPMSQueryExtension(0, 0, 0); }
+int main(void) { (void) DPMSQueryExtension(0, 0, 0); return 0; }
 EOF
   cc_check -lXext && _xdpms4=yes
 fi
@@ -5194,6 +5201,7 @@ echocheck "ALSA audio"
 if test "$_alsa" != no ; then
   _alsa=no
   cat > $TMPC << EOF
+#include <sys/time.h>
 #include <sys/asoundlib.h>
 #if !((SND_LIB_MAJOR == 0) && (SND_LIB_MINOR == 5))
 #error "alsa version != 0.5.x"
@@ -5203,6 +5211,7 @@ EOF
   cc_check -lasound $_ld_dl $_ld_pthread && _alsaver='0.5.x'
 
   cat > $TMPC << EOF
+#include <sys/time.h>
 #include <sys/asoundlib.h>
 #if !((SND_LIB_MAJOR == 0) && (SND_LIB_MINOR == 9))
 #error "alsa version != 0.9.x"
@@ -5211,6 +5220,7 @@ int main(void) { return 0; }
 EOF
   cc_check -lasound $_ld_dl $_ld_pthread && _alsaver='0.9.x-sys'
   cat > $TMPC << EOF
+#include <sys/time.h>
 #include <alsa/asoundlib.h>
 #if !((SND_LIB_MAJOR == 0) && (SND_LIB_MINOR == 9))
 #error "alsa version != 0.9.x"
@@ -5220,6 +5230,7 @@ EOF
   cc_check -lasound $_ld_dl $_ld_pthread && _alsaver='0.9.x-alsa'
 
   cat > $TMPC << EOF
+#include <sys/time.h>
 #include <sys/asoundlib.h>
 #if !((SND_LIB_MAJOR == 1) && (SND_LIB_MINOR == 0))
 #error "alsa version != 1.0.x"
@@ -5228,6 +5239,7 @@ int main(void) { return 0; }
 EOF
   cc_check -lasound $_ld_dl $_ld_pthread && _alsaver='1.0.x-sys'
   cat > $TMPC << EOF
+#include <sys/time.h>
 #include <alsa/asoundlib.h>
 #if !((SND_LIB_MAJOR == 1) && (SND_LIB_MINOR == 0))
 #error "alsa version != 1.0.x"
@@ -5387,7 +5399,6 @@ elif test "$_dvdread" = auto ; then
 int main(void) { return 0; }
 EOF
   fi
-  _dvdreadconfig="dvdread-config"
   _dvdreadcflags=`$_dvdreadconfig --cflags`
   _dvdreadlibs=`$_dvdreadconfig --libs`
   if cc_check -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE \
@@ -5591,6 +5602,7 @@ echocheck "fontconfig"
 if test "$_fontconfig" = auto ; then
         cat > $TMPC << EOF
 #include <stdio.h>
+#include <stdlib.h>
 #include <fontconfig/fontconfig.h>
 int main(void) {
     int err = FcInit();
@@ -5686,6 +5698,7 @@ echores "$_fribidi"
 echocheck "ENCA"
 if test "$_enca" = auto ; then
     cat > $TMPC << EOF
+#include <sys/types.h>
 #include <enca.h>
 int main(void) {
     const char **langs;
@@ -5885,7 +5898,7 @@ if test "$_speex" = auto ; then
   _speex=no
   cat > $TMPC << EOF
 #include <speex/speex.h>
-int main(void) { SpeexBits bits; void *dec; speex_decode_int(dec, &bits, dec); }
+int main(void) { SpeexBits bits; void *dec; speex_decode_int(dec, &bits, dec); return 0; }
 EOF
   cc_check -lspeex $_ld_lm && _speex=yes
 fi
@@ -6025,12 +6038,14 @@ echocheck "libmpcdec (musepack, version >= 1.2.1 required)"
 if test "$_musepack" = auto ; then
   _musepack=no
   cat > $TMPC << EOF
+#include <stddef.h>
 #include <mpcdec/mpcdec.h>
 int main(void) {
   mpc_streaminfo info;
   mpc_decoder decoder;
   mpc_decoder_set_streaminfo(&decoder, &info);
   mpc_decoder_decode_frame(&decoder, NULL, 0, NULL);
+  return 0;
 }
 EOF
   cc_check -lmpcdec $_ld_lm && _musepack=yes
@@ -6288,7 +6303,7 @@ if test "$_live" = auto  && test "$_network" = yes ; then
 #if (LIVEMEDIA_LIBRARY_VERSION_INT < 1141257600)
 #error Please upgrade to version 2006.03.03 or later of the "LIVE555 Streaming Media" libraries - available from <www.live555.com/liveMedia/>
 #endif
-int main(void) {}
+int main(void) { return 0; }
 EOF
 
   _live=no
@@ -6488,7 +6503,7 @@ echocheck "libamr narrowband"
 if test "$_libamr_nb" = auto ; then
   _libamr_nb=no
   cat > $TMPC << EOF
-#include <amrnb/interf_dec.h>
+#include <amrnb/sp_dec.h>
 int main(void) { Speech_Decode_Frame_init(); return 0; }
 EOF
   cc_check -lamrnb && _libamr_nb=yes
@@ -7182,7 +7197,7 @@ if test "$_inet6" = auto ; then
 #else
 #include <ws2tcpip.h>
 #endif
-int main(void) { struct sockaddr_in6 six; socket(AF_INET6, SOCK_STREAM, AF_INET6); }
+int main(void) { struct sockaddr_in6 six; socket(AF_INET6, SOCK_STREAM, AF_INET6); return 0; }
 EOF
   _inet6=no
   if cc_check $_ld_sock ; then
@@ -7203,7 +7218,7 @@ cat > $TMPC << EOF
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-int main(void) { gethostbyname2("", AF_INET); }
+int main(void) { gethostbyname2("", AF_INET); return 0; }
 EOF
   _gethostbyname2=no
   if cc_check ; then
@@ -7545,6 +7560,7 @@ cat > $TMPC << EOF
 int main(void) { return 0; }
 EOF
 if test "$cc_vendor" = "gnu" ; then
+  cc_check -std=gnu99 && CFLAGS="-std=gnu99 $CFLAGS"
   cc_check -Wdeclaration-after-statement && CFLAGS="-Wdeclaration-after-statement $CFLAGS"
   cc_check -Wno-pointer-sign && CFLAGS="-Wno-pointer-sign $CFLAGS"
   cc_check -Wdisabled-optimization && CFLAGS="-Wdisabled-optimization $CFLAGS"
@@ -7838,8 +7854,8 @@ HAVE_XVMC = $_xvmc
 
 DEPEND_CMD   = \$(CC) -MM \$(CFLAGS) \$(filter-out %.h,\$^) | sed "s,[0-9a-z._-]*: \(\$(SRC_DIR)/\)*\([a-z0-9]*/\)[^/]* ,\\2&,"
 
-MPDEPEND_CMD = \$(CC) -MM \$(CFLAGS) \$(filter-out %.h,$^) | sed -e "s,[0-9a-z._-]*: \([a-z0-9/]*/\)[^/]* ,\1&," -e "s,\(.*\)\.o: ,\1.d &,"
-MPDEPEND_CMD_CXX = \$(CC) -MM \$(CXXFLAGS) \$(filter-out %.h,$^) | sed -e "s,[0-9a-z._-]*: \([a-z0-9/]*/\)[^/]* ,\1&," -e "s,\(.*\)\.o: ,\1.d &,"
+MPDEPEND_CMD     = \$(CC) -MM \$(CFLAGS)   \$(filter-out %.h,$^) | sed -e "s,[0-9a-z._-]*: \([a-z0-9/]*/\)[^/]* ,\1&,"
+MPDEPEND_CMD_CXX = \$(CC) -MM \$(CXXFLAGS) \$(filter-out %.h,$^) | sed -e "s,[0-9a-z._-]*: \([a-z0-9/]*/\)[^/]* ,\1&,"
 
 EOF
 
