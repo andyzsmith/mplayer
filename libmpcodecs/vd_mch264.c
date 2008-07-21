@@ -74,6 +74,15 @@ static int init(sh_video_t *sh) {
     if (sh->bih && (unsigned int)sh->bih->biSize > sizeof(BITMAPINFOHEADER))
         dec->copybytes(dec, (uint8_t *)(sh->bih+1), sh->bih->biSize - sizeof(BITMAPINFOHEADER));
 
+    // If demuxer decoded our size, configure vo here.
+    // Otherwise this gets deferred until we decode the size.
+    if (sh->disp_w > 0 && sh->disp_h > 0) {
+        if (!mpcodecs_config_vo(sh, sh->disp_w, sh->disp_h, IMGFMT_YV12)) {
+            mp_msg(MSGT_DECVIDEO, MSGL_ERR, "mch264 failed to init vo\n");
+            return 0;
+        }
+    }
+
     return 1;
 }
 
