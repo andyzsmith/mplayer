@@ -693,7 +693,7 @@ _ass=auto
 _rpath=no
 _asmalign_pot=auto
 _stream_cache=yes
-_def_stream_cache="#define USE_STREAM_CACHE 1"
+_def_stream_cache="#define CONFIG_STREAM_CACHE 1"
 _need_shmem=yes
 for ac_option do
   case "$ac_option" in
@@ -1398,7 +1398,7 @@ if amigaos ; then
   _select=no
   _sighandler=no
   _stream_cache=no
-  _def_stream_cache="#undef USE_STREAM_CACHE"
+  _def_stream_cache="#undef CONFIG_STREAM_CACHE"
 fi
 
 if qnx ; then
@@ -2598,9 +2598,9 @@ EOF
   cc_check && _langinfo=yes
 fi
 if test "$_langinfo" = yes ; then
-  _def_langinfo='#define USE_LANGINFO 1'
+  _def_langinfo='#define HAVE_LANGINFO 1'
 else
-  _def_langinfo='#undef USE_LANGINFO'
+  _def_langinfo='#undef HAVE_LANGINFO'
 fi
 echores "$_langinfo"
 
@@ -2859,10 +2859,28 @@ EOF
   echores "$_use_aton"
 fi
 
-_def_use_aton='#undef USE_ATON'
+_def_use_aton='#undef HAVE_ATON'
 if test "$_use_aton" = yes; then
-  _def_use_aton='#define USE_ATON 1'
+  _def_use_aton='#define HAVE_ATON 1'
 fi
+
+
+echocheck "socklen_t"
+_socklen_t=no
+for header in "sys/socket.h" "ws2tcpip.h" ; do
+  cat > $TMPC << EOF
+#include <$header>
+int main(void) { socklen_t v = 0; return v; }
+EOF
+  cc_check && _socklen_t=yes && break
+done
+if test "$_socklen_t" = yes ; then
+  _def_socklen_t='#define HAVE_SOCKLEN_T 1'
+else
+  _def_socklen_t='#undef HAVE_SOCKLEN_T'
+fi
+echores "$_socklen_t"
+
 
 echocheck "network"
 # FIXME network check
@@ -3151,9 +3169,9 @@ EOF
   done
 fi
 if test "$_iconv" = yes ; then
-  _def_iconv='#define USE_ICONV 1'
+  _def_iconv='#define HAVE_ICONV 1'
 else
-  _def_iconv='#undef USE_ICONV'
+  _def_iconv='#undef HAVE_ICONV'
 fi
 echores "$_iconv"
 
@@ -3312,10 +3330,10 @@ EOF
   done
 fi
 if test "$_termcap" = yes ; then
-  _def_termcap='#define USE_TERMCAP 1'
+  _def_termcap='#define HAVE_TERMCAP 1'
   _res_comment="using $_ld_tmp"
 else
-  _def_termcap='#undef USE_TERMCAP'
+  _def_termcap='#undef HAVE_TERMCAP'
 fi
 echores "$_termcap"
 
@@ -5026,7 +5044,7 @@ EOF
   cc_check && _ossaudio=yes
 fi
 if test "$_ossaudio" = yes ; then
-  _def_ossaudio='#define USE_OSS_AUDIO 1'
+  _def_ossaudio='#define CONFIG_OSS_AUDIO 1'
   _aosrc="$_aosrc ao_oss.c"
   _aomodules="oss $_aomodules"
   if test "$_linux_devfs" = yes; then
@@ -5055,7 +5073,7 @@ EOF
     _def_ossaudio_devmixer='#define PATH_DEV_MIXER "/dev/mixer"'
   fi
 else
-  _def_ossaudio='#undef USE_OSS_AUDIO'
+  _def_ossaudio='#undef CONFIG_OSS_AUDIO'
   _def_ossaudio_devdsp='#define PATH_DEV_DSP ""'
   _def_ossaudio_devmixer='#define PATH_DEV_MIXER ""'
   _noaomodules="oss $_noaomodules"
@@ -5078,7 +5096,7 @@ cc_check `artsc-config --libs` `artsc-config --cflags` && tmp_run && _arts=yes
 fi
 
 if test "$_arts" = yes ; then
-  _def_arts='#define USE_ARTS 1'
+  _def_arts='#define CONFIG_ARTS 1'
   _aosrc="$_aosrc ao_arts.c"
   _aomodules="arts $_aomodules"
   _libs_mplayer="$_libs_mplayer `artsc-config --libs`"
@@ -5105,7 +5123,7 @@ fi
 echores "$_esd"
 
 if test "$_esd" = yes ; then
-  _def_esd='#define USE_ESD 1'
+  _def_esd='#define CONFIG_ESD 1'
   _aosrc="$_aosrc ao_esd.c"
   _aomodules="esd $_aomodules"
   _libs_mplayer="$_libs_mplayer `esd-config --libs`"
@@ -5119,7 +5137,7 @@ EOF
   cc_check `esd-config --libs` `esd-config --cflags` && _esd_latency=yes && _def_esd_latency='#define HAVE_ESD_LATENCY'
   echores "$_esd_latency"
 else
-  _def_esd='#undef USE_ESD'
+  _def_esd='#undef CONFIG_ESD'
   _def_esd_latency='#undef HAVE_ESD_LATENCY'
   _noaomodules="esd $_noaomodules"
 fi
@@ -5140,13 +5158,13 @@ fi
 echores "$_pulse"
 
 if test "$_pulse" = yes ; then
-  _def_pulse='#define USE_PULSE 1'
+  _def_pulse='#define CONFIG_PULSE 1'
   _aosrc="$_aosrc ao_pulse.c"
   _aomodules="pulse $_aomodules"
   _libs_mplayer="$_libs_mplayer `$_pkg_config --libs libpulse`"
   _inc_extra="$_inc_extra `$_pkg_config --cflags libpulse`"
 else
-  _def_pulse='#undef USE_PULSE'
+  _def_pulse='#undef CONFIG_PULSE'
   _noaomodules="pulse $_noaomodules"
 fi
 
@@ -5170,7 +5188,7 @@ EOF
 fi
 
 if test "$_jack" = yes ; then
-  _def_jack='#define USE_JACK 1'
+  _def_jack='#define CONFIG_JACK 1'
   _aosrc="$_aosrc ao_jack.c"
   _aomodules="jack $_aomodules"
 else
@@ -5200,7 +5218,7 @@ EOF
   test "$_openal" = yes && _libs_mplayer="$_libs_mplayer $I"
 fi
 if test "$_openal" = yes ; then
-  _def_openal='#define USE_OPENAL 1'
+  _def_openal='#define CONFIG_OPENAL 1'
   _aosrc="$_aosrc ao_openal.c"
   _aomodules="openal $_aomodules"
 else
@@ -5327,11 +5345,11 @@ EOF
   cc_check && _sunaudio=yes
 fi
 if test "$_sunaudio" = yes ; then
-  _def_sunaudio='#define USE_SUN_AUDIO 1'
+  _def_sunaudio='#define CONFIG_SUN_AUDIO 1'
   _aosrc="$_aosrc ao_sun.c"
   _aomodules="sun $_aomodules"
 else
-  _def_sunaudio='#undef USE_SUN_AUDIO'
+  _def_sunaudio='#undef CONFIG_SUN_AUDIO'
   _noaomodules="sun $_noaomodules"
 fi
 echores "$_sunaudio"
@@ -5364,12 +5382,12 @@ EOF
   cc_check && _sgiaudio=yes
 fi
 if test "$_sgiaudio" = "yes" ; then
-  _def_sgiaudio='#define USE_SGI_AUDIO 1'
+  _def_sgiaudio='#define CONFIG_SGI_AUDIO 1'
   _libs_mplayer="$_libs_mplayer -laudio"
   _aosrc="$_aosrc ao_sgi.c"
   _aomodules="sgi $_aomodules"
 else
-  _def_sgiaudio='#undef USE_SGI_AUDIO'
+  _def_sgiaudio='#undef CONFIG_SGI_AUDIO'
   _noaomodules="sgi $_noaomodules"
 fi
 echores "$_sgiaudio"
@@ -5426,20 +5444,20 @@ EOF
 fi
 
 if test "$_dvdread_internal" = yes; then
-  _def_dvdread_internal="#define USE_DVDREAD_INTERNAL 1"
-  _def_dvdread='#define USE_DVDREAD 1'
+  _def_dvdread_internal="#define CONFIG_DVDREAD_INTERNAL 1"
+  _def_dvdread='#define CONFIG_DVDREAD 1'
   _inputmodules="dvdread(internal) $_inputmodules"
   _largefiles=yes
   _res_comment="internal"
 elif test "$_dvdread" = yes; then
-  _def_dvdread='#define USE_DVDREAD 1'
+  _def_dvdread='#define CONFIG_DVDREAD 1'
   _largefiles=yes
   _ld_extra="$_ld_extra -ldvdread"
   _inputmodules="dvdread(external) $_inputmodules"
   _res_comment="external"
 else
-  _def_dvdread_internal="#undef USE_DVDREAD_INTERNAL"
-  _def_dvdread='#undef USE_DVDREAD'
+  _def_dvdread_internal="#undef CONFIG_DVDREAD_INTERNAL"
+  _def_dvdread='#undef CONFIG_DVDREAD'
   _noinputmodules="dvdread $_noinputmodules"
 fi
 echores "$_dvdread"
@@ -5677,9 +5695,9 @@ EOF
     fi
 fi
 if test "$_ass" = yes ; then
-    _def_ass='#define USE_ASS'
+    _def_ass='#define CONFIG_ASS'
 else
-    _def_ass='#undef USE_ASS'
+    _def_ass='#undef CONFIG_ASS'
 fi
 echores "$_ass"
 
@@ -5707,11 +5725,11 @@ EOF
     fi
 fi
 if test "$_fribidi" = yes ; then
-    _def_fribidi='#define USE_FRIBIDI'
+    _def_fribidi='#define HAVE_FRIBIDI'
     _inc_extra="$_inc_extra `$_fribidiconfig --cflags`"
     _ld_extra="$_ld_extra `$_fribidiconfig --libs`"
 else
-    _def_fribidi='#undef USE_FRIBIDI'
+    _def_fribidi='#undef HAVE_FRIBIDI'
 fi
 echores "$_fribidi"
 
@@ -5748,10 +5766,10 @@ EOF
 _zlib=no
 cc_check -lz && _zlib=yes
 if test "$_zlib" = yes ; then
-  _def_zlib='#define HAVE_ZLIB 1'
+  _def_zlib='#define CONFIG_ZLIB 1'
   _ld_extra="$_ld_extra -lz"
 else
-  _def_zlib='#undef HAVE_ZLIB'
+  _def_zlib='#undef CONFIG_ZLIB'
   _libavdecoders=`echo $_libavdecoders | sed -e s/FLASHSV_DECODER// -e s/PNG_DECODER// -e s/ZMBV_DECODER// -e s/DXA_DECODER// `
   _libavencoders=`echo $_libavencoders | sed -e s/FLASHSV_ENCODER// -e s/PNG_ENCODER// -e s/ZMBV_ENCODER// `
 fi
@@ -5792,11 +5810,11 @@ EOF
   cc_check -llzo2 && _liblzo=yes
 fi
 if test "$_liblzo" = yes ; then
-  _def_liblzo='#define USE_LIBLZO 1'
+  _def_liblzo='#define CONFIG_LIBLZO 1'
   _ld_extra="$_ld_extra -llzo2"
   _codecmodules="liblzo $_codecmodules"
 else
-  _def_liblzo='#undef USE_LIBLZO'
+  _def_liblzo='#undef CONFIG_LIBLZO'
   _nocodecmodules="liblzo $_nocodecmodules"
 fi
 echores "$_liblzo"
@@ -5812,11 +5830,11 @@ EOF
   cc_check -lmad && _mad=yes
 fi
 if test "$_mad" = yes ; then
-  _def_mad='#define USE_LIBMAD 1'
+  _def_mad='#define CONFIG_LIBMAD 1'
   _ld_extra="$_ld_extra -lmad"
   _codecmodules="libmad $_codecmodules"
 else
-  _def_mad='#undef USE_LIBMAD'
+  _def_mad='#undef CONFIG_LIBMAD'
   _nocodecmodules="libmad $_nocodecmodules"
 fi
 echores "$_mad"
@@ -5994,20 +6012,20 @@ echores "$_theora"
 
 echocheck "internal mp3lib support"
 if test "$_mp3lib" = yes ; then
-  _def_mp3lib='#define USE_MP3LIB 1'
+  _def_mp3lib='#define CONFIG_MP3LIB 1'
   _codecmodules="mp3lib $_codecmodules"
 else
-  _def_mp3lib='#undef USE_MP3LIB'
+  _def_mp3lib='#undef CONFIG_MP3LIB'
   _nocodecmodules="mp3lib $_nocodecmodules"
 fi
 echores "$_mp3lib"
 
 echocheck "internal liba52 support"
 if test "$_liba52" = yes ; then
-  _def_liba52='#define USE_LIBA52 1'
+  _def_liba52='#define CONFIG_LIBA52 1'
   _codecmodules="liba52 $_codecmodules"
 else
-  _def_liba52='#undef USE_LIBA52'
+  _def_liba52='#undef CONFIG_LIBA52'
   _nocodecmodules="liba52 $_nocodecmodules"
 fi
 echores "$_liba52"
@@ -6025,10 +6043,10 @@ if test "$_libmpeg2" = auto ; then
   fi
 fi
 if test "$_libmpeg2" = yes ; then
-  _def_libmpeg2='#define USE_LIBMPEG2 1'
+  _def_libmpeg2='#define CONFIG_LIBMPEG2 1'
   _codecmodules="libmpeg2 $_codecmodules"
 else
-  _def_libmpeg2='#undef USE_LIBMPEG2'
+  _def_libmpeg2='#undef CONFIG_LIBMPEG2'
   _nocodecmodules="libmpeg2 $_nocodecmodules"
 fi
 echores "$_libmpeg2"
@@ -6047,10 +6065,10 @@ EOF
   done
 fi
 if test "$_libdca" = yes ; then
-  _def_libdca='#define USE_LIBDCA 1'
+  _def_libdca='#define CONFIG_LIBDCA 1'
   _codecmodules="libdca $_codecmodules"
 else
-  _def_libdca='#undef USE_LIBDCA'
+  _def_libdca='#undef CONFIG_LIBDCA'
   _nocodecmodules="libdca $_nocodecmodules"
 fi
 echores "$_libdca"
@@ -6142,7 +6160,7 @@ EOF
 fi
 
 if test "$_faad_internal" = yes ; then
-  _def_faad_internal="#define USE_FAAD_INTERNAL 1"
+  _def_faad_internal="#define CONFIG_FAAD_INTERNAL 1"
   _faad=yes
   _res_comment="internal floating-point"
   if test "$_faad_fixed" = yes ; then
@@ -6155,7 +6173,7 @@ elif test "$_faad_external" = yes ; then
   _faad=yes
   _ld_extra="$_ld_extra -lfaad"
 else
-  _def_faad_internal="#undef USE_FAAD_INTERNAL"
+  _def_faad_internal="#undef CONFIG_FAAD_INTERNAL"
   _faad=no
 fi
 
@@ -6215,7 +6233,7 @@ if test "$_win32dll" = auto ; then
   fi
 fi
 if test "$_win32dll" = yes ; then
-  _def_win32dll='#define USE_WIN32DLL 1'
+  _def_win32dll='#define CONFIG_WIN32DLL 1'
   test -z "$_win32codecsdir" && _win32codecsdir=$_codecsdir
   _res_comment="using $_win32codecsdir"
   if ! win32 ; then
@@ -6227,7 +6245,7 @@ if test "$_win32dll" = yes ; then
   fi
   _codecmodules="win32 $_codecmodules"
 else
-  _def_win32dll='#undef USE_WIN32DLL'
+  _def_win32dll='#undef CONFIG_WIN32DLL'
   _def_win32_loader='#undef WIN32_LOADER'
   _nocodecmodules="win32 $_nocodecmodules"
 fi
@@ -6244,12 +6262,12 @@ if test "$_xanim" = auto ; then
 fi
 if test "$_xanim" = yes ; then
   test -z "$_xanimcodecsdir" && _xanimcodecsdir=$_codecsdir
-  _def_xanim='#define USE_XANIM 1'
+  _def_xanim='#define CONFIG_XANIM 1'
   _def_xanim_path="#define XACODEC_PATH \"$_xanimcodecsdir\""
   _codecmodules="xanim $_codecmodules"
   _res_comment="using $_xanimcodecsdir"
 else
-  _def_xanim='#undef USE_XANIM'
+  _def_xanim='#undef CONFIG_XANIM'
   _def_xanim_path='#undef XACODEC_PATH'
   _nocodecmodules="xanim $_nocodecmodules"
 fi
@@ -6267,12 +6285,12 @@ if test "$_real" = auto ; then
 fi
 if test "$_real" = yes ; then
   test -z "$_realcodecsdir" && _realcodecsdir="$_codecsdir"
-  _def_real='#define USE_REALCODECS 1'
+  _def_real='#define CONFIG_REALCODECS 1'
   _def_real_path="#define REALCODEC_PATH \"$_realcodecsdir\""
   _codecmodules="real $_codecmodules"
   _res_comment="using $_realcodecsdir"
 else
-  _def_real='#undef USE_REALCODECS'
+  _def_real='#undef CONFIG_REALCODECS'
   _def_real_path="#undef REALCODEC_PATH"
   _nocodecmodules="real $_nocodecmodules"
 fi
@@ -6281,17 +6299,17 @@ echores "$_real"
 
 echocheck "QuickTime codecs"
 _qtx_emulation=no
-_def_qtx_win32='#undef USE_QTX_CODECS_WIN32'
+_def_qtx_win32='#undef CONFIG_QTX_CODECS_WIN32'
 if test "$_qtx" = auto ; then
   test "$_win32dll" = yes || darwin && _qtx=yes
 fi
 if test "$_qtx" = yes ; then
-    _def_qtx='#define USE_QTX_CODECS 1'
-    win32 && _qtx_codecs_win32=yes && _def_qtx_win32='#define USE_QTX_CODECS_WIN32 1'
+    _def_qtx='#define CONFIG_QTX_CODECS 1'
+    win32 && _qtx_codecs_win32=yes && _def_qtx_win32='#define CONFIG_QTX_CODECS_WIN32 1'
     _codecmodules="qtx $_codecmodules"
     darwin || win32 || _qtx_emulation=yes
 else
-    _def_qtx='#undef USE_QTX_CODECS'
+    _def_qtx='#undef CONFIG_QTX_CODECS'
     _nocodecmodules="qtx $_nocodecmodules"
 fi
 echores "$_qtx"
@@ -6394,13 +6412,13 @@ EOF
   fi
 fi
 _libavutil=no
-_def_libavutil='#undef USE_LIBAVUTIL'
-_def_libavutil_a='#undef USE_LIBAVUTIL_A'
-_def_libavutil_so='#undef USE_LIBAVUTIL_SO'
+_def_libavutil='#undef CONFIG_LIBAVUTIL'
+_def_libavutil_a='#undef CONFIG_LIBAVUTIL_A'
+_def_libavutil_so='#undef CONFIG_LIBAVUTIL_SO'
 test "$_libavutil_a" = yes || test "$_libavutil_so" = yes && _libavutil=yes
-test "$_libavutil"    = yes && _def_libavutil='#define USE_LIBAVUTIL 1'
-test "$_libavutil_a"  = yes && _def_libavutil_a='#define USE_LIBAVUTIL_A 1'
-test "$_libavutil_so" = yes && _def_libavutil_so='#define USE_LIBAVUTIL_SO 1'
+test "$_libavutil"    = yes && _def_libavutil='#define CONFIG_LIBAVUTIL 1'
+test "$_libavutil_a"  = yes && _def_libavutil_a='#define CONFIG_LIBAVUTIL_A 1'
+test "$_libavutil_so" = yes && _def_libavutil_so='#define CONFIG_LIBAVUTIL_SO 1'
 # neither static nor shared libavutil is available, but it is mandatory ...
 if test "$_libavutil" = no ; then
   die "You need static or shared libavutil, MPlayer will not compile without!"
@@ -6433,13 +6451,13 @@ EOF
   fi
 fi
 _libavcodec=no
-_def_libavcodec='#undef USE_LIBAVCODEC'
-_def_libavcodec_a='#undef USE_LIBAVCODEC_A'
-_def_libavcodec_so='#undef USE_LIBAVCODEC_SO'
+_def_libavcodec='#undef CONFIG_LIBAVCODEC'
+_def_libavcodec_a='#undef CONFIG_LIBAVCODEC_A'
+_def_libavcodec_so='#undef CONFIG_LIBAVCODEC_SO'
 test "$_libavcodec_a" = yes || test "$_libavcodec_so" = yes && _libavcodec=yes
-test "$_libavcodec"    = yes && _def_libavcodec='#define USE_LIBAVCODEC 1'
-test "$_libavcodec_a"  = yes && _def_libavcodec_a='#define USE_LIBAVCODEC_A 1'
-test "$_libavcodec_so" = yes && _def_libavcodec_so='#define USE_LIBAVCODEC_SO 1'
+test "$_libavcodec"    = yes && _def_libavcodec='#define CONFIG_LIBAVCODEC 1'
+test "$_libavcodec_a"  = yes && _def_libavcodec_a='#define CONFIG_LIBAVCODEC_A 1'
+test "$_libavcodec_so" = yes && _def_libavcodec_so='#define CONFIG_LIBAVCODEC_SO 1'
 test "$_libavcodec_mpegaudio_hp" = yes \
   && _def_libavcodec_mpegaudio_hp='#define CONFIG_MPEGAUDIO_HP 1'
 if test "$_libavcodec_a" = yes ; then
@@ -6477,14 +6495,14 @@ EOF
   fi
 fi
 _libavformat=no
-_def_libavformat='#undef USE_LIBAVFORMAT'
-_def_libavformat_a='#undef USE_LIBAVFORMAT_A'
-_def_libavformat_so='#undef USE_LIBAVFORMAT_SO'
+_def_libavformat='#undef CONFIG_LIBAVFORMAT'
+_def_libavformat_a='#undef CONFIG_LIBAVFORMAT_A'
+_def_libavformat_so='#undef CONFIG_LIBAVFORMAT_SO'
 test "$_libavformat_a" = yes || test "$_libavformat_so" = yes && _libavformat=yes
-test "$_libavformat"    = yes && _def_libavformat='#define USE_LIBAVFORMAT 1'
-test "$_libavformat_a"  = yes && _def_libavformat_a='#define USE_LIBAVFORMAT_A 1'
+test "$_libavformat"    = yes && _def_libavformat='#define CONFIG_LIBAVFORMAT 1'
+test "$_libavformat_a"  = yes && _def_libavformat_a='#define CONFIG_LIBAVFORMAT_A 1'
 test "$_libavformat_so" = yes \
-  && _def_libavformat_so='#define USE_LIBAVFORMAT_SO 1'
+  && _def_libavformat_so='#define CONFIG_LIBAVFORMAT_SO 1'
 echores "$_libavformat"
 
 echocheck "FFmpeg libpostproc"
@@ -6497,7 +6515,7 @@ if test "$_libpostproc_a" = auto ; then
 elif test "$_libpostproc_so" = auto ; then
   _libpostproc_so=no
   cat > $TMPC << EOF
-  #define USE_LIBPOSTPROC 1
+  #define CONFIG_LIBPOSTPROC 1
   #include <inttypes.h>
   #include <libpostproc/postprocess.h>
   int main(void) { pp_get_mode_by_name_and_quality("de", 0); return 0; }
@@ -6509,14 +6527,14 @@ EOF
   fi
 fi
 _libpostproc=no
-_def_libpostproc='#undef USE_LIBPOSTPROC'
-_def_libpostproc_a='#undef USE_LIBPOSTPROC_A'
-_def_libpostproc_so='#undef USE_LIBPOSTPROC_SO'
+_def_libpostproc='#undef CONFIG_LIBPOSTPROC'
+_def_libpostproc_a='#undef CONFIG_LIBPOSTPROC_A'
+_def_libpostproc_so='#undef CONFIG_LIBPOSTPROC_SO'
 test "$_libpostproc_a" = yes || test "$_libpostproc_so" = yes && _libpostproc=yes
-test "$_libpostproc"    = yes && _def_libpostproc='#define USE_LIBPOSTPROC 1'
-test "$_libpostproc_a"  = yes && _def_libpostproc_a='#define USE_LIBPOSTPROC_A 1'
+test "$_libpostproc"    = yes && _def_libpostproc='#define CONFIG_LIBPOSTPROC 1'
+test "$_libpostproc_a"  = yes && _def_libpostproc_a='#define CONFIG_LIBPOSTPROC_A 1'
 test "$_libpostproc_so" = yes \
-  && _def_libpostproc_so='#define USE_LIBPOSTPROC_SO 1'
+  && _def_libpostproc_so='#define CONFIG_LIBPOSTPROC_SO 1'
 echores "$_libpostproc"
 
 
@@ -6837,9 +6855,7 @@ echores "$_mp3lame"
 fi
 
 echocheck "mencoder"
-_mencoder_flag='#undef HAVE_MENCODER'
 if test "$_mencoder" = yes ; then
-  _mencoder_flag='#define HAVE_MENCODER'
   _def_muxers='#define CONFIG_MUXERS 1'
 else
   # mpeg1video for vf_lavc, snow for vf_uspp and vf_mcdeint
@@ -6851,9 +6867,9 @@ echores "$_mencoder"
 echocheck "fastmemcpy"
 # fastmemcpy check is done earlier with tests of CPU & binutils features
 if test "$_fastmemcpy" = yes ; then
-  _def_fastmemcpy='#define USE_FASTMEMCPY 1'
+  _def_fastmemcpy='#define CONFIG_FASTMEMCPY 1'
 else
-  _def_fastmemcpy='#undef USE_FASTMEMCPY'
+  _def_fastmemcpy='#undef CONFIG_FASTMEMCPY'
 fi
 echores "$_fastmemcpy"
 
@@ -6864,19 +6880,19 @@ if test "$_unrar_exec" = auto ; then
     mingw32 && _unrar_exec="no"
 fi
 if test "$_unrar_exec" = yes ; then
-    _def_unrar_exec='#define USE_UNRAR_EXEC 1'
+    _def_unrar_exec='#define CONFIG_UNRAR_EXEC 1'
 else
-    _def_unrar_exec='#undef USE_UNRAR_EXEC'
+    _def_unrar_exec='#undef CONFIG_UNRAR_EXEC'
 fi
 echores "$_unrar_exec"
 
 echocheck "TV interface"
 if test "$_tv" = yes ; then
-  _def_tv='#define USE_TV 1'
+  _def_tv='#define CONFIG_TV 1'
   _inputmodules="tv $_inputmodules"
 else
   _noinputmodules="tv $_noinputmodules"
-  _def_tv='#undef USE_TV'
+  _def_tv='#undef CONFIG_TV'
 fi
 echores "$_tv"
 
@@ -7064,21 +7080,21 @@ echores "$_tv_teletext"
 
 echocheck "Radio interface"
 if test "$_radio" = yes ; then
-  _def_radio='#define USE_RADIO 1'
+  _def_radio='#define CONFIG_RADIO 1'
   _inputmodules="radio $_inputmodules"
   if test "$_alsa9" != yes -a "$_alsa1x" != yes -a "$_ossaudio" != yes ; then
     _radio_capture=no
   fi
   if test "$_radio_capture" = yes ; then
     _audio_input=yes
-    _def_radio_capture="#define USE_RADIO_CAPTURE 1"
+    _def_radio_capture="#define CONFIG_RADIO_CAPTURE 1"
   else
-    _def_radio_capture="#undef USE_RADIO_CAPTURE"
+    _def_radio_capture="#undef CONFIG_RADIO_CAPTURE"
   fi
 else
   _noinputmodules="radio $_noinputmodules"
-  _def_radio='#undef USE_RADIO'
-  _def_radio_capture="#undef USE_RADIO_CAPTURE"
+  _def_radio='#undef CONFIG_RADIO'
+  _def_radio_capture="#undef CONFIG_RADIO_CAPTURE"
   _radio_capture=no
 fi
 echores "$_radio"
@@ -7243,10 +7259,10 @@ echores "$_byte_order"
 
 echocheck "OSD menu"
 if test "$_menu" = yes ; then
-    _def_menu='#define HAVE_MENU 1'
+    _def_menu='#define CONFIG_MENU 1'
     test $_dvbin = "yes" && _menu_dvbin=yes
 else
-_def_menu='#undef HAVE_MENU'
+_def_menu='#undef CONFIG_MENU'
     _menu_dvbin=no
 fi
 echores "$_menu"
@@ -7254,9 +7270,9 @@ echores "$_menu"
 
 echocheck "Subtitles sorting"
 if test "$_sortsub" = yes ; then
-    _def_sortsub='#define USE_SORTSUB 1'
+    _def_sortsub='#define CONFIG_SORTSUB 1'
 else
-    _def_sortsub='#undef USE_SORTSUB'
+    _def_sortsub='#undef CONFIG_SORTSUB'
 fi
 echores "$_sortsub"
 
@@ -7395,8 +7411,8 @@ if test "$_gtk1" = no ; then
       _libs_mplayer="$_libs_mplayer `$_pkg_config glib-2.0 --libs 2>/dev/null`"
       echores "$_glib"
 
-      _def_gui='#define HAVE_NEW_GUI 1'
-      _def_gtk2_gui='#define HAVE_GTK2_GUI 1'
+      _def_gui='#define CONFIG_GUI 1'
+      _def_gtk2='#define CONFIG_GTK2 1'
     else
       _gtk1=yes
       echo "GLIB-2 devel packages were not found, trying GTK 1.2"
@@ -7439,20 +7455,20 @@ if test "$_gtk1" = yes ; then
   _libs_mplayer="$_libs_mplayer `$_glibconfig --libs 2>&1`"
   echores "$_glib (using $_glibconfig)"
 
-  _def_gui='#define HAVE_NEW_GUI 1'
-  _def_gtk2_gui='#undef HAVE_GTK2_GUI'
+  _def_gui='#define CONFIG_GUI 1'
+  _def_gtk2='#undef CONFIG_GTK2'
 fi
 
 else #if ! win32
   _gui_win32=yes
   _libs_mplayer="$_libs_mplayer -lcomdlg32 -lcomctl32 -lshell32 -lkernel32"
-  _def_gui='#define HAVE_NEW_GUI 1'
-  _def_gtk2_gui='#undef HAVE_GTK2_GUI'
+  _def_gui='#define CONFIG_GUI 1'
+  _def_gtk2='#undef CONFIG_GTK2'
 fi #if ! win32
 
 else #if test "$_gui"
-  _def_gui='#undef HAVE_NEW_GUI'
-  _def_gtk2_gui='#undef HAVE_GTK2_GUI'
+  _def_gui='#undef CONFIG_GUI'
+  _def_gtk2='#undef CONFIG_GTK2'
 fi #if test "$_gui"
 # --------------- GUI specific tests end -------------------
 
@@ -7615,12 +7631,12 @@ EOF
 fi
 if test "$_dvdnav" = yes ; then
   _largefiles=yes
-  _def_dvdnav='#define USE_DVDNAV 1'
+  _def_dvdnav='#define CONFIG_DVDNAV 1'
   _inc_extra="$_inc_extra `$_dvdnavconfig --cflags`"
   _ld_extra="$_ld_extra `$_dvdnavconfig --minilibs`"
   _inputmodules="dvdnav $_inputmodules"
 else
-  _def_dvdnav='#undef USE_DVDNAV'
+  _def_dvdnav='#undef CONFIG_DVDNAV'
   _noinputmodules="dvdnav $_noinputmodules"
 fi
 echores "$_dvdnav"
@@ -8076,9 +8092,6 @@ $_def_libnut
 /* Define to include support for libdv-0.9.5 */
 $_def_libdv
 
-/* If build mencoder */
-$_mencoder_flag
-
 /* Indicates if libmp3lame is available
    Note: for mencoder */
 $_def_mp3lame
@@ -8090,7 +8103,7 @@ $_def_mp3lame_preset_medium
    -stereo has three possible values (0 for stereo, 1 for left-only, 2 for
    right-only), with 0 being the default.
    */
-#define USE_FAKE_MONO 1
+#define CONFIG_FAKE_MONO 1
 
 /* Undefine this if your sound card driver has no working select().
    If you have kernel Oops, player hangups, or just no audio, you should
@@ -8151,9 +8164,6 @@ $_def_kstat
 
 /* Define this if you have zlib */
 $_def_zlib
-#ifdef HAVE_ZLIB
-#define CONFIG_ZLIB 1
-#endif
 
 /* Define this if you have shm support */
 $_def_shm
@@ -8189,14 +8199,6 @@ $_def_sysi86_iv
 /* Define this if your system has pthreads */
 $_def_pthreads
 
-/* Define this if you enabled thread support for libavcodec */
-$_def_threads
-#ifdef HAVE_THREADS
-#define ENABLE_THREADS 1
-#else
-#define ENABLE_THREADS 0
-#endif
-
 /* LIRC (remote control, see www.lirc.org) support: */
 $_def_lirc
 
@@ -8224,11 +8226,6 @@ $_def_dvdnav
 /* maximum alignment used by libmpeg2 */
 #define ATTRIBUTE_ALIGNED_MAX 16
 
-/* Define this to enable image postprocessing in libavcodec (requires a FAST CPU!) */
-$_def_libpostproc
-$_def_libpostproc_a
-$_def_libpostproc_so
-
 /* Win32 DLL support */
 $_def_win32dll
 #define WIN32_PATH "$_win32codecsdir"
@@ -8243,6 +8240,20 @@ $_def_quicktime
 
 /* Build our Win32-loader */
 $_def_win32_loader
+
+/* FFmpeg */
+/* Define this to enable image postprocessing in libavcodec (requires a FAST CPU!) */
+$_def_libpostproc
+$_def_libpostproc_a
+$_def_libpostproc_so
+
+/* Define this if you enabled thread support for libavcodec */
+$_def_threads
+#ifdef HAVE_THREADS
+#define ENABLE_THREADS 1
+#else
+#define ENABLE_THREADS 0
+#endif
 
 /* ffmpeg's libavcodec support (requires libavcodec source) */
 $_def_libavcodec
@@ -8277,8 +8288,6 @@ $_def_muxers
 #ifndef MP_DEBUG
 #define HAVE_EBP_AVAILABLE 1
 #endif
-
-#define HAVE_SOCKLEN_T 1
 
 #define CONFIG_GPL 1
 #define ENABLE_SMALL 0
@@ -8334,7 +8343,7 @@ $_def_unrar_exec
 
 /* gui support, please do not edit this option */
 $_def_gui
-$_def_gtk2_gui
+$_def_gtk2
 
 /* Audio output drivers */
 $_def_ossaudio
@@ -8526,9 +8535,6 @@ $_def_enca
 
 /* liblzo support */
 $_def_liblzo
-#ifdef USE_LIBLZO
-#define CONFIG_LZO 1
-#endif
 
 /* libmad support */
 $_def_mad
@@ -8573,6 +8579,13 @@ $_def_winsock2
 
 /* define this to use inet_aton() instead of inet_pton() */
 $_def_use_aton
+
+/* socklen_t support */
+$_def_socklen_t
+#ifndef HAVE_SOCKLEN_T
+#define HAVE_SOCKLEN_T 1
+typedef int socklen_t;
+#endif
 
 /* enables / disables cdparanoia support */
 $_def_cdparanoia

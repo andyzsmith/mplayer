@@ -16,7 +16,7 @@ static char help_text[]=
 #ifdef HAVE_VCD
 " vcd://<trackno>  prehrať VCD (video cd) stopu zo zariadenia namiesto zo súboru\n"
 #endif
-#ifdef USE_DVDREAD
+#ifdef CONFIG_DVDREAD
 " dvd://<titleno>  prehrať DVD titul/stopu zo zariadenia (mechaniky) namiesto súboru\n"
 " -alang/-slang   vybrať jazyk DVD zvuku/titulkov(pomocou 2-miest. kódu krajiny)\n"
 #endif
@@ -656,7 +656,7 @@ static char help_text[]=
 
 // ====================== GUI messages/buttons ========================
 
-#ifdef HAVE_NEW_GUI
+#ifdef CONFIG_GUI
 
 // --- labels ---
 #define MSGTR_About "O aplikácii"

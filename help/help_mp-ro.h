@@ -22,7 +22,7 @@ static char help_text[]=
 " vcd://<nrpistã>  ruleazã pista VCD (Video CD) de pe device în loc de fiºier\n"
 #endif
 
-#ifdef USE_DVDREAD
+#ifdef CONFIG_DVDREAD
 " dvd://<nrtitlu>  ruleazã titlul/pista de pe dispozitivul DVD în loc de fiºier\n"
 " -aLMB/-sLMB      alege limba pentru audio/subtitrãri DVD\n"
 "                  (cu codul de 2 caractere, ex. RO)\n"
@@ -291,7 +291,7 @@ static char help_text[]=
 
 // ====================== GUI messages/buttons ========================
 
-#ifdef HAVE_NEW_GUI
+#ifdef CONFIG_GUI
 
 // --- labels ---
 #define MSGTR_About "Despre MPlayer"

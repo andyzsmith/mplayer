@@ -16,7 +16,7 @@ static char help_text[]=
 #ifdef HAVE_VCD
 " vcd://<parçano>    (S)VCD (Süper Video CD) parça numarasını oynatır (sade aygıtı kullan, sisteme takma)\n"
 #endif
-#ifdef USE_DVDREAD
+#ifdef CONFIG_DVDREAD
 " dvd://<başlıkno>   Dosya yerine aygıttan DVD başlığını oynatır.\n"
 " -alang/-slang      DVD ses/altyazı dili seçer (2 karakterli ülke kodu ile)\n"
 #endif
@@ -719,7 +719,7 @@ static char help_text[]=
 
 // ====================== GUI messages/buttons ========================
 
-#ifdef HAVE_NEW_GUI
+#ifdef CONFIG_GUI
 
 // --- labels ---
 #define MSGTR_About "Hakkında"
