@@ -1,6 +1,8 @@
 # This file handles debug developer builds.
 # Certain files fail to compile with no optimization,
 # these are special cased here.
+# http://lists.mplayerhq.hu/pipermail/mplayer-dev-eng/2006-November/047633.html
+# http://wiki.multimedia.cx/index.php?title=MPlayer_FAQ#Build_questions.2Fcrashes
 #
 # configure must be run with --enable-debug=gdb3, then this file must be
 # included at end of the generated config.mak
