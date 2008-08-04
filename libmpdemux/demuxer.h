@@ -12,7 +12,7 @@
 #endif
 
 #define MAX_PACKS 4096
-#ifdef HAVE_TV_BSDBT848
+#ifdef CONFIG_TV_BSDBT848
 #define MAX_PACK_BYTES 0x2000000
 #else
 #define MAX_PACK_BYTES 0x800000
@@ -389,7 +389,7 @@ char* demux_info_get(demuxer_t *demuxer, const char *opt);
 int demux_info_print(demuxer_t *demuxer);
 int demux_control(demuxer_t *demuxer, int cmd, void *arg);
 
-#ifdef HAVE_OGGVORBIS
+#ifdef CONFIG_OGGVORBIS
 /* Found in demux_ogg.c */
 int demux_ogg_num_subs(demuxer_t *demuxer);
 int demux_ogg_sub_id(demuxer_t *demuxer, int index);

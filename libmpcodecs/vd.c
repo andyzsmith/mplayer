@@ -58,7 +58,7 @@ vd_functions_t* mpcodecs_vd_drivers[] = {
 #ifdef CONFIG_LIBAVCODEC
         &mpcodecs_vd_ffmpeg,
 #endif
-#ifdef HAVE_OGGTHEORA
+#ifdef CONFIG_OGGTHEORA
 	&mpcodecs_vd_theora,
 #endif
 #ifdef CONFIG_WIN32DLL
@@ -86,16 +86,16 @@ vd_functions_t* mpcodecs_vd_drivers[] = {
         &mpcodecs_vd_libmpeg2,
 #endif
         &mpcodecs_vd_mpegpes,
-#ifdef HAVE_ZR
+#ifdef CONFIG_ZR
         &mpcodecs_vd_zrmjpeg,
 #endif
 #ifdef CONFIG_REALCODECS
 	&mpcodecs_vd_realvid,
 #endif
-#ifdef HAVE_XVID4
+#ifdef CONFIG_XVID4
 	&mpcodecs_vd_xvid,
 #endif
-#ifdef HAVE_LIBDV095
+#ifdef CONFIG_LIBDV095
 	&mpcodecs_vd_libdv,
 #endif
 #ifdef CONFIG_QTX_CODECS

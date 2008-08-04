@@ -156,13 +156,13 @@
 #else
 	{"tv", "MPlayer was compiled without TV interface support.\n", CONF_TYPE_PRINT, 0, 0, 0, NULL},
 #endif /* CONFIG_TV */
-#ifdef HAVE_PVR
+#ifdef CONFIG_PVR
 	{"pvr", pvropts_conf, CONF_TYPE_SUBCONFIG, 0, 0, 0, NULL},
 #else
 	{"pvr", "MPlayer was compiled without V4L2/PVR interface support.\n", CONF_TYPE_PRINT, 0, 0, 0, NULL},
-#endif /* HAVE_PVR */
+#endif /* CONFIG_PVR */
 	{"vivo", vivoopts_conf, CONF_TYPE_SUBCONFIG, 0, 0, 0, NULL},
-#ifdef HAS_DVBIN_SUPPORT
+#ifdef CONFIG_DVBIN
 	{"dvbin", dvbin_opts_conf, CONF_TYPE_SUBCONFIG, 0, 0, 0, NULL},
 #endif
 
@@ -257,7 +257,7 @@
 #ifdef CONFIG_LIBAVFORMAT
         {"lavfdopts",  lavfdopts_conf, CONF_TYPE_SUBCONFIG, CONF_GLOBAL, 0, 0, NULL},
 #endif
-#ifdef HAVE_XVID4
+#ifdef CONFIG_XVID4
 	{"xvidopts", xvid_dec_opts, CONF_TYPE_SUBCONFIG, 0, 0, 0, NULL},
 #endif
 	{"codecs-file", &codecs_file, CONF_TYPE_STRING, 0, 0, 0, NULL},

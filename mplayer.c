@@ -58,7 +58,7 @@
 #include "libvo/font_load.h"
 #include "libvo/sub.h"
 
-#ifdef HAVE_X11
+#ifdef CONFIG_X11
 #include "libvo/x11_common.h"
 #endif
 
@@ -112,7 +112,7 @@ char *heartbeat_cmd;
 #include "stream/stream_radio.h"
 #endif
 
-#ifdef HAS_DVBIN_SUPPORT
+#ifdef CONFIG_DVBIN
 #include "stream/dvbin.h"
 #include "stream/cache2.h"
 #endif
@@ -198,7 +198,7 @@ static MPContext mpctx_s = {
     .set_of_sub_pos = -1,
     .file_format = DEMUXER_TYPE_UNKNOWN,
     .loop_times = -1,
-#ifdef HAS_DVBIN_SUPPORT
+#ifdef CONFIG_DVBIN
     .last_dvb_step = 1,
 #endif
 };
@@ -691,7 +691,7 @@ void exit_player_with_rc(const char* how, int rc){
 #ifdef WIN32
   timeEndPeriod(1);
 #endif
-#ifdef HAVE_X11
+#ifdef CONFIG_X11
 #ifdef CONFIG_GUI
   if ( !use_gui )
 #endif
@@ -1143,7 +1143,7 @@ void init_vo_spudec(void) {
  * make it all work is to use the builtin SDL-bootstrap code, which 
  * will be done automatically by replacing our main() if we include SDL.h.
  */
-#if defined(__APPLE__) && defined(HAVE_SDL)
+#if defined(__APPLE__) && defined(CONFIG_SDL)
 #include <SDL.h>
 #endif
 
@@ -2734,7 +2734,7 @@ if(!codecs_file || !parse_codec_cfg(codecs_file)){
       printf("\n");
       opt_exit = 1;
     }
-#ifdef HAVE_X11
+#ifdef CONFIG_X11
     if(vo_fstype_list && strcmp(vo_fstype_list[0],"help")==0){
       fstype_help();
       mp_msg(MSGT_FIXME, MSGL_FIXME, "\n");
@@ -3410,7 +3410,7 @@ if(mpctx->sh_video){
 
 if(!mpctx->sh_video && !mpctx->sh_audio){
     mp_msg(MSGT_CPLAYER,MSGL_FATAL, MSGTR_NoStreamFound);
-#ifdef HAS_DVBIN_SUPPORT
+#ifdef CONFIG_DVBIN
 	if(mpctx->stream->type == STREAMTYPE_DVB)
 	{
 		int dir;
@@ -3745,7 +3745,7 @@ if(!mpctx->sh_video) {
     current_module="vo_check_events";
     if (vo_config_count) mpctx->video_out->check_events();
 
-#ifdef HAVE_X11
+#ifdef CONFIG_X11
     if (stop_xscreensaver) {
 	current_module = "stop_xscreensaver";
 	xscreensaver_heartbeat();
@@ -3918,7 +3918,7 @@ if(rel_seek_secs || abs_seek_pos){
 
 mp_msg(MSGT_GLOBAL,MSGL_V,"EOF code: %d  \n",mpctx->eof);
 
-#ifdef HAS_DVBIN_SUPPORT
+#ifdef CONFIG_DVBIN
 if(mpctx->dvbin_reopen)
 {
   mpctx->eof = 0;

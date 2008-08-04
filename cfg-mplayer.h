@@ -123,7 +123,7 @@ const m_option_t mplayer_opts[]={
             CONF_TYPE_PRINT, 0, 0, 0, NULL},
 	{"edlout", &edl_output_filename,  CONF_TYPE_STRING, 0, 0, 0, NULL}, 
 
-#ifdef HAVE_X11
+#ifdef CONFIG_X11
 	{"display", &mDisplayName, CONF_TYPE_STRING, 0, 0, 0, NULL},
 #endif
 
@@ -145,17 +145,17 @@ const m_option_t mplayer_opts[]={
 	{"sdla", "Use -ao sdl:driver instead of -ao sdl -sdla driver.\n",
 	    CONF_TYPE_PRINT, 0, 0, 0, NULL},
 
-#if defined(HAVE_FBDEV)||defined(HAVE_VESA) 
+#if defined(CONFIG_FBDEV) || defined(CONFIG_VESA)
        {"monitor-hfreq", &monitor_hfreq_str, CONF_TYPE_STRING, 0, 0, 0, NULL}, 
        {"monitor-vfreq", &monitor_vfreq_str, CONF_TYPE_STRING, 0, 0, 0, NULL}, 
        {"monitor-dotclock", &monitor_dotclock_str, CONF_TYPE_STRING, 0, 0, 0, NULL}, 
 #endif 
 
-#ifdef HAVE_FBDEV
+#ifdef CONFIG_FBDEV
 	{"fbmode", &fb_mode_name, CONF_TYPE_STRING, 0, 0, 0, NULL},
 	{"fbmodeconfig", &fb_mode_cfgfile, CONF_TYPE_STRING, 0, 0, 0, NULL},
 #endif
-#ifdef HAVE_DIRECTFB
+#ifdef CONFIG_DIRECTFB
 #if DIRECTFBVERSION > 912
 	{"dfbopts", "-dfbopts has been removed. Use -vf directfb:dfbopts=... instead.\n", CONF_TYPE_PRINT, 0, 0, 0, NULL},
 #endif
@@ -199,7 +199,7 @@ const m_option_t mplayer_opts[]={
     {"adapter", &vo_adapter_num, CONF_TYPE_INT, CONF_RANGE, 0, 5, NULL},
     {"refreshrate",&vo_refresh_rate,CONF_TYPE_INT,CONF_RANGE, 0,100, NULL},
 	{"wid", &WinID, CONF_TYPE_INT, 0, 0, 0, NULL},
-#ifdef HAVE_X11
+#ifdef CONFIG_X11
 	// x11,xv,xmga,xvidix
 	{"icelayer", "-icelayer has been removed. Use -fstype layer:<number> instead.\n", CONF_TYPE_PRINT, 0, 0, 0, NULL},
 	{"stop-xscreensaver", &stop_xscreensaver, CONF_TYPE_FLAG, 0, 0, 1, NULL},
@@ -226,17 +226,17 @@ const m_option_t mplayer_opts[]={
 	{"vaa_dr", "-vaa_dr has been removed, use -dr.\n", CONF_TYPE_PRINT, 0, 0, 0, NULL},
 	{"vaa_nodr", "-vaa_nodr has been removed, use -nodr.\n", CONF_TYPE_PRINT, 0, 0, 0, NULL},
 
-#ifdef HAVE_AA
+#ifdef CONFIG_AA
 	// -vo aa
 	{"aa*", "-aa* has been removed. Use -vo aa:suboption instead.\n", CONF_TYPE_PRINT, 0, 0, 0, NULL},
 #endif
 
-#ifdef HAVE_ZR
+#ifdef CONFIG_ZR
 	// -vo zr
 	{"zr*", vo_zr_parseoption, CONF_TYPE_FUNC_FULL, 0, 0, 0, &vo_zr_revertoption },
 #endif
 
-#ifdef HAVE_DXR2
+#ifdef CONFIG_DXR2
 	{"dxr2", &dxr2_opts, CONF_TYPE_SUBCONFIG, 0, 0, 0, NULL},
 #endif
 
