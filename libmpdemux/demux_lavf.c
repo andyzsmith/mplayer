@@ -115,7 +115,7 @@ static offset_t mp_seek(void *opaque, offset_t pos, int whence) {
     if(pos<stream->end_pos && stream->eof)
         stream_reset(stream);
     current_pos = stream_tell(stream);
-    if(stream_seek(stream, pos)==0) {
+    if(pos != current_pos && stream_seek(stream, pos)==0) {
         stream_reset(stream);
         stream_seek(stream, current_pos);
         return -1;
