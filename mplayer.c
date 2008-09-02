@@ -698,7 +698,7 @@ void exit_player_with_rc(const char* how, int rc){
   vo_uninit();	// Close the X11 connection (if any is open).
 #endif
 
-#ifdef HAVE_FREETYPE
+#ifdef CONFIG_FREETYPE
   current_module="uninit_font";
   if (sub_font && sub_font != vo_font) free_font_desc(sub_font);
   sub_font = NULL;
@@ -740,14 +740,14 @@ static void child_sighandler(int x){
 }
 #endif
 
-#ifdef CRASH_DEBUG
+#ifdef CONFIG_CRASH_DEBUG
 static char *prog_path;
 static int crash_debug = 0;
 #endif
 
 static void exit_sighandler(int x){
   static int sig_count=0;
-#ifdef CRASH_DEBUG
+#ifdef CONFIG_CRASH_DEBUG
   if (!crash_debug || x != SIGTRAP)
 #endif
   ++sig_count;
@@ -791,7 +791,7 @@ static void exit_sighandler(int x){
       mp_msg(MSGT_CPLAYER,MSGL_FATAL,MSGTR_Exit_SIGSEGV_SIGFPE);
   default:
       mp_msg(MSGT_CPLAYER,MSGL_FATAL,MSGTR_Exit_SIGCRASH);
-#ifdef CRASH_DEBUG
+#ifdef CONFIG_CRASH_DEBUG
       if (crash_debug) {
         int gdb_pid;
         mp_msg(MSGT_CPLAYER, MSGL_INFO, "Forking...\n");
@@ -1027,7 +1027,7 @@ void add_subtitles(char *filename, float fps, int noerr)
     subd = sub_read_file(filename, fps);
 #ifdef CONFIG_ASS
     if (ass_enabled)
-#ifdef HAVE_ICONV
+#ifdef CONFIG_ICONV
         asst = ass_read_file(ass_library, filename, sub_cp);
 #else
         asst = ass_read_file(ass_library, filename, 0);
@@ -2640,7 +2640,7 @@ int gui_no_filename=0;
         		if(strcasecmp(priority_presets_defs[i].name, proc_priority) == 0)
 				break;
 		}
-		mp_msg(MSGT_CPLAYER,MSGL_STATUS,"Setting process priority: %s\n",
+		mp_msg(MSGT_CPLAYER,MSGL_STATUS,MSGTR_SettingProcessPriority,
 				priority_presets_defs[i].name);
 		SetPriorityClass(GetCurrentProcess(), priority_presets_defs[i].prio);
 	}
@@ -2782,14 +2782,14 @@ if(!codecs_file || !parse_codec_cfg(codecs_file)){
 //------ load global data first ------
 
 // check font
-#ifdef HAVE_FREETYPE
+#ifdef CONFIG_FREETYPE
   init_freetype();
 #endif
-#ifdef HAVE_FONTCONFIG
+#ifdef CONFIG_FONTCONFIG
   if(font_fontconfig <= 0)
   {
 #endif
-#ifdef HAVE_BITMAP_FONT
+#ifdef CONFIG_BITMAP_FONT
   if(font_name){
        vo_font=read_font_desc(font_name,font_factor,verbose>1);
        if(!vo_font) mp_msg(MSGT_CPLAYER,MSGL_ERR,MSGTR_CantLoadFont,
@@ -2806,7 +2806,7 @@ if(!codecs_file || !parse_codec_cfg(codecs_file)){
   else
     sub_font = vo_font;
 #endif
-#ifdef HAVE_FONTCONFIG
+#ifdef CONFIG_FONTCONFIG
   }
 #endif
 
@@ -2895,7 +2895,7 @@ current_module = NULL;
   signal(SIGCHLD,child_sighandler);
 #endif
 
-#ifdef CRASH_DEBUG
+#ifdef CONFIG_CRASH_DEBUG
   prog_path = argv[0];
 #endif
   //========= Catch terminate signals: ================
@@ -2907,14 +2907,14 @@ current_module = NULL;
 
   signal(SIGQUIT,exit_sighandler); // Quit from keyboard
   signal(SIGPIPE,exit_sighandler); // Some window managers cause this
-#ifdef ENABLE_SIGHANDLER
+#ifdef CONFIG_SIGHANDLER
   // fatal errors:
   signal(SIGBUS,exit_sighandler);  // bus error
   signal(SIGSEGV,exit_sighandler); // segfault
   signal(SIGILL,exit_sighandler);  // illegal instruction
   signal(SIGFPE,exit_sighandler);  // floating point exc.
   signal(SIGABRT,exit_sighandler); // abort()
-#ifdef CRASH_DEBUG
+#ifdef CONFIG_CRASH_DEBUG
   if (crash_debug)
     signal(SIGTRAP,exit_sighandler);
 #endif
@@ -3543,7 +3543,7 @@ if(!reinit_video_chain()) {
    if(vo_flags & 0x08 && vo_spudec)
       spudec_set_hw_spu(vo_spudec,mpctx->video_out);
 
-#ifdef HAVE_FREETYPE
+#ifdef CONFIG_FREETYPE
    force_load_font = 1;
 #endif
 

@@ -25,7 +25,7 @@
 /* biCompression constant */
 #define BI_RGB        0L
 
-#ifdef STREAMING_LIVE555
+#ifdef CONFIG_LIVE555
 #include "demux_rtp.h"
 #endif
 
@@ -57,7 +57,7 @@ static video_codec_t find_video_codec(sh_video_t *sh_video)
       ((! sh_video->format) || (sh_video->format==0x10000001) || (sh_video->format==0x10000002))
     ) ||
     (fmt == DEMUXER_TYPE_MPEG_TY)
-#ifdef STREAMING_LIVE555
+#ifdef CONFIG_LIVE555
     || ((fmt == DEMUXER_TYPE_RTP) && demux_is_mpeg_rtp_stream(d_video->demuxer))
 #endif
   )
@@ -587,6 +587,7 @@ int video_read_frame(sh_video_t* sh_video,float* frame_time_ptr,unsigned char** 
       }
       break;
       case DEMUXER_TYPE_LAVF:
+      case DEMUXER_TYPE_LAVF_PREFERRED:
         if((int)sh_video->fps==1000 || (int)sh_video->fps<=1){
           double next_pts = ds_get_next_pts(d_video);
           double d= (next_pts != MP_NOPTS_VALUE) ? next_pts - d_video->pts : d_video->pts-pts1;

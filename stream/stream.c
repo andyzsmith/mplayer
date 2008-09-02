@@ -14,16 +14,14 @@
 
 #include "config.h"
 
-#ifndef HAVE_WINSOCK2
-#define closesocket close
-#else
+#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif
 
 #include "mp_msg.h"
 #include "help_mp.h"
 #include "osdep/shmem.h"
-
+#include "network.h"
 #include "stream.h"
 #include "libmpdemux/demuxer.h"
 
@@ -68,16 +66,16 @@ static const stream_info_t* const auto_open_streams[] = {
 #ifdef CONFIG_VCD
   &stream_info_vcd,
 #endif
-#ifdef HAVE_CDDA
+#ifdef CONFIG_CDDA
   &stream_info_cdda,
 #endif
-#ifdef MPLAYER_NETWORK
+#ifdef CONFIG_NETWORK
   &stream_info_netstream,
   &stream_info_http1,
   &stream_info_asf,
   &stream_info_pnm,
   &stream_info_rtsp,
-#ifdef STREAMING_LIVE555
+#ifdef CONFIG_LIVE555
   &stream_info_sdp,
   &stream_info_rtsp_sip,
 #endif
@@ -97,13 +95,13 @@ static const stream_info_t* const auto_open_streams[] = {
 #ifdef CONFIG_PVR
   &stream_info_pvr,
 #endif
-#ifdef HAVE_FTP
+#ifdef CONFIG_FTP
   &stream_info_ftp,
 #endif
-#ifdef HAVE_VSTREAM
+#ifdef CONFIG_VSTREAM
   &stream_info_vstream,
 #endif
-#ifdef LIBSMBCLIENT
+#ifdef CONFIG_LIBSMBCLIENT
   &stream_info_smb,
 #endif
   &stream_info_cue,
@@ -156,7 +154,7 @@ stream_t* open_stream_plugin(const stream_info_t* sinfo,char* filename,int mode,
   s->flags |= mode;
   *ret = sinfo->open(s,mode,arg,file_format);
   if((*ret) != STREAM_OK) {
-#ifdef MPLAYER_NETWORK
+#ifdef CONFIG_NETWORK
     if (*ret == STREAM_REDIRECTED && redirected_url) {
         if (s->streaming_ctrl && s->streaming_ctrl->url
             && s->streaming_ctrl->url->url)
@@ -247,7 +245,7 @@ int stream_fill_buffer(stream_t *s){
   if (/*s->fd == NULL ||*/ s->eof) { s->buf_pos = s->buf_len = 0; return 0; }
   switch(s->type){
   case STREAMTYPE_STREAM:
-#ifdef MPLAYER_NETWORK
+#ifdef CONFIG_NETWORK
     if( s->streaming_ctrl!=NULL && s->streaming_ctrl->streaming_read ) {
 	    len=s->streaming_ctrl->streaming_read(s->fd,s->buffer,STREAM_BUFFER_SIZE, s->streaming_ctrl);break;
     } else {
@@ -314,7 +312,7 @@ if(newpos==0 || newpos!=s->pos){
     // Some streaming protocol allow to seek backward and forward
     // A function call that return -1 can tell that the protocol
     // doesn't support seeking.
-#ifdef MPLAYER_NETWORK
+#ifdef CONFIG_NETWORK
     if(s->seek) { // new stream seek is much cleaner than streaming_ctrl one
       if(!s->seek(s,newpos)) {
       	mp_msg(MSGT_STREAM,MSGL_ERR, "Seek failed\n");
@@ -410,7 +408,7 @@ stream_t* new_stream(int fd,int type){
   if(s==NULL) return NULL;
   memset(s,0,sizeof(stream_t));
 
-#ifdef HAVE_WINSOCK2
+#ifdef HAVE_WINSOCK2_H
   {
     WSADATA wsdata;
     int temp = WSAStartup(0x0202, &wsdata); // there might be a better place for this (-> later)
@@ -445,7 +443,7 @@ void free_stream(stream_t *s){
       closesocket(s->fd);
     else close(s->fd);
   }
-#ifdef HAVE_WINSOCK2
+#ifdef HAVE_WINSOCK2_H
   mp_msg(MSGT_STREAM,MSGL_V,"WINSOCK2 uninit\n");
   WSACleanup(); // there might be a better place for this (-> later)
 #endif

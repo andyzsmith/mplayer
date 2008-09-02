@@ -3459,8 +3459,9 @@ Very fast video output driver on cards that support it.
 .RSs
 .IPs <subdevice>
 Explicitly choose the VIDIX subdevice driver to use.
-Available subdevice drivers are cyberblade, mach64,
-mga_crtc2, mga, nvidia, pm2, pm3, radeon, rage128, sis_vid and unichrome.
+Available subdevice drivers are cyberblade, ivtv, mach64,
+mga_crtc2, mga, nvidia, pm2, pm3, radeon, rage128, s3, sh_veu,
+sis_vid and unichrome.
 .RE
 .PD 1
 .
@@ -7626,6 +7627,21 @@ Read the source for full details.
 .IPs vcodec=msmpeg4:vbitrate=1800:vhq:keyint=250
 .RE
 .PD 1
+.
+.TP
+.B o=<key>=<value>[,<key>=<value>[,...]]
+Pass AVOptions to libavcodec
+Note, a patch to make the o= unneeded and pass all unknown options through
+the AVOption system is welcome.
+.sp 1
+.RS
+.I EXAMPLE:
+.RE
+.RSs
+.PD 0
+.IPs o=bt=100k
+.PD 1
+.RE
 .
 .TP
 .B acodec=<value>

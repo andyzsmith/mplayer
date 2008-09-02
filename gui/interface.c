@@ -51,7 +51,7 @@
 
 extern af_cfg_t af_cfg;
 
-#ifdef HAVE_ICONV
+#ifdef CONFIG_ICONV
 #include <iconv.h>
 #endif
 
@@ -400,7 +400,7 @@ extern m_obj_settings_t * vf_settings;
 
 void guiLoadFont( void )
 {
-#ifdef HAVE_FREETYPE
+#ifdef CONFIG_FREETYPE
   load_font_ft(vo_image_width, vo_image_height, &vo_font, font_name, osd_font_scale_factor);
 #else
  if ( vo_font )
@@ -842,7 +842,7 @@ int guiGetEvent( int type,char * arg )
 	  free(tmp);
 	 }
 #endif
-#if defined(HAVE_ALSA9) || defined (HAVE_ALSA1X)
+#ifdef CONFIG_ALSA
 	if ( audio_driver_list && !gstrncmp( audio_driver_list[0],"alsa",4 ) )
 	 {
 	  char *tmp;
@@ -1075,7 +1075,7 @@ void * gtkSet( int cmd,float fparam, void * vparam )
          } else { url_item->next=NULL; URLList=url_item; }
         return NULL;
 // --- subtitle
-#ifndef HAVE_FREETYPE
+#ifndef CONFIG_FREETYPE
    case gtkSetFontFactor:
         font_factor=fparam;
 	guiLoadFont();
@@ -1107,7 +1107,7 @@ void * gtkSet( int cmd,float fparam, void * vparam )
 	guiLoadFont();
 	return NULL;
 #endif
-#ifdef HAVE_ICONV
+#ifdef CONFIG_ICONV
    case gtkSetSubEncoding:
 	gfree( (void **)&sub_cp );
 	sub_cp=gstrdup( (char *)vparam );

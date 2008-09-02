@@ -35,6 +35,7 @@ known issues:
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <math.h>
 #ifdef HAVE_SYS_SYSINFO_H
 #include <sys/sysinfo.h>
 #endif
@@ -378,7 +379,7 @@ static void init_audio(priv_t *priv)
     if (priv->audio_initialized) return;
 
     if (!priv->tv_param->noaudio) {
-#if defined(HAVE_ALSA9) || defined(HAVE_ALSA1X)
+#ifdef CONFIG_ALSA
         if (priv->tv_param->alsa)
             audio_in_init(&priv->audio_in, AUDIO_IN_ALSA);
         else

@@ -119,9 +119,9 @@ const m_option_t tvopts_conf[]={
 	{"mjpeg", &stream_tv_defaults.mjpeg, CONF_TYPE_FLAG, 0, 0, 1, NULL},
 	{"decimation", &stream_tv_defaults.decimation, CONF_TYPE_INT, CONF_RANGE, 1, 4, NULL},
 	{"quality", &stream_tv_defaults.quality, CONF_TYPE_INT, CONF_RANGE, 0, 100, NULL},
-#if defined(HAVE_ALSA9) || defined(HAVE_ALSA1X)
+#ifdef CONFIG_ALSA
 	{"alsa", &stream_tv_defaults.alsa, CONF_TYPE_FLAG, 0, 0, 1, NULL},
-#endif /* defined(HAVE_ALSA9) || defined(HAVE_ALSA1X) */
+#endif /* CONFIG_ALSA */
 #endif /* defined(CONFIG_TV_V4L) || defined(CONFIG_TV_V4L2) */
 	{"adevice", &stream_tv_defaults.adevice, CONF_TYPE_STRING, 0, 0, 0, NULL},
 #ifdef CONFIG_TV_TELETEXT
@@ -145,7 +145,6 @@ const m_option_t tvopts_conf[]={
 };
 #endif /* CONFIG_TV */
 
-#ifdef CONFIG_PVR
 extern int pvr_param_aspect_ratio;
 extern int pvr_param_sample_rate;
 extern int pvr_param_audio_layer;
@@ -156,6 +155,7 @@ extern char *pvr_param_bitrate_mode;
 extern int pvr_param_bitrate_peak;
 extern char *pvr_param_stream_type;
 
+#ifdef CONFIG_PVR
 const m_option_t pvropts_conf[]={
 	{"aspect", &pvr_param_aspect_ratio, CONF_TYPE_INT, 0, 1, 4, NULL},
 	{"arate", &pvr_param_sample_rate, CONF_TYPE_INT, 0, 32000, 48000, NULL},
@@ -170,11 +170,7 @@ const m_option_t pvropts_conf[]={
 };
 #endif /* CONFIG_PVR */
 
-#ifdef CONFIG_DVBIN
-#include "stream/dvbin.h"
 extern const m_config_t dvbin_opts_conf[];
-#endif
-
 extern const m_option_t lavfdopts_conf[];
 
 extern int rtspStreamOverTCP;
@@ -353,10 +349,9 @@ const m_option_t msgl_config[]={
 
 };
 
-#ifdef WIN32
-
 extern char * proc_priority;
 
+#ifdef WIN32
 struct {
   char* name;
   int prio;

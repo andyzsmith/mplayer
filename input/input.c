@@ -29,11 +29,11 @@
 
 #include "joystick.h"
 
-#ifdef HAVE_LIRC
+#ifdef CONFIG_LIRC
 #include "lirc.h"
 #endif
 
-#ifdef HAVE_LIRCC
+#ifdef CONFIG_LIRCC
 #include <lirc/lircc.h>
 #endif
 
@@ -426,7 +426,7 @@ static const mp_cmd_bind_t def_cmd_binds[] = {
   { { 'W', 0 }, "step_property teletext_page 1" },
   { { 'Q', 0 }, "step_property teletext_page -1" },
 #endif
-#ifdef HAVE_JOYSTICK
+#ifdef CONFIG_JOYSTICK
   { { JOY_AXIS0_PLUS, 0 }, "seek 10" },
   { { JOY_AXIS0_MINUS, 0 }, "seek -10" },
   { { JOY_AXIS1_MINUS, 0 }, "seek 60" },
@@ -436,7 +436,7 @@ static const mp_cmd_bind_t def_cmd_binds[] = {
   { { JOY_BTN2, 0 }, "volume 1"},
   { { JOY_BTN3, 0 }, "volume -1"},
 #endif
-#ifdef HAVE_APPLE_REMOTE
+#ifdef CONFIG_APPLE_REMOTE
   { { AR_PLAY, 0}, "pause" },
   { { AR_PLAY_HOLD, 0}, "quit" },
   { { AR_NEXT, 0 }, "seek 30" },
@@ -568,7 +568,7 @@ static int use_joystick = 1, use_lirc = 1, use_lircc = 1;
 static char* config_file = "input.conf";
 
 /* Apple Remote */
-#ifdef HAVE_APPLE_REMOTE
+#ifdef CONFIG_APPLE_REMOTE
 static int use_ar = 1;
 #else
 static int use_ar = 0;
@@ -1733,7 +1733,7 @@ mp_input_init(int use_gui) {
       free(file);
   }
 
-#ifdef HAVE_JOYSTICK
+#ifdef CONFIG_JOYSTICK
   if(use_joystick) {
     int fd = mp_input_joystick_init(js_dev);
     if(fd < 0)
@@ -1743,7 +1743,7 @@ mp_input_init(int use_gui) {
   }
 #endif
 
-#ifdef HAVE_LIRC
+#ifdef CONFIG_LIRC
   if(use_lirc) {
     int fd = mp_input_lirc_init();
     if(fd > 0)
@@ -1751,7 +1751,7 @@ mp_input_init(int use_gui) {
   }
 #endif
 
-#ifdef HAVE_LIRCC
+#ifdef CONFIG_LIRCC
   if(use_lircc) {
     int fd = lircc_init("mplayer", NULL);
     if(fd >= 0)
@@ -1759,7 +1759,7 @@ mp_input_init(int use_gui) {
   }
 #endif
 
-#ifdef HAVE_APPLE_REMOTE
+#ifdef CONFIG_APPLE_REMOTE
   if(use_ar) {
     if(mp_input_ar_init() < 0)
       mp_msg(MSGT_INPUT,MSGL_ERR,MSGTR_INPUT_INPUT_ErrCantInitAppleRemote);
@@ -1768,7 +1768,7 @@ mp_input_init(int use_gui) {
   }
 #endif
 
-#ifdef HAVE_APPLE_IR
+#ifdef CONFIG_APPLE_IR
   if(use_ar) {
     int fd = mp_input_appleir_init(ar_dev);
     if(fd < 0)

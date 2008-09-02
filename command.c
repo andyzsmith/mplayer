@@ -1356,6 +1356,7 @@ static int mp_property_sub(m_option_t * prop, int action, void *arg,
 
 	if ((mpctx->demuxer->type == DEMUXER_TYPE_MATROSKA
              || mpctx->demuxer->type == DEMUXER_TYPE_LAVF
+             || mpctx->demuxer->type == DEMUXER_TYPE_LAVF_PREFERRED
              || mpctx->demuxer->type == DEMUXER_TYPE_OGG)
              && d_sub && d_sub->sh && dvdsub_id >= 0) {
             const char* lang = ((sh_sub_t*)d_sub->sh)->lang;
@@ -1776,7 +1777,7 @@ static int mp_property_sub_forced_only(m_option_t * prop, int action,
 
 }
 
-#ifdef HAVE_FREETYPE
+#ifdef CONFIG_FREETYPE
 /// Subtitle scale (RW)
 static int mp_property_sub_scale(m_option_t * prop, int action, void *arg,
 			      MPContext * mpctx)
@@ -2076,7 +2077,7 @@ static const m_option_t mp_properties[] = {
      M_OPT_RANGE, 0, 1, NULL },
     { "sub_forced_only", mp_property_sub_forced_only, CONF_TYPE_FLAG,
      M_OPT_RANGE, 0, 1, NULL },
-#ifdef HAVE_FREETYPE
+#ifdef CONFIG_FREETYPE
     { "sub_scale", mp_property_sub_scale, CONF_TYPE_FLOAT,
      M_OPT_RANGE, 0, 100, NULL },
 #endif
@@ -2209,7 +2210,7 @@ static struct {
     { "sub_delay", MP_CMD_SUB_DELAY, 0, 0, OSD_MSG_SUB_DELAY, MSGTR_SubDelayStatus },
     { "sub_visibility", MP_CMD_SUB_VISIBILITY, 1, 0, -1, MSGTR_SubVisibleStatus },
     { "sub_forced_only", MP_CMD_SUB_FORCED_ONLY, 1, 0, -1, MSGTR_SubForcedOnlyStatus },
-#ifdef HAVE_FREETYPE
+#ifdef CONFIG_FREETYPE
     { "sub_scale", MP_CMD_SUB_SCALE, 0, 0, -1, MSGTR_SubScale},
 #endif
 #ifdef CONFIG_ASS
@@ -2655,6 +2656,10 @@ int run_command(MPContext * mpctx, mp_cmd_t * cmd)
 	    break;
 
 	case MP_CMD_STOP:
+	    // Go back to the starting point.
+	    while (play_tree_iter_up_step
+		   (mpctx->playtree_iter, 0, 1) != PLAY_TREE_ITER_END)
+		/* NOP */ ;
 	    mpctx->eof = PT_STOP;
 	    brk_cmd = 1;
 	    break;
