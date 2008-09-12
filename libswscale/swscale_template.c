@@ -190,8 +190,8 @@
     "1:                                   \n\t"\
     "movq  (%0, %%"REG_a", 2), %%mm0      \n\t"\
     "movq 8(%0, %%"REG_a", 2), %%mm1      \n\t"\
-    "paddw              %%mm7, %%mm0      \n\t"\
-    "paddw              %%mm7, %%mm1      \n\t"\
+    "paddsw             %%mm7, %%mm0      \n\t"\
+    "paddsw             %%mm7, %%mm1      \n\t"\
     "psraw                 $7, %%mm0      \n\t"\
     "psraw                 $7, %%mm1      \n\t"\
     "packuswb           %%mm1, %%mm0      \n\t"\
@@ -1204,8 +1204,8 @@ static inline void RENAME(yuv2packedX)(SwsContext *c, int16_t *lumFilter, int16_
 static inline void RENAME(yuv2packed2)(SwsContext *c, uint16_t *buf0, uint16_t *buf1, uint16_t *uvbuf0, uint16_t *uvbuf1,
                           uint8_t *dest, int dstW, int yalpha, int uvalpha, int y)
 {
-    int yalpha1=yalpha^4095;
-    int uvalpha1=uvalpha^4095;
+    int  yalpha1=4095- yalpha;
+    int uvalpha1=4095-uvalpha;
     int i;
 
 #if 0 //isn't used
@@ -1511,7 +1511,7 @@ FULL_YSCALEYUV2RGB
             default: break;
         }
 #endif //HAVE_MMX
-YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB2_C, YSCALE_YUV_2_PACKED2_C, YSCALE_YUV_2_GRAY16_2_C)
+YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB2_C, YSCALE_YUV_2_PACKED2_C, YSCALE_YUV_2_GRAY16_2_C, YSCALE_YUV_2_MONOBLACK2_C)
 }
 
 /**
@@ -1714,9 +1714,9 @@ static inline void RENAME(yuv2packed1)(SwsContext *c, uint16_t *buf0, uint16_t *
 #endif /* HAVE_MMX */
     if (uvalpha < 2048)
     {
-        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1_C, YSCALE_YUV_2_PACKED1_C, YSCALE_YUV_2_GRAY16_1_C)
+        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1_C, YSCALE_YUV_2_PACKED1_C, YSCALE_YUV_2_GRAY16_1_C, YSCALE_YUV_2_MONOBLACK2_C)
     }else{
-        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1B_C, YSCALE_YUV_2_PACKED1B_C, YSCALE_YUV_2_GRAY16_1_C)
+        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1B_C, YSCALE_YUV_2_PACKED1B_C, YSCALE_YUV_2_GRAY16_1_C, YSCALE_YUV_2_MONOBLACK2_C)
     }
 }
 
@@ -2109,9 +2109,9 @@ static inline void RENAME(rgb24ToUV_half)(uint8_t *dstU, uint8_t *dstV, uint8_t 
     assert(src1==src2);
     for (i=0; i<width; i++)
     {
-        int r= src1[6*i + 0] + src1[6*i + 0];
-        int g= src1[6*i + 1] + src1[6*i + 1];
-        int b= src1[6*i + 2] + src1[6*i + 2];
+        int r= src1[6*i + 0] + src1[6*i + 3];
+        int g= src1[6*i + 1] + src1[6*i + 4];
+        int b= src1[6*i + 2] + src1[6*i + 5];
 
         dstU[i]= (RU*r + GU*g + BU*b + (257<<RGB2YUV_SHIFT))>>(RGB2YUV_SHIFT+1);
         dstV[i]= (RV*r + GV*g + BV*b + (257<<RGB2YUV_SHIFT))>>(RGB2YUV_SHIFT+1);
@@ -3132,8 +3132,15 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
                 if (vLumFilterSize == 1 && vChrFilterSize == 2) //unscaled RGB
                 {
                     int chrAlpha= vChrFilter[2*dstY+1];
+                    if(flags & SWS_FULL_CHR_H_INT){
+                        yuv2rgbXinC_full(c, //FIXME write a packed1_full function
+                            vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
+                            vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
+                            dest, dstW, dstY);
+                    }else{
                     RENAME(yuv2packed1)(c, *lumSrcPtr, *chrSrcPtr, *(chrSrcPtr+1),
                         dest, dstW, chrAlpha, dstFormat, flags, dstY);
+                    }
                 }
                 else if (vLumFilterSize == 2 && vChrFilterSize == 2) //bilinear upscale RGB
                 {
@@ -3143,15 +3150,29 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
                     lumMmxFilter[3]= vLumFilter[2*dstY   ]*0x10001;
                     chrMmxFilter[2]=
                     chrMmxFilter[3]= vChrFilter[2*chrDstY]*0x10001;
+                    if(flags & SWS_FULL_CHR_H_INT){
+                        yuv2rgbXinC_full(c, //FIXME write a packed2_full function
+                            vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
+                            vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
+                            dest, dstW, dstY);
+                    }else{
                     RENAME(yuv2packed2)(c, *lumSrcPtr, *(lumSrcPtr+1), *chrSrcPtr, *(chrSrcPtr+1),
                         dest, dstW, lumAlpha, chrAlpha, dstY);
+                    }
                 }
                 else //general RGB
                 {
+                    if(flags & SWS_FULL_CHR_H_INT){
+                        yuv2rgbXinC_full(c,
+                            vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
+                            vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
+                            dest, dstW, dstY);
+                    }else{
                     RENAME(yuv2packedX)(c,
                         vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
                         vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
                         dest, dstW, dstY);
+                    }
                 }
             }
         }
@@ -3180,10 +3201,17 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
             {
                 assert(lumSrcPtr + vLumFilterSize - 1 < lumPixBuf + vLumBufSize*2);
                 assert(chrSrcPtr + vChrFilterSize - 1 < chrPixBuf + vChrBufSize*2);
+                if(flags & SWS_FULL_CHR_H_INT){
+                    yuv2rgbXinC_full(c,
+                        vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
+                        vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
+                        dest, dstW, dstY);
+                }else{
                 yuv2packedXinC(c,
                     vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
                     vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
                     dest, dstW, dstY);
+                }
             }
         }
     }
