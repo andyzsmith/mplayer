@@ -2202,6 +2202,7 @@ if(trak->samplesize){
     x=trak->samples[frame].size;
     pos=trak->samples[frame].pos;
 }
+demuxer->filepos=pos;
 if(trak->pos==0 && trak->stream_header_len>0){
     // we have to append the stream header...
     demux_packet_t* dp=new_demux_packet(x+trak->stream_header_len);
