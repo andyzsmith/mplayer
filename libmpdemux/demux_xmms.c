@@ -329,7 +329,7 @@ static int demux_xmms_fill_buffer(demuxer_t* demuxer, demux_stream_t *ds) {
     pthread_mutex_lock(&xmms_mutex);
     dp = new_demux_packet(XMMS_PACKETSIZE/2);
     dp->pts = priv->spos / sh_audio->wf->nAvgBytesPerSec;
-    ds->pos = priv->spos;
+    ds->pos = demuxer->filepos = priv->spos;
 
     memcpy(dp->buffer,xmms_audiobuffer,XMMS_PACKETSIZE/2);
     memcpy(xmms_audiobuffer,&xmms_audiobuffer[XMMS_PACKETSIZE/2],

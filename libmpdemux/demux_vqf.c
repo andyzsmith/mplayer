@@ -172,7 +172,7 @@ static int demux_vqf_fill_buffer(demuxer_t* demuxer, demux_stream_t *ds) {
 
   dp = new_demux_packet(l);
   ds->pts = spos / (float)(sh_audio->wf->nAvgBytesPerSec);
-  ds->pos = spos;
+  ds->pos = demuxer->filepos = spos;
 
   l=stream_read(demuxer->stream,dp->buffer,l);
   resize_demux_packet(dp,l);

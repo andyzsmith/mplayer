@@ -212,7 +212,7 @@ static int demux_gif_fill_buffer(demuxer_t *demuxer, demux_stream_t *ds)
 
   demuxer->video->dpos++;
   dp->pts = ((float)priv->current_pts) / 100;
-  dp->pos = stream_tell(demuxer->stream);
+  dp->pos = demuxer->filepos = stream_tell(demuxer->stream);
   ds_add_packet(demuxer->video, dp);
 
   return 1;
