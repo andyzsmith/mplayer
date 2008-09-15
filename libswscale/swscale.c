@@ -116,6 +116,7 @@ unsigned swscale_version(void)
         || (x)==PIX_FMT_RGB555      \
         || (x)==PIX_FMT_GRAY8       \
         || (x)==PIX_FMT_YUV410P     \
+        || (x)==PIX_FMT_YUV440P     \
         || (x)==PIX_FMT_GRAY16BE    \
         || (x)==PIX_FMT_GRAY16LE    \
         || (x)==PIX_FMT_YUV444P     \
@@ -127,6 +128,8 @@ unsigned swscale_version(void)
         || (x)==PIX_FMT_BGR4_BYTE   \
         || (x)==PIX_FMT_RGB4_BYTE   \
         || (x)==PIX_FMT_YUV440P     \
+        || (x)==PIX_FMT_MONOWHITE   \
+        || (x)==PIX_FMT_MONOBLACK   \
     )
 #define isSupportedOut(x)   (       \
            (x)==PIX_FMT_YUV420P     \
@@ -143,6 +146,7 @@ unsigned swscale_version(void)
         || (x)==PIX_FMT_GRAY16LE    \
         || (x)==PIX_FMT_GRAY8       \
         || (x)==PIX_FMT_YUV410P     \
+        || (x)==PIX_FMT_YUV440P     \
     )
 #define isPacked(x)         (       \
            (x)==PIX_FMT_PAL8        \
@@ -258,11 +262,112 @@ static unsigned char clip_table[768];
 
 static SwsVector *sws_getConvVec(SwsVector *a, SwsVector *b);
 
-extern const uint8_t dither_2x2_4[2][8];
-extern const uint8_t dither_2x2_8[2][8];
-extern const uint8_t dither_8x8_32[8][8];
-extern const uint8_t dither_8x8_73[8][8];
-extern const uint8_t dither_8x8_220[8][8];
+const uint8_t  __attribute__((aligned(8))) dither_2x2_4[2][8]={
+{  1,   3,   1,   3,   1,   3,   1,   3, },
+{  2,   0,   2,   0,   2,   0,   2,   0, },
+};
+
+const uint8_t  __attribute__((aligned(8))) dither_2x2_8[2][8]={
+{  6,   2,   6,   2,   6,   2,   6,   2, },
+{  0,   4,   0,   4,   0,   4,   0,   4, },
+};
+
+const uint8_t  __attribute__((aligned(8))) dither_8x8_32[8][8]={
+{ 17,   9,  23,  15,  16,   8,  22,  14, },
+{  5,  29,   3,  27,   4,  28,   2,  26, },
+{ 21,  13,  19,  11,  20,  12,  18,  10, },
+{  0,  24,   6,  30,   1,  25,   7,  31, },
+{ 16,   8,  22,  14,  17,   9,  23,  15, },
+{  4,  28,   2,  26,   5,  29,   3,  27, },
+{ 20,  12,  18,  10,  21,  13,  19,  11, },
+{  1,  25,   7,  31,   0,  24,   6,  30, },
+};
+
+#if 0
+const uint8_t  __attribute__((aligned(8))) dither_8x8_64[8][8]={
+{  0,  48,  12,  60,   3,  51,  15,  63, },
+{ 32,  16,  44,  28,  35,  19,  47,  31, },
+{  8,  56,   4,  52,  11,  59,   7,  55, },
+{ 40,  24,  36,  20,  43,  27,  39,  23, },
+{  2,  50,  14,  62,   1,  49,  13,  61, },
+{ 34,  18,  46,  30,  33,  17,  45,  29, },
+{ 10,  58,   6,  54,   9,  57,   5,  53, },
+{ 42,  26,  38,  22,  41,  25,  37,  21, },
+};
+#endif
+
+const uint8_t  __attribute__((aligned(8))) dither_8x8_73[8][8]={
+{  0,  55,  14,  68,   3,  58,  17,  72, },
+{ 37,  18,  50,  32,  40,  22,  54,  35, },
+{  9,  64,   5,  59,  13,  67,   8,  63, },
+{ 46,  27,  41,  23,  49,  31,  44,  26, },
+{  2,  57,  16,  71,   1,  56,  15,  70, },
+{ 39,  21,  52,  34,  38,  19,  51,  33, },
+{ 11,  66,   7,  62,  10,  65,   6,  60, },
+{ 48,  30,  43,  25,  47,  29,  42,  24, },
+};
+
+#if 0
+const uint8_t  __attribute__((aligned(8))) dither_8x8_128[8][8]={
+{ 68,  36,  92,  60,  66,  34,  90,  58, },
+{ 20, 116,  12, 108,  18, 114,  10, 106, },
+{ 84,  52,  76,  44,  82,  50,  74,  42, },
+{  0,  96,  24, 120,   6, 102,  30, 126, },
+{ 64,  32,  88,  56,  70,  38,  94,  62, },
+{ 16, 112,   8, 104,  22, 118,  14, 110, },
+{ 80,  48,  72,  40,  86,  54,  78,  46, },
+{  4, 100,  28, 124,   2,  98,  26, 122, },
+};
+#endif
+
+#if 1
+const uint8_t  __attribute__((aligned(8))) dither_8x8_220[8][8]={
+{117,  62, 158, 103, 113,  58, 155, 100, },
+{ 34, 199,  21, 186,  31, 196,  17, 182, },
+{144,  89, 131,  76, 141,  86, 127,  72, },
+{  0, 165,  41, 206,  10, 175,  52, 217, },
+{110,  55, 151,  96, 120,  65, 162, 107, },
+{ 28, 193,  14, 179,  38, 203,  24, 189, },
+{138,  83, 124,  69, 148,  93, 134,  79, },
+{  7, 172,  48, 213,   3, 168,  45, 210, },
+};
+#elif 1
+// tries to correct a gamma of 1.5
+const uint8_t  __attribute__((aligned(8))) dither_8x8_220[8][8]={
+{  0, 143,  18, 200,   2, 156,  25, 215, },
+{ 78,  28, 125,  64,  89,  36, 138,  74, },
+{ 10, 180,   3, 161,  16, 195,   8, 175, },
+{109,  51,  93,  38, 121,  60, 105,  47, },
+{  1, 152,  23, 210,   0, 147,  20, 205, },
+{ 85,  33, 134,  71,  81,  30, 130,  67, },
+{ 14, 190,   6, 171,  12, 185,   5, 166, },
+{117,  57, 101,  44, 113,  54,  97,  41, },
+};
+#elif 1
+// tries to correct a gamma of 2.0
+const uint8_t  __attribute__((aligned(8))) dither_8x8_220[8][8]={
+{  0, 124,   8, 193,   0, 140,  12, 213, },
+{ 55,  14, 104,  42,  66,  19, 119,  52, },
+{  3, 168,   1, 145,   6, 187,   3, 162, },
+{ 86,  31,  70,  21,  99,  39,  82,  28, },
+{  0, 134,  11, 206,   0, 129,   9, 200, },
+{ 62,  17, 114,  48,  58,  16, 109,  45, },
+{  5, 181,   2, 157,   4, 175,   1, 151, },
+{ 95,  36,  78,  26,  90,  34,  74,  24, },
+};
+#else
+// tries to correct a gamma of 2.5
+const uint8_t  __attribute__((aligned(8))) dither_8x8_220[8][8]={
+{  0, 107,   3, 187,   0, 125,   6, 212, },
+{ 39,   7,  86,  28,  49,  11, 102,  36, },
+{  1, 158,   0, 131,   3, 180,   1, 151, },
+{ 68,  19,  52,  12,  81,  25,  64,  17, },
+{  0, 119,   5, 203,   0, 113,   4, 195, },
+{ 45,   9,  96,  33,  42,   8,  91,  30, },
+{  2, 172,   1, 144,   2, 165,   0, 137, },
+{ 77,  23,  60,  15,  72,  21,  56,  14, },
+};
+#endif
 
 const char *sws_format_name(enum PixelFormat format)
 {
@@ -494,12 +599,12 @@ static inline void yuv2nv12XinC(int16_t *lumFilter, int16_t **lumSrc, int lumFil
 
 #define YSCALE_YUV_2_RGBX_FULL_C(rnd) \
     YSCALE_YUV_2_PACKEDX_FULL_C\
-        Y-= c->oy;\
-        Y*= c->cy;\
+        Y-= c->yuv2rgb_y_offset;\
+        Y*= c->yuv2rgb_y_coeff;\
         Y+= rnd;\
-        R= Y + V*c->cvr;\
-        G= Y + V*c->cvg + U*c->cug;\
-        B= Y +            U*c->cub;\
+        R= Y + V*c->yuv2rgb_v2r_coeff;\
+        G= Y + V*c->yuv2rgb_v2g_coeff + U*c->yuv2rgb_u2g_coeff;\
+        B= Y +                          U*c->yuv2rgb_u2b_coeff;\
         if ((R|G|B)&(0xC0000000)){\
             if (R>=(256<<22))   R=(256<<22)-1; \
             else if (R<0)R=0;   \
@@ -536,7 +641,7 @@ static inline void yuv2nv12XinC(int16_t *lumFilter, int16_t **lumSrc, int lumFil
         }
 
 #define YSCALE_YUV_2_RGBX_C(type) \
-    YSCALE_YUV_2_PACKEDX_NOCLIP_C(type)  \
+    YSCALE_YUV_2_PACKEDX_C(type)  /* FIXME fix tables so that cliping is not needed and then use _NOCLIP*/\
     r = (type *)c->table_rV[V];   \
     g = (type *)(c->table_gU[U] + c->table_gV[V]); \
     b = (type *)c->table_bU[U];   \
@@ -598,7 +703,7 @@ static inline void yuv2nv12XinC(int16_t *lumFilter, int16_t **lumSrc, int lumFil
     g = (type *)(c->table_gU[U] + c->table_gV[V]);\
     b = (type *)c->table_bU[U];\
 
-#define YSCALE_YUV_2_MONOBLACK2_C \
+#define YSCALE_YUV_2_MONO2_C \
     const uint8_t * const d128=dither_8x8_220[y&7];\
     uint8_t *g= c->table_gU[128] + c->table_gV[128];\
     for (i=0; i<dstW-7; i+=8){\
@@ -611,12 +716,12 @@ static inline void yuv2nv12XinC(int16_t *lumFilter, int16_t **lumSrc, int lumFil
         acc+= acc + g[((buf0[i+5]*yalpha1+buf1[i+5]*yalpha)>>19) + d128[5]];\
         acc+= acc + g[((buf0[i+6]*yalpha1+buf1[i+6]*yalpha)>>19) + d128[6]];\
         acc+= acc + g[((buf0[i+7]*yalpha1+buf1[i+7]*yalpha)>>19) + d128[7]];\
-        ((uint8_t*)dest)[0]= acc;\
+        ((uint8_t*)dest)[0]= c->dstFormat == PIX_FMT_MONOBLACK ? acc : ~acc;\
         dest++;\
     }\
 
 
-#define YSCALE_YUV_2_MONOBLACKX_C \
+#define YSCALE_YUV_2_MONOX_C \
     const uint8_t * const d128=dither_8x8_220[y&7];\
     uint8_t *g= c->table_gU[128] + c->table_gV[128];\
     int acc=0;\
@@ -642,7 +747,7 @@ static inline void yuv2nv12XinC(int16_t *lumFilter, int16_t **lumSrc, int lumFil
         acc+= acc + g[Y1+d128[(i+0)&7]];\
         acc+= acc + g[Y2+d128[(i+1)&7]];\
         if ((i&7)==6){\
-            ((uint8_t*)dest)[0]= acc;\
+            ((uint8_t*)dest)[0]= c->dstFormat == PIX_FMT_MONOBLACK ? acc : ~acc;\
             dest++;\
         }\
     }
@@ -746,6 +851,7 @@ static inline void yuv2nv12XinC(int16_t *lumFilter, int16_t **lumSrc, int lumFil
         }\
         break;\
     case PIX_FMT_MONOBLACK:\
+    case PIX_FMT_MONOWHITE:\
         {\
             func_monoblack\
         }\
@@ -790,7 +896,7 @@ static inline void yuv2packedXinC(SwsContext *c, int16_t *lumFilter, int16_t **l
                                   uint8_t *dest, int dstW, int y)
 {
     int i;
-    YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGBX_C, YSCALE_YUV_2_PACKEDX_C(void), YSCALE_YUV_2_GRAY16_C, YSCALE_YUV_2_MONOBLACKX_C)
+    YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGBX_C, YSCALE_YUV_2_PACKEDX_C(void), YSCALE_YUV_2_GRAY16_C, YSCALE_YUV_2_MONOX_C)
 }
 
 static inline void yuv2rgbXinC_full(SwsContext *c, int16_t *lumFilter, int16_t **lumSrc, int lumFilterSize,
@@ -942,8 +1048,9 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
     int filterSize;
     int filter2Size;
     int minFilterSize;
-    double *filter=NULL;
-    double *filter2=NULL;
+    int64_t *filter=NULL;
+    int64_t *filter2=NULL;
+    const int64_t fone= 1LL<<54;
     int ret= -1;
 #if defined(ARCH_X86)
     if (flags & SWS_CPU_CAPS_MMX)
@@ -957,12 +1064,11 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
     {
         int i;
         filterSize= 1;
-        filter= av_malloc(dstW*sizeof(double)*filterSize);
-        for (i=0; i<dstW*filterSize; i++) filter[i]=0;
+        filter= av_mallocz(dstW*sizeof(*filter)*filterSize);
 
         for (i=0; i<dstW; i++)
         {
-            filter[i*filterSize]=1;
+            filter[i*filterSize]= fone;
             (*filterPos)[i]=i;
         }
 
@@ -972,7 +1078,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
         int i;
         int xDstInSrc;
         filterSize= 1;
-        filter= av_malloc(dstW*sizeof(double)*filterSize);
+        filter= av_malloc(dstW*sizeof(*filter)*filterSize);
 
         xDstInSrc= xInc/2 - 0x8000;
         for (i=0; i<dstW; i++)
@@ -980,7 +1086,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
             int xx= (xDstInSrc - ((filterSize-1)<<15) + (1<<15))>>16;
 
             (*filterPos)[i]= xx;
-            filter[i]= 1.0;
+            filter[i]= fone;
             xDstInSrc+= xInc;
         }
     }
@@ -991,7 +1097,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
         if      (flags&SWS_BICUBIC) filterSize= 4;
         else if (flags&SWS_X      ) filterSize= 4;
         else                        filterSize= 2; // SWS_BILINEAR / SWS_AREA
-        filter= av_malloc(dstW*sizeof(double)*filterSize);
+        filter= av_malloc(dstW*sizeof(*filter)*filterSize);
 
         xDstInSrc= xInc/2 - 0x8000;
         for (i=0; i<dstW; i++)
@@ -1003,8 +1109,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
                 //Bilinear upscale / linear interpolate / Area averaging
                 for (j=0; j<filterSize; j++)
                 {
-                    double d= FFABS((xx<<16) - xDstInSrc)/(double)(1<<16);
-                    double coeff= 1.0 - d;
+                    int64_t coeff= fone - FFABS((xx<<16) - xDstInSrc)*(fone>>16);
                     if (coeff<0) coeff=0;
                     filter[i*filterSize + j]= coeff;
                     xx++;
@@ -1014,52 +1119,59 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
     }
     else
     {
-        double xDstInSrc;
-        double sizeFactor, filterSizeInSrc;
-        const double xInc1= (double)xInc / (double)(1<<16);
+        int xDstInSrc;
+        int sizeFactor;
 
-        if      (flags&SWS_BICUBIC)      sizeFactor=  4.0;
-        else if (flags&SWS_X)            sizeFactor=  8.0;
-        else if (flags&SWS_AREA)         sizeFactor=  1.0; //downscale only, for upscale it is bilinear
-        else if (flags&SWS_GAUSS)        sizeFactor=  8.0;   // infinite ;)
-        else if (flags&SWS_LANCZOS)      sizeFactor= param[0] != SWS_PARAM_DEFAULT ? 2.0*param[0] : 6.0;
-        else if (flags&SWS_SINC)         sizeFactor= 20.0; // infinite ;)
-        else if (flags&SWS_SPLINE)       sizeFactor= 20.0;  // infinite ;)
-        else if (flags&SWS_BILINEAR)     sizeFactor=  2.0;
+        if      (flags&SWS_BICUBIC)      sizeFactor=  4;
+        else if (flags&SWS_X)            sizeFactor=  8;
+        else if (flags&SWS_AREA)         sizeFactor=  1; //downscale only, for upscale it is bilinear
+        else if (flags&SWS_GAUSS)        sizeFactor=  8;   // infinite ;)
+        else if (flags&SWS_LANCZOS)      sizeFactor= param[0] != SWS_PARAM_DEFAULT ? ceil(2*param[0]) : 6;
+        else if (flags&SWS_SINC)         sizeFactor= 20; // infinite ;)
+        else if (flags&SWS_SPLINE)       sizeFactor= 20;  // infinite ;)
+        else if (flags&SWS_BILINEAR)     sizeFactor=  2;
         else {
-            sizeFactor= 0.0; //GCC warning killer
+            sizeFactor= 0; //GCC warning killer
             assert(0);
         }
 
-        if (xInc1 <= 1.0)       filterSizeInSrc= sizeFactor; // upscale
-        else                    filterSizeInSrc= sizeFactor*srcW / (double)dstW;
+        if (xInc <= 1<<16)      filterSize= 1 + sizeFactor; // upscale
+        else                    filterSize= 1 + (sizeFactor*srcW + dstW - 1)/ dstW;
 
-        filterSize= (int)ceil(1 + filterSizeInSrc); // will be reduced later if possible
         if (filterSize > srcW-2) filterSize=srcW-2;
 
-        filter= av_malloc(dstW*sizeof(double)*filterSize);
+        filter= av_malloc(dstW*sizeof(*filter)*filterSize);
 
-        xDstInSrc= xInc1 / 2.0 - 0.5;
+        xDstInSrc= xInc - 0x10000;
         for (i=0; i<dstW; i++)
         {
-            int xx= (int)(xDstInSrc - (filterSize-1)*0.5 + 0.5);
+            int xx= (xDstInSrc - ((filterSize-2)<<16)) / (1<<17);
             int j;
             (*filterPos)[i]= xx;
             for (j=0; j<filterSize; j++)
             {
-                double d= FFABS(xx - xDstInSrc)/filterSizeInSrc*sizeFactor;
-                double coeff;
+                int64_t d= ((int64_t)FFABS((xx<<17) - xDstInSrc))<<13;
+                double floatd;
+                int64_t coeff;
+
+                if (xInc > 1<<16)
+                    d= d*dstW/srcW;
+                floatd= d * (1.0/(1<<30));
+
                 if (flags & SWS_BICUBIC)
                 {
-                    double B= param[0] != SWS_PARAM_DEFAULT ? param[0] : 0.0;
-                    double C= param[1] != SWS_PARAM_DEFAULT ? param[1] : 0.6;
+                    int64_t B= (param[0] != SWS_PARAM_DEFAULT ? param[0] :   0) * (1<<24);
+                    int64_t C= (param[1] != SWS_PARAM_DEFAULT ? param[1] : 0.6) * (1<<24);
+                    int64_t dd = ( d*d)>>30;
+                    int64_t ddd= (dd*d)>>30;
 
-                    if (d<1.0)
-                        coeff = (12-9*B-6*C)*d*d*d + (-18+12*B+6*C)*d*d + 6-2*B;
-                    else if (d<2.0)
-                        coeff = (-B-6*C)*d*d*d + (6*B+30*C)*d*d + (-12*B-48*C)*d +8*B+24*C;
+                    if      (d < 1LL<<30)
+                        coeff = (12*(1<<24)-9*B-6*C)*ddd + (-18*(1<<24)+12*B+6*C)*dd + (6*(1<<24)-2*B)*(1<<30);
+                    else if (d < 1LL<<31)
+                        coeff = (-B-6*C)*ddd + (6*B+30*C)*dd + (-12*B-48*C)*d + (8*B+24*C)*(1<<30);
                     else
                         coeff=0.0;
+                    coeff *= fone>>(30+24);
                 }
 /*                else if (flags & SWS_X)
                 {
@@ -1070,46 +1182,49 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
                 else if (flags & SWS_X)
                 {
                     double A= param[0] != SWS_PARAM_DEFAULT ? param[0] : 1.0;
+                    double c;
 
-                    if (d<1.0)
-                        coeff = cos(d*PI);
+                    if (floatd<1.0)
+                        c = cos(floatd*PI);
                     else
-                        coeff=-1.0;
-                    if (coeff<0.0)      coeff= -pow(-coeff, A);
-                    else                coeff=  pow( coeff, A);
-                    coeff= coeff*0.5 + 0.5;
+                        c=-1.0;
+                    if (c<0.0)      c= -pow(-c, A);
+                    else            c=  pow( c, A);
+                    coeff= (c*0.5 + 0.5)*fone;
                 }
                 else if (flags & SWS_AREA)
                 {
-                    double srcPixelSize= 1.0/xInc1;
-                    if      (d + srcPixelSize/2 < 0.5) coeff= 1.0;
-                    else if (d - srcPixelSize/2 < 0.5) coeff= (0.5-d)/srcPixelSize + 0.5;
+                    int64_t d2= d - (1<<29);
+                    if      (d2*xInc < -(1LL<<(29+16))) coeff= 1.0 * (1LL<<(30+16));
+                    else if (d2*xInc <  (1LL<<(29+16))) coeff= -d2*xInc + (1LL<<(29+16));
                     else coeff=0.0;
+                    coeff *= fone>>(30+16);
                 }
                 else if (flags & SWS_GAUSS)
                 {
                     double p= param[0] != SWS_PARAM_DEFAULT ? param[0] : 3.0;
-                    coeff = pow(2.0, - p*d*d);
+                    coeff = (pow(2.0, - p*floatd*floatd))*fone;
                 }
                 else if (flags & SWS_SINC)
                 {
-                    coeff = d ? sin(d*PI)/(d*PI) : 1.0;
+                    coeff = (d ? sin(floatd*PI)/(floatd*PI) : 1.0)*fone;
                 }
                 else if (flags & SWS_LANCZOS)
                 {
                     double p= param[0] != SWS_PARAM_DEFAULT ? param[0] : 3.0;
-                    coeff = d ? sin(d*PI)*sin(d*PI/p)/(d*d*PI*PI/p) : 1.0;
-                    if (d>p) coeff=0;
+                    coeff = (d ? sin(floatd*PI)*sin(floatd*PI/p)/(floatd*floatd*PI*PI/p) : 1.0)*fone;
+                    if (floatd>p) coeff=0;
                 }
                 else if (flags & SWS_BILINEAR)
                 {
-                    coeff= 1.0 - d;
+                    coeff= (1<<30) - d;
                     if (coeff<0) coeff=0;
+                    coeff *= fone >> 30;
                 }
                 else if (flags & SWS_SPLINE)
                 {
                     double p=-2.196152422706632;
-                    coeff = getSplineCoeff(1.0, 0.0, p, -p-1.0, d);
+                    coeff = getSplineCoeff(1.0, 0.0, p, -p-1.0, d) * fone;
                 }
                 else {
                     coeff= 0.0; //GCC warning killer
@@ -1119,7 +1234,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
                 filter[i*filterSize + j]= coeff;
                 xx++;
             }
-            xDstInSrc+= xInc1;
+            xDstInSrc+= 2*xInc;
         }
     }
 
@@ -1131,31 +1246,24 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
     if (srcFilter) filter2Size+= srcFilter->length - 1;
     if (dstFilter) filter2Size+= dstFilter->length - 1;
     assert(filter2Size>0);
-    filter2= av_malloc(filter2Size*dstW*sizeof(double));
+    filter2= av_mallocz(filter2Size*dstW*sizeof(*filter2));
 
     for (i=0; i<dstW; i++)
     {
-        int j;
-        SwsVector scaleFilter;
-        SwsVector *outVec;
+        int j, k;
 
-        scaleFilter.coeff= filter + i*filterSize;
-        scaleFilter.length= filterSize;
-
-        if (srcFilter) outVec= sws_getConvVec(srcFilter, &scaleFilter);
-        else           outVec= &scaleFilter;
-
-        assert(outVec->length == filter2Size);
+        if(srcFilter){
+            for (k=0; k<srcFilter->length; k++){
+                for (j=0; j<filterSize; j++)
+                    filter2[i*filter2Size + k + j] += srcFilter->coeff[k]*filter[i*filterSize + j];
+            }
+        }else{
+            for (j=0; j<filterSize; j++)
+                filter2[i*filter2Size + j]= filter[i*filterSize + j];
+        }
         //FIXME dstFilter
 
-        for (j=0; j<outVec->length; j++)
-        {
-            filter2[i*filter2Size + j]= outVec->coeff[j];
-        }
-
         (*filterPos)[i]+= (filterSize-1)/2 - (filter2Size-1)/2;
-
-        if (outVec != &scaleFilter) sws_freeVec(outVec);
     }
     av_freep(&filter);
 
@@ -1166,7 +1274,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
     {
         int min= filter2Size;
         int j;
-        double cutOff=0.0;
+        int64_t cutOff=0.0;
 
         /* get rid off near zero elements on the left by shifting left */
         for (j=0; j<filter2Size; j++)
@@ -1174,7 +1282,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
             int k;
             cutOff += FFABS(filter2[i*filter2Size]);
 
-            if (cutOff > SWS_MAX_REDUCE_CUTOFF) break;
+            if (cutOff > SWS_MAX_REDUCE_CUTOFF*fone) break;
 
             /* preserve monotonicity because the core can't handle the filter otherwise */
             if (i<dstW-1 && (*filterPos)[i] >= (*filterPos)[i+1]) break;
@@ -1182,17 +1290,17 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
             // Move filter coeffs left
             for (k=1; k<filter2Size; k++)
                 filter2[i*filter2Size + k - 1]= filter2[i*filter2Size + k];
-            filter2[i*filter2Size + k - 1]= 0.0;
+            filter2[i*filter2Size + k - 1]= 0;
             (*filterPos)[i]++;
         }
 
-        cutOff=0.0;
+        cutOff=0;
         /* count near zeros on the right */
         for (j=filter2Size-1; j>0; j--)
         {
             cutOff += FFABS(filter2[i*filter2Size + j]);
 
-            if (cutOff > SWS_MAX_REDUCE_CUTOFF) break;
+            if (cutOff > SWS_MAX_REDUCE_CUTOFF*fone) break;
             min--;
         }
 
@@ -1223,7 +1331,7 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
     assert(minFilterSize > 0);
     filterSize= (minFilterSize +(filterAlign-1)) & (~(filterAlign-1));
     assert(filterSize > 0);
-    filter= av_malloc(filterSize*dstW*sizeof(double));
+    filter= av_malloc(filterSize*dstW*sizeof(*filter));
     if (filterSize >= MAX_FILTER_SIZE*16/((flags&SWS_ACCURATE_RND) ? APCK_SIZE : 16) || !filter)
         goto error;
     *outFilterSize= filterSize;
@@ -1237,8 +1345,10 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
 
         for (j=0; j<filterSize; j++)
         {
-            if (j>=filter2Size) filter[i*filterSize + j]= 0.0;
+            if (j>=filter2Size) filter[i*filterSize + j]= 0;
             else               filter[i*filterSize + j]= filter2[i*filter2Size + j];
+            if((flags & SWS_BITEXACT) && j>=minFilterSize)
+                filter[i*filterSize + j]= 0;
         }
     }
 
@@ -1283,21 +1393,20 @@ static inline int initFilter(int16_t **outFilter, int16_t **filterPos, int *outF
     for (i=0; i<dstW; i++)
     {
         int j;
-        double error=0;
-        double sum=0;
-        double scale= one;
+        int64_t error=0;
+        int64_t sum=0;
 
         for (j=0; j<filterSize; j++)
         {
             sum+= filter[i*filterSize + j];
         }
-        scale/= sum;
+        sum= (sum + one/2)/ one;
         for (j=0; j<*outFilterSize; j++)
         {
-            double v= filter[i*filterSize + j]*scale + error;
-            int intV= floor(v + 0.5);
+            int64_t v= filter[i*filterSize + j] + error;
+            int intV= ROUNDED_DIV(v, sum);
             (*outFilter)[i*(*outFilterSize) + j]= intV;
-            error = v - intV;
+            error= v - intV*sum;
         }
     }
 
@@ -1953,12 +2062,12 @@ int sws_setColorspaceDetails(SwsContext *c, const int inv_table[4], int srcRange
     c->ugCoeff=   roundToInt16(cgu*8192) * 0x0001000100010001ULL;
     c->yOffset=   roundToInt16(oy *   8) * 0x0001000100010001ULL;
 
-    c->cy = (int16_t)roundToInt16(cy <<13);
-    c->oy = (int16_t)roundToInt16(oy <<9);
-    c->cvr= (int16_t)roundToInt16(crv<<13);
-    c->cvg= (int16_t)roundToInt16(cgv<<13);
-    c->cug= (int16_t)roundToInt16(cgu<<13);
-    c->cub= (int16_t)roundToInt16(cbu<<13);
+    c->yuv2rgb_y_coeff  = (int16_t)roundToInt16(cy <<13);
+    c->yuv2rgb_y_offset = (int16_t)roundToInt16(oy << 9);
+    c->yuv2rgb_v2r_coeff= (int16_t)roundToInt16(crv<<13);
+    c->yuv2rgb_v2g_coeff= (int16_t)roundToInt16(cgv<<13);
+    c->yuv2rgb_u2g_coeff= (int16_t)roundToInt16(cgu<<13);
+    c->yuv2rgb_u2b_coeff= (int16_t)roundToInt16(cbu<<13);
 
     yuv2rgb_c_init_tables(c, inv_table, srcRange, brightness, contrast, saturation);
     //FIXME factorize
@@ -2167,7 +2276,7 @@ SwsContext *sws_getContext(int srcW, int srcH, int srcFormat, int dstW, int dstH
         }
 #endif
 
-        if (srcFormat==PIX_FMT_YUV410P && dstFormat==PIX_FMT_YUV420P)
+        if (srcFormat==PIX_FMT_YUV410P && dstFormat==PIX_FMT_YUV420P && !(flags & SWS_BITEXACT))
         {
             c->swScale= yvu9toyv12Wrapper;
         }
@@ -2186,6 +2295,7 @@ SwsContext *sws_getContext(int srcW, int srcH, int srcFormat, int dstW, int dstH
            && srcFormat != PIX_FMT_BGR4_BYTE && dstFormat != PIX_FMT_BGR4_BYTE
            && srcFormat != PIX_FMT_RGB4_BYTE && dstFormat != PIX_FMT_RGB4_BYTE
            && srcFormat != PIX_FMT_MONOBLACK && dstFormat != PIX_FMT_MONOBLACK
+           && srcFormat != PIX_FMT_MONOWHITE && dstFormat != PIX_FMT_MONOWHITE
                                              && dstFormat != PIX_FMT_RGB32_1
                                              && dstFormat != PIX_FMT_BGR32_1
            && (!needsDither || (c->flags&(SWS_FAST_BILINEAR|SWS_POINT))))

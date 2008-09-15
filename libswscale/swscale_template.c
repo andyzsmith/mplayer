@@ -950,22 +950,25 @@ static inline void RENAME(yuv2yuvX)(SwsContext *c, int16_t *lumFilter, int16_t *
                                     uint8_t *dest, uint8_t *uDest, uint8_t *vDest, long dstW, long chrDstW)
 {
 #ifdef HAVE_MMX
-    if (c->flags & SWS_ACCURATE_RND){
-        if (uDest){
-            YSCALEYUV2YV12X_ACCURATE(   "0", CHR_MMX_FILTER_OFFSET, uDest, chrDstW)
-            YSCALEYUV2YV12X_ACCURATE(AV_STRINGIFY(VOF), CHR_MMX_FILTER_OFFSET, vDest, chrDstW)
-        }
+    if(!(c->flags & SWS_BITEXACT)){
+        if (c->flags & SWS_ACCURATE_RND){
+            if (uDest){
+                YSCALEYUV2YV12X_ACCURATE(   "0", CHR_MMX_FILTER_OFFSET, uDest, chrDstW)
+                YSCALEYUV2YV12X_ACCURATE(AV_STRINGIFY(VOF), CHR_MMX_FILTER_OFFSET, vDest, chrDstW)
+            }
 
-        YSCALEYUV2YV12X_ACCURATE("0", LUM_MMX_FILTER_OFFSET, dest, dstW)
-    }else{
-        if (uDest){
-            YSCALEYUV2YV12X(   "0", CHR_MMX_FILTER_OFFSET, uDest, chrDstW)
-            YSCALEYUV2YV12X(AV_STRINGIFY(VOF), CHR_MMX_FILTER_OFFSET, vDest, chrDstW)
-        }
+            YSCALEYUV2YV12X_ACCURATE("0", LUM_MMX_FILTER_OFFSET, dest, dstW)
+        }else{
+            if (uDest){
+                YSCALEYUV2YV12X(   "0", CHR_MMX_FILTER_OFFSET, uDest, chrDstW)
+                YSCALEYUV2YV12X(AV_STRINGIFY(VOF), CHR_MMX_FILTER_OFFSET, vDest, chrDstW)
+            }
 
-        YSCALEYUV2YV12X("0", LUM_MMX_FILTER_OFFSET, dest, dstW)
+            YSCALEYUV2YV12X("0", LUM_MMX_FILTER_OFFSET, dest, dstW)
+        }
+        return;
     }
-#else
+#endif
 #ifdef HAVE_ALTIVEC
 yuv2yuvX_altivec_real(lumFilter, lumSrc, lumFilterSize,
                       chrFilter, chrSrc, chrFilterSize,
@@ -975,7 +978,6 @@ yuv2yuvXinC(lumFilter, lumSrc, lumFilterSize,
             chrFilter, chrSrc, chrFilterSize,
             dest, uDest, vDest, dstW, chrDstW);
 #endif //!HAVE_ALTIVEC
-#endif /* HAVE_MMX */
 }
 
 static inline void RENAME(yuv2nv12X)(SwsContext *c, int16_t *lumFilter, int16_t **lumSrc, int lumFilterSize,
@@ -990,34 +992,36 @@ yuv2nv12XinC(lumFilter, lumSrc, lumFilterSize,
 static inline void RENAME(yuv2yuv1)(SwsContext *c, int16_t *lumSrc, int16_t *chrSrc,
                                     uint8_t *dest, uint8_t *uDest, uint8_t *vDest, long dstW, long chrDstW)
 {
-#ifdef HAVE_MMX
-    long p= uDest ? 3 : 1;
-    uint8_t *src[3]= {lumSrc + dstW, chrSrc + chrDstW, chrSrc + VOFW + chrDstW};
-    uint8_t *dst[3]= {dest, uDest, vDest};
-    long counter[3] = {dstW, chrDstW, chrDstW};
-
-    if (c->flags & SWS_ACCURATE_RND){
-        while(p--){
-            asm volatile(
-                YSCALEYUV2YV121_ACCURATE
-                :: "r" (src[p]), "r" (dst[p] + counter[p]),
-                "g" (-counter[p])
-                : "%"REG_a
-            );
-        }
-    }else{
-        while(p--){
-            asm volatile(
-                YSCALEYUV2YV121
-                :: "r" (src[p]), "r" (dst[p] + counter[p]),
-                "g" (-counter[p])
-                : "%"REG_a
-            );
-        }
-    }
-
-#else
     int i;
+#ifdef HAVE_MMX
+    if(!(c->flags & SWS_BITEXACT)){
+        long p= uDest ? 3 : 1;
+        uint8_t *src[3]= {lumSrc + dstW, chrSrc + chrDstW, chrSrc + VOFW + chrDstW};
+        uint8_t *dst[3]= {dest, uDest, vDest};
+        long counter[3] = {dstW, chrDstW, chrDstW};
+
+        if (c->flags & SWS_ACCURATE_RND){
+            while(p--){
+                asm volatile(
+                    YSCALEYUV2YV121_ACCURATE
+                    :: "r" (src[p]), "r" (dst[p] + counter[p]),
+                    "g" (-counter[p])
+                    : "%"REG_a
+                );
+            }
+        }else{
+            while(p--){
+                asm volatile(
+                    YSCALEYUV2YV121
+                    :: "r" (src[p]), "r" (dst[p] + counter[p]),
+                    "g" (-counter[p])
+                    : "%"REG_a
+                );
+            }
+        }
+        return;
+    }
+#endif
     for (i=0; i<dstW; i++)
     {
         int val= (lumSrc[i]+64)>>7;
@@ -1046,7 +1050,6 @@ static inline void RENAME(yuv2yuv1)(SwsContext *c, int16_t *lumSrc, int16_t *chr
             uDest[i]= u;
             vDest[i]= v;
         }
-#endif
 }
 
 
@@ -1059,126 +1062,128 @@ static inline void RENAME(yuv2packedX)(SwsContext *c, int16_t *lumFilter, int16_
 {
 #ifdef HAVE_MMX
     long dummy=0;
-    if (c->flags & SWS_ACCURATE_RND){
-        switch(c->dstFormat){
-        case PIX_FMT_RGB32:
-            YSCALEYUV2PACKEDX_ACCURATE
-            YSCALEYUV2RGBX
-            WRITEBGR32(%4, %5, %%REGa)
+    if(!(c->flags & SWS_BITEXACT)){
+        if (c->flags & SWS_ACCURATE_RND){
+            switch(c->dstFormat){
+            case PIX_FMT_RGB32:
+                YSCALEYUV2PACKEDX_ACCURATE
+                YSCALEYUV2RGBX
+                WRITEBGR32(%4, %5, %%REGa)
 
-            YSCALEYUV2PACKEDX_END
-            return;
-        case PIX_FMT_BGR24:
-            YSCALEYUV2PACKEDX_ACCURATE
-            YSCALEYUV2RGBX
-            "lea (%%"REG_a", %%"REG_a", 2), %%"REG_c"\n\t" //FIXME optimize
-            "add %4, %%"REG_c"                        \n\t"
-            WRITEBGR24(%%REGc, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            case PIX_FMT_BGR24:
+                YSCALEYUV2PACKEDX_ACCURATE
+                YSCALEYUV2RGBX
+                "lea (%%"REG_a", %%"REG_a", 2), %%"REG_c"\n\t" //FIXME optimize
+                "add %4, %%"REG_c"                        \n\t"
+                WRITEBGR24(%%REGc, %5, %%REGa)
 
 
-            :: "r" (&c->redDither),
-               "m" (dummy), "m" (dummy), "m" (dummy),
-               "r" (dest), "m" (dstW)
-            : "%"REG_a, "%"REG_c, "%"REG_d, "%"REG_S
-            );
-            return;
-        case PIX_FMT_RGB555:
-            YSCALEYUV2PACKEDX_ACCURATE
-            YSCALEYUV2RGBX
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                :: "r" (&c->redDither),
+                "m" (dummy), "m" (dummy), "m" (dummy),
+                "r" (dest), "m" (dstW)
+                : "%"REG_a, "%"REG_c, "%"REG_d, "%"REG_S
+                );
+                return;
+            case PIX_FMT_RGB555:
+                YSCALEYUV2PACKEDX_ACCURATE
+                YSCALEYUV2RGBX
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2\n\t"
-            "paddusb "MANGLE(g5Dither)", %%mm4\n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5\n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2\n\t"
+                "paddusb "MANGLE(g5Dither)", %%mm4\n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5\n\t"
 #endif
 
-            WRITERGB15(%4, %5, %%REGa)
-            YSCALEYUV2PACKEDX_END
-            return;
-        case PIX_FMT_RGB565:
-            YSCALEYUV2PACKEDX_ACCURATE
-            YSCALEYUV2RGBX
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                WRITERGB15(%4, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            case PIX_FMT_RGB565:
+                YSCALEYUV2PACKEDX_ACCURATE
+                YSCALEYUV2RGBX
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2\n\t"
-            "paddusb "MANGLE(g6Dither)", %%mm4\n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5\n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2\n\t"
+                "paddusb "MANGLE(g6Dither)", %%mm4\n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5\n\t"
 #endif
 
-            WRITERGB16(%4, %5, %%REGa)
-            YSCALEYUV2PACKEDX_END
-            return;
-        case PIX_FMT_YUYV422:
-            YSCALEYUV2PACKEDX_ACCURATE
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                WRITERGB16(%4, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            case PIX_FMT_YUYV422:
+                YSCALEYUV2PACKEDX_ACCURATE
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 
-            "psraw $3, %%mm3    \n\t"
-            "psraw $3, %%mm4    \n\t"
-            "psraw $3, %%mm1    \n\t"
-            "psraw $3, %%mm7    \n\t"
-            WRITEYUY2(%4, %5, %%REGa)
-            YSCALEYUV2PACKEDX_END
-            return;
-    }
-    }else{
-        switch(c->dstFormat)
-        {
-        case PIX_FMT_RGB32:
-            YSCALEYUV2PACKEDX
-            YSCALEYUV2RGBX
-            WRITEBGR32(%4, %5, %%REGa)
-            YSCALEYUV2PACKEDX_END
-            return;
-        case PIX_FMT_BGR24:
-            YSCALEYUV2PACKEDX
-            YSCALEYUV2RGBX
-            "lea (%%"REG_a", %%"REG_a", 2), %%"REG_c"   \n\t" //FIXME optimize
-            "add                        %4, %%"REG_c"   \n\t"
-            WRITEBGR24(%%REGc, %5, %%REGa)
+                "psraw $3, %%mm3    \n\t"
+                "psraw $3, %%mm4    \n\t"
+                "psraw $3, %%mm1    \n\t"
+                "psraw $3, %%mm7    \n\t"
+                WRITEYUY2(%4, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            }
+        }else{
+            switch(c->dstFormat)
+            {
+            case PIX_FMT_RGB32:
+                YSCALEYUV2PACKEDX
+                YSCALEYUV2RGBX
+                WRITEBGR32(%4, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            case PIX_FMT_BGR24:
+                YSCALEYUV2PACKEDX
+                YSCALEYUV2RGBX
+                "lea (%%"REG_a", %%"REG_a", 2), %%"REG_c"   \n\t" //FIXME optimize
+                "add                        %4, %%"REG_c"   \n\t"
+                WRITEBGR24(%%REGc, %5, %%REGa)
 
-            :: "r" (&c->redDither),
-               "m" (dummy), "m" (dummy), "m" (dummy),
-               "r" (dest),  "m" (dstW)
-            : "%"REG_a, "%"REG_c, "%"REG_d, "%"REG_S
-            );
-            return;
-        case PIX_FMT_RGB555:
-            YSCALEYUV2PACKEDX
-            YSCALEYUV2RGBX
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                :: "r" (&c->redDither),
+                "m" (dummy), "m" (dummy), "m" (dummy),
+                "r" (dest),  "m" (dstW)
+                : "%"REG_a, "%"REG_c, "%"REG_d, "%"REG_S
+                );
+                return;
+            case PIX_FMT_RGB555:
+                YSCALEYUV2PACKEDX
+                YSCALEYUV2RGBX
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2  \n\t"
-            "paddusb "MANGLE(g5Dither)", %%mm4  \n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5  \n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2  \n\t"
+                "paddusb "MANGLE(g5Dither)", %%mm4  \n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5  \n\t"
 #endif
 
-            WRITERGB15(%4, %5, %%REGa)
-            YSCALEYUV2PACKEDX_END
-            return;
-        case PIX_FMT_RGB565:
-            YSCALEYUV2PACKEDX
-            YSCALEYUV2RGBX
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                WRITERGB15(%4, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            case PIX_FMT_RGB565:
+                YSCALEYUV2PACKEDX
+                YSCALEYUV2RGBX
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2  \n\t"
-            "paddusb "MANGLE(g6Dither)", %%mm4  \n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5  \n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2  \n\t"
+                "paddusb "MANGLE(g6Dither)", %%mm4  \n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5  \n\t"
 #endif
 
-            WRITERGB16(%4, %5, %%REGa)
-            YSCALEYUV2PACKEDX_END
-            return;
-        case PIX_FMT_YUYV422:
-            YSCALEYUV2PACKEDX
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                WRITERGB16(%4, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            case PIX_FMT_YUYV422:
+                YSCALEYUV2PACKEDX
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 
-            "psraw $3, %%mm3    \n\t"
-            "psraw $3, %%mm4    \n\t"
-            "psraw $3, %%mm1    \n\t"
-            "psraw $3, %%mm7    \n\t"
-            WRITEYUY2(%4, %5, %%REGa)
-            YSCALEYUV2PACKEDX_END
-            return;
+                "psraw $3, %%mm3    \n\t"
+                "psraw $3, %%mm4    \n\t"
+                "psraw $3, %%mm1    \n\t"
+                "psraw $3, %%mm7    \n\t"
+                WRITEYUY2(%4, %5, %%REGa)
+                YSCALEYUV2PACKEDX_END
+                return;
+            }
         }
     }
 #endif /* HAVE_MMX */
@@ -1424,6 +1429,7 @@ FULL_YSCALEYUV2RGB
     {
 #endif // if 0
 #ifdef HAVE_MMX
+    if(!(c->flags & SWS_BITEXACT)){
         switch(c->dstFormat)
         {
             //Note 8280 == DSTW_OFFSET but the preprocessor can't handle that there :(
@@ -1510,8 +1516,9 @@ FULL_YSCALEYUV2RGB
                 return;
             default: break;
         }
+    }
 #endif //HAVE_MMX
-YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB2_C, YSCALE_YUV_2_PACKED2_C, YSCALE_YUV_2_GRAY16_2_C, YSCALE_YUV_2_MONOBLACK2_C)
+YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB2_C, YSCALE_YUV_2_PACKED2_C, YSCALE_YUV_2_GRAY16_2_C, YSCALE_YUV_2_MONO2_C)
 }
 
 /**
@@ -1533,190 +1540,192 @@ static inline void RENAME(yuv2packed1)(SwsContext *c, uint16_t *buf0, uint16_t *
     }
 
 #ifdef HAVE_MMX
-    if (uvalpha < 2048) // note this is not correct (shifts chrominance by 0.5 pixels) but it is a bit faster
-    {
-        switch(dstFormat)
+    if(!(flags & SWS_BITEXACT)){
+        if (uvalpha < 2048) // note this is not correct (shifts chrominance by 0.5 pixels) but it is a bit faster
         {
-        case PIX_FMT_RGB32:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1(%%REGBP, %5)
-            WRITEBGR32(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+            switch(dstFormat)
+            {
+            case PIX_FMT_RGB32:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1(%%REGBP, %5)
+                WRITEBGR32(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_BGR24:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1(%%REGBP, %5)
-            WRITEBGR24(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_BGR24:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1(%%REGBP, %5)
+                WRITEBGR24(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_RGB555:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1(%%REGBP, %5)
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_RGB555:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1(%%REGBP, %5)
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
-            "paddusb "MANGLE(g5Dither)", %%mm4      \n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
+                "paddusb "MANGLE(g5Dither)", %%mm4      \n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
 #endif
-            WRITERGB15(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                WRITERGB15(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_RGB565:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1(%%REGBP, %5)
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_RGB565:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1(%%REGBP, %5)
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
-            "paddusb "MANGLE(g6Dither)", %%mm4      \n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
+                "paddusb "MANGLE(g6Dither)", %%mm4      \n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
 #endif
 
-            WRITERGB16(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                WRITERGB16(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_YUYV422:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2PACKED1(%%REGBP, %5)
-            WRITEYUY2(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_YUYV422:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2PACKED1(%%REGBP, %5)
+                WRITEYUY2(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            }
         }
-    }
-    else
-    {
-        switch(dstFormat)
+        else
         {
-        case PIX_FMT_RGB32:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1b(%%REGBP, %5)
-            WRITEBGR32(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+            switch(dstFormat)
+            {
+            case PIX_FMT_RGB32:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1b(%%REGBP, %5)
+                WRITEBGR32(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_BGR24:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1b(%%REGBP, %5)
-            WRITEBGR24(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_BGR24:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1b(%%REGBP, %5)
+                WRITEBGR24(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_RGB555:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1b(%%REGBP, %5)
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_RGB555:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1b(%%REGBP, %5)
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
-            "paddusb "MANGLE(g5Dither)", %%mm4      \n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
+                "paddusb "MANGLE(g5Dither)", %%mm4      \n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
 #endif
-            WRITERGB15(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                WRITERGB15(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_RGB565:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2RGB1b(%%REGBP, %5)
-            /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_RGB565:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2RGB1b(%%REGBP, %5)
+                /* mm2=B, %%mm4=G, %%mm5=R, %%mm7=0 */
 #ifdef DITHER1XBPP
-            "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
-            "paddusb "MANGLE(g6Dither)", %%mm4      \n\t"
-            "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
+                "paddusb "MANGLE(b5Dither)", %%mm2      \n\t"
+                "paddusb "MANGLE(g6Dither)", %%mm4      \n\t"
+                "paddusb "MANGLE(r5Dither)", %%mm5      \n\t"
 #endif
 
-            WRITERGB16(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                WRITERGB16(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
-        case PIX_FMT_YUYV422:
-            asm volatile(
-            "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
-            "mov        %4, %%"REG_b"               \n\t"
-            "push %%"REG_BP"                        \n\t"
-            YSCALEYUV2PACKED1b(%%REGBP, %5)
-            WRITEYUY2(%%REGb, 8280(%5), %%REGBP)
-            "pop %%"REG_BP"                         \n\t"
-            "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            case PIX_FMT_YUYV422:
+                asm volatile(
+                "mov %%"REG_b", "ESP_OFFSET"(%5)        \n\t"
+                "mov        %4, %%"REG_b"               \n\t"
+                "push %%"REG_BP"                        \n\t"
+                YSCALEYUV2PACKED1b(%%REGBP, %5)
+                WRITEYUY2(%%REGb, 8280(%5), %%REGBP)
+                "pop %%"REG_BP"                         \n\t"
+                "mov "ESP_OFFSET"(%5), %%"REG_b"        \n\t"
 
-            :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
-            "a" (&c->redDither)
-            );
-            return;
+                :: "c" (buf0), "d" (buf1), "S" (uvbuf0), "D" (uvbuf1), "m" (dest),
+                "a" (&c->redDither)
+                );
+                return;
+            }
         }
     }
 #endif /* HAVE_MMX */
     if (uvalpha < 2048)
     {
-        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1_C, YSCALE_YUV_2_PACKED1_C, YSCALE_YUV_2_GRAY16_1_C, YSCALE_YUV_2_MONOBLACK2_C)
+        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1_C, YSCALE_YUV_2_PACKED1_C, YSCALE_YUV_2_GRAY16_1_C, YSCALE_YUV_2_MONO2_C)
     }else{
-        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1B_C, YSCALE_YUV_2_PACKED1B_C, YSCALE_YUV_2_GRAY16_1_C, YSCALE_YUV_2_MONOBLACK2_C)
+        YSCALE_YUV_2_ANYRGB_C(YSCALE_YUV_2_RGB1B_C, YSCALE_YUV_2_PACKED1B_C, YSCALE_YUV_2_GRAY16_1_C, YSCALE_YUV_2_MONO2_C)
     }
 }
 
@@ -1904,7 +1913,7 @@ BGR2UV(uint16_t, rgb16ToUV, 0, 0, 0, 0xF800, 0x07E0, 0x001F, RU    , GU<<5, BU<<
 BGR2UV(uint16_t, rgb15ToUV, 0, 0, 0, 0x7C00, 0x03E0, 0x001F, RU    , GU<<5, BU<<10, RV    , GV<<5, BV<<10, RGB2YUV_SHIFT+7)
 
 #ifdef HAVE_MMX
-static inline void bgr24ToY_mmx(uint8_t *dst, uint8_t *src, long width, int srcFormat)
+static inline void RENAME(bgr24ToY_mmx)(uint8_t *dst, uint8_t *src, long width, int srcFormat)
 {
 
     if(srcFormat == PIX_FMT_BGR24){
@@ -1957,7 +1966,7 @@ static inline void bgr24ToY_mmx(uint8_t *dst, uint8_t *src, long width, int srcF
     );
 }
 
-static inline void bgr24ToUV_mmx(uint8_t *dstU, uint8_t *dstV, uint8_t *src, long width, int srcFormat)
+static inline void RENAME(bgr24ToUV_mmx)(uint8_t *dstU, uint8_t *dstV, uint8_t *src, long width, int srcFormat)
 {
     asm volatile(
         "movq                    24+%4, %%mm6       \n\t"
@@ -2019,7 +2028,7 @@ static inline void bgr24ToUV_mmx(uint8_t *dstU, uint8_t *dstV, uint8_t *src, lon
 static inline void RENAME(bgr24ToY)(uint8_t *dst, uint8_t *src, long width)
 {
 #ifdef HAVE_MMX
-    bgr24ToY_mmx(dst, src, width, PIX_FMT_BGR24);
+    RENAME(bgr24ToY_mmx)(dst, src, width, PIX_FMT_BGR24);
 #else
     int i;
     for (i=0; i<width; i++)
@@ -2036,7 +2045,7 @@ static inline void RENAME(bgr24ToY)(uint8_t *dst, uint8_t *src, long width)
 static inline void RENAME(bgr24ToUV)(uint8_t *dstU, uint8_t *dstV, uint8_t *src1, uint8_t *src2, long width)
 {
 #ifdef HAVE_MMX
-    bgr24ToUV_mmx(dstU, dstV, src1, width, PIX_FMT_BGR24);
+    RENAME(bgr24ToUV_mmx)(dstU, dstV, src1, width, PIX_FMT_BGR24);
 #else
     int i;
     for (i=0; i<width; i++)
@@ -2070,7 +2079,7 @@ static inline void RENAME(bgr24ToUV_half)(uint8_t *dstU, uint8_t *dstV, uint8_t 
 static inline void RENAME(rgb24ToY)(uint8_t *dst, uint8_t *src, long width)
 {
 #ifdef HAVE_MMX
-    bgr24ToY_mmx(dst, src, width, PIX_FMT_RGB24);
+    RENAME(bgr24ToY_mmx)(dst, src, width, PIX_FMT_RGB24);
 #else
     int i;
     for (i=0; i<width; i++)
@@ -2089,7 +2098,7 @@ static inline void RENAME(rgb24ToUV)(uint8_t *dstU, uint8_t *dstV, uint8_t *src1
     int i;
     assert(src1==src2);
 #ifdef HAVE_MMX
-    bgr24ToUV_mmx(dstU, dstV, src1, width, PIX_FMT_RGB24);
+    RENAME(bgr24ToUV_mmx)(dstU, dstV, src1, width, PIX_FMT_RGB24);
 #else
     for (i=0; i<width; i++)
     {
@@ -2143,6 +2152,16 @@ static inline void RENAME(palToUV)(uint8_t *dstU, uint8_t *dstV, uint8_t *src1, 
     }
 }
 
+static inline void RENAME(mono2Y)(uint8_t *dst, uint8_t *src, long width, int format)
+{
+    int i, j;
+    for (i=0; i<width/8; i++){
+        int d= format == PIX_FMT_MONOBLACK ? src[i] : ~src[i];
+        for(j=0; j<8; j++)
+            dst[8*i+j]= ((d>>(7-j))&1)*255;
+    }
+}
+
 // bilinear / bicubic scaling
 static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW, int xInc,
                                   int16_t *filter, int16_t *filterPos, long filterSize)
@@ -2160,7 +2179,6 @@ static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW
         "push            %%"REG_b"              \n\t"
 #endif
         "pxor                %%mm7, %%mm7       \n\t"
-        "movq        "MANGLE(w02)", %%mm6       \n\t"
         "push           %%"REG_BP"              \n\t" // we use 7 regs here ...
         "mov             %%"REG_a", %%"REG_BP"  \n\t"
         ASMALIGN(4)
@@ -2175,10 +2193,11 @@ static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW
         "punpcklbw           %%mm7, %%mm2       \n\t"
         "pmaddwd             %%mm1, %%mm0       \n\t"
         "pmaddwd             %%mm2, %%mm3       \n\t"
-        "psrad                  $8, %%mm0       \n\t"
-        "psrad                  $8, %%mm3       \n\t"
-        "packssdw            %%mm3, %%mm0       \n\t"
-        "pmaddwd             %%mm6, %%mm0       \n\t"
+        "movq                %%mm0, %%mm4       \n\t"
+        "punpckldq           %%mm3, %%mm0       \n\t"
+        "punpckhdq           %%mm3, %%mm4       \n\t"
+        "paddd               %%mm4, %%mm0       \n\t"
+        "psrad                  $7, %%mm0       \n\t"
         "packssdw            %%mm0, %%mm0       \n\t"
         "movd                %%mm0, (%4, %%"REG_BP")    \n\t"
         "add                    $4, %%"REG_BP"  \n\t"
@@ -2206,7 +2225,6 @@ static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW
         "push             %%"REG_b"             \n\t"
 #endif
         "pxor                 %%mm7, %%mm7      \n\t"
-        "movq         "MANGLE(w02)", %%mm6      \n\t"
         "push            %%"REG_BP"             \n\t" // we use 7 regs here ...
         "mov              %%"REG_a", %%"REG_BP" \n\t"
         ASMALIGN(4)
@@ -2232,11 +2250,11 @@ static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW
         "pmaddwd              %%mm2, %%mm5      \n\t"
         "paddd                %%mm4, %%mm0      \n\t"
         "paddd                %%mm5, %%mm3      \n\t"
-
-        "psrad                   $8, %%mm0      \n\t"
-        "psrad                   $8, %%mm3      \n\t"
-        "packssdw             %%mm3, %%mm0      \n\t"
-        "pmaddwd              %%mm6, %%mm0      \n\t"
+        "movq                 %%mm0, %%mm4      \n\t"
+        "punpckldq            %%mm3, %%mm0      \n\t"
+        "punpckhdq            %%mm3, %%mm4      \n\t"
+        "paddd                %%mm4, %%mm0      \n\t"
+        "psrad                   $7, %%mm0      \n\t"
         "packssdw             %%mm0, %%mm0      \n\t"
         "movd                 %%mm0, (%4, %%"REG_BP")   \n\t"
         "add                     $4, %%"REG_BP" \n\t"
@@ -2262,7 +2280,6 @@ static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW
         dst-= counter/2;
         asm volatile(
         "pxor                  %%mm7, %%mm7     \n\t"
-        "movq          "MANGLE(w02)", %%mm6     \n\t"
         ASMALIGN(4)
         "1:                                     \n\t"
         "mov                      %2, %%"REG_c" \n\t"
@@ -2287,10 +2304,11 @@ static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW
         "cmp                      %4, %%"REG_c" \n\t"
         " jb                      2b            \n\t"
         "add                      %6, %1        \n\t"
-        "psrad                    $8, %%mm4     \n\t"
-        "psrad                    $8, %%mm5     \n\t"
-        "packssdw              %%mm5, %%mm4     \n\t"
-        "pmaddwd               %%mm6, %%mm4     \n\t"
+        "movq                  %%mm4, %%mm0     \n\t"
+        "punpckldq             %%mm5, %%mm4     \n\t"
+        "punpckhdq             %%mm5, %%mm0     \n\t"
+        "paddd                 %%mm0, %%mm4     \n\t"
+        "psrad                    $7, %%mm4     \n\t"
         "packssdw              %%mm4, %%mm4     \n\t"
         "mov                      %3, %%"REG_a" \n\t"
         "movd                  %%mm4, (%%"REG_a", %0)   \n\t"
@@ -2320,7 +2338,7 @@ static inline void RENAME(hScale)(int16_t *dst, int dstW, uint8_t *src, int srcW
             val += ((int)src[srcPos + j])*filter[filterSize*i + j];
         }
         //filter += hFilterSize;
-        dst[i] = av_clip(val>>7, 0, (1<<15)-1); // the cubic equation does overflow ...
+        dst[i] = FFMIN(val>>7, (1<<15)-1); // the cubic equation does overflow ...
         //dst[i] = val>>7;
     }
 #endif /* HAVE_ALTIVEC */
@@ -2396,6 +2414,11 @@ static inline void RENAME(hyscale)(SwsContext *c, uint16_t *dst, long dstWidth, 
     else if (srcFormat==PIX_FMT_RGB8 || srcFormat==PIX_FMT_BGR8 || srcFormat==PIX_FMT_PAL8 || srcFormat==PIX_FMT_BGR4_BYTE  || srcFormat==PIX_FMT_RGB4_BYTE)
     {
         RENAME(palToY)(formatConvBuffer, src, srcW, (uint32_t*)pal);
+        src= formatConvBuffer;
+    }
+    else if (srcFormat==PIX_FMT_MONOBLACK ||srcFormat==PIX_FMT_MONOWHITE)
+    {
+        RENAME(mono2Y)(formatConvBuffer, src, srcW, srcFormat);
         src= formatConvBuffer;
     }
 
@@ -2660,7 +2683,7 @@ inline static void RENAME(hcscale)(SwsContext *c, uint16_t *dst, long dstWidth, 
         src1= formatConvBuffer;
         src2= formatConvBuffer+VOFW;
     }
-    else if (isGray(srcFormat))
+    else if (isGray(srcFormat) || srcFormat==PIX_FMT_MONOBLACK || srcFormat==PIX_FMT_MONOWHITE)
     {
         return;
     }
@@ -3138,8 +3161,8 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
                             vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
                             dest, dstW, dstY);
                     }else{
-                    RENAME(yuv2packed1)(c, *lumSrcPtr, *chrSrcPtr, *(chrSrcPtr+1),
-                        dest, dstW, chrAlpha, dstFormat, flags, dstY);
+                        RENAME(yuv2packed1)(c, *lumSrcPtr, *chrSrcPtr, *(chrSrcPtr+1),
+                            dest, dstW, chrAlpha, dstFormat, flags, dstY);
                     }
                 }
                 else if (vLumFilterSize == 2 && vChrFilterSize == 2) //bilinear upscale RGB
@@ -3156,8 +3179,8 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
                             vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
                             dest, dstW, dstY);
                     }else{
-                    RENAME(yuv2packed2)(c, *lumSrcPtr, *(lumSrcPtr+1), *chrSrcPtr, *(chrSrcPtr+1),
-                        dest, dstW, lumAlpha, chrAlpha, dstY);
+                        RENAME(yuv2packed2)(c, *lumSrcPtr, *(lumSrcPtr+1), *chrSrcPtr, *(chrSrcPtr+1),
+                            dest, dstW, lumAlpha, chrAlpha, dstY);
                     }
                 }
                 else //general RGB
@@ -3168,10 +3191,10 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
                             vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
                             dest, dstW, dstY);
                     }else{
-                    RENAME(yuv2packedX)(c,
-                        vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
-                        vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
-                        dest, dstW, dstY);
+                        RENAME(yuv2packedX)(c,
+                            vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
+                            vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
+                            dest, dstW, dstY);
                     }
                 }
             }
@@ -3207,10 +3230,10 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
                         vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
                         dest, dstW, dstY);
                 }else{
-                yuv2packedXinC(c,
-                    vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
-                    vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
-                    dest, dstW, dstY);
+                    yuv2packedXinC(c,
+                        vLumFilter+dstY*vLumFilterSize, lumSrcPtr, vLumFilterSize,
+                        vChrFilter+dstY*vChrFilterSize, chrSrcPtr, vChrFilterSize,
+                        dest, dstW, dstY);
                 }
             }
         }

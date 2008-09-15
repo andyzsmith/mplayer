@@ -1,26 +1,25 @@
 /*
-   MPlayer video driver for DirectFB / Matrox G200/G400/G450/G550
-
-   Copyright (C) 2002-2005 Ville Syrjala <syrjala@sci.fi>
-
-   Originally based on vo_directfb.c by
-   Jiri Svoboda <Jiri.Svoboda@seznam.cz>
-
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2 of the License, or (at your option) any later version.
-
-   This library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with this library; if not, write to the
-   Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301 USA.
-*/
+ * MPlayer video driver for DirectFB / Matrox G200/G400/G450/G550
+ *
+ * copyright (C) 2002-2005 Ville Syrjala <syrjala@sci.fi>
+ * Originally based on vo_directfb.c by Jiri Svoboda <Jiri.Svoboda@seznam.cz>.
+ *
+ * This file is part of MPlayer.
+ *
+ * MPlayer is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * MPlayer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with MPlayer; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 /* directfb includes */
 #include <directfb.h>
@@ -960,7 +959,8 @@ draw_alpha( int x0, int y0,
 	    unsigned char *srca,
             int stride )
 {
-     void *dst;
+     uint8_t *dst;
+     void *ptr;
      int pitch;
 
      if (use_spic) {
@@ -975,44 +975,45 @@ draw_alpha( int x0, int y0,
                osd_dirty |= osd_current;
      }
 
-     if (subframe->Lock( subframe, DSLF_READ | DSLF_WRITE, &dst, &pitch ) != DFB_OK)
+     if (subframe->Lock( subframe, DSLF_READ | DSLF_WRITE, &ptr, &pitch ) != DFB_OK)
           return;
+     dst = ptr;
 
      switch (subframe_format) {
      case DSPF_ALUT44:
           vo_draw_alpha_alut44( w, h, src, srca, stride,
-                                ((uint8_t *) dst) + pitch * y0 + x0,
+                                dst + pitch * y0 + x0,
                               pitch );
           break;
      case DSPF_RGB32:
      case DSPF_ARGB:
 	  vo_draw_alpha_rgb32( w, h, src, srca, stride,
-			       (( uint8_t *) dst) + pitch * y0 + 4 * x0,
+                               dst + pitch * y0 + 4 * x0,
                                pitch );
 	  break;
      case DSPF_RGB24:
 	  vo_draw_alpha_rgb24( w, h, src, srca, stride,
-			       ((uint8_t *) dst) + pitch * y0 + 3 * x0,
+                               dst + pitch * y0 + 3 * x0,
                                pitch );
 	  break;
      case DSPF_RGB16:
 	  vo_draw_alpha_rgb16( w, h, src, srca, stride,
-			       ((uint8_t *) dst) + pitch * y0 + 2 * x0,
+                               dst + pitch * y0 + 2 * x0,
                                pitch );
 	  break;
      case DSPF_ARGB1555:
 	  vo_draw_alpha_rgb15( w, h, src, srca, stride,
-			       ((uint8_t *) dst) + pitch * y0 + 2 * x0,
+                               dst + pitch * y0 + 2 * x0,
                                pitch );
 	  break;
      case DSPF_YUY2:
 	  vo_draw_alpha_yuy2( w, h, src, srca, stride,
-			      ((uint8_t *) dst) + pitch * y0 + 2 * x0,
+                              dst + pitch * y0 + 2 * x0,
                               pitch );
 	  break;
      case DSPF_UYVY:
 	  vo_draw_alpha_yuy2( w, h, src, srca, stride,
-			      ((uint8_t *) dst) + pitch * y0 + 2 * x0 + 1,
+                              dst + pitch * y0 + 2 * x0 + 1,
                               pitch );
 	  break;
 #if DIRECTFBVERSION > DFB_VERSION(0,9,21)
@@ -1022,7 +1023,7 @@ draw_alpha( int x0, int y0,
      case DSPF_I420:
      case DSPF_YV12:
 	  vo_draw_alpha_yv12( w, h, src, srca, stride,
-			      ((uint8_t *) dst) + pitch * y0 + x0,
+                              dst + pitch * y0 + x0,
                               pitch );
 	  break;
      }
@@ -1039,11 +1040,13 @@ draw_frame( uint8_t * src[] )
 static int
 draw_slice( uint8_t * src[], int stride[], int w, int h, int x, int y )
 {
-     void *dst;
+     uint8_t *dst;
+     void *ptr;
      int pitch;
 
-     if (frame->Lock( frame, DSLF_WRITE, &dst, &pitch ) != DFB_OK)
+     if (frame->Lock( frame, DSLF_WRITE, &ptr, &pitch ) != DFB_OK)
           return VO_FALSE;
+     dst = ptr;
 
      memcpy_pic( dst + pitch * y + x, src[0],
                  w, h, pitch, stride[0] );
@@ -1215,7 +1218,8 @@ static uint32_t
 get_image( mp_image_t *mpi )
 {
      int buf = current_buf;
-     void *dst;
+     uint8_t *dst;
+     void *ptr;
      int pitch;
 
      if (mpi->flags & MP_IMGFLAG_READABLE &&
@@ -1238,8 +1242,9 @@ get_image( mp_image_t *mpi )
 
      /* Always use DSLF_READ to preserve system memory copy */
      if (frame->Lock( frame, DSLF_WRITE | DSLF_READ,
-                      &dst, &pitch ) != DFB_OK)
+                      &ptr, &pitch ) != DFB_OK)
           return VO_FALSE;
+     dst = ptr;
 
      if ((mpi->width == pitch) ||
          (mpi->flags & (MP_IMGFLAG_ACCEPT_STRIDE | MP_IMGFLAG_ACCEPT_WIDTH))) {
