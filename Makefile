@@ -294,8 +294,8 @@ SRCS_COMMON-$(HAVE_SYS_MMAN_H)       += libaf/af_export.c osdep/mmap_anon.c
 SRCS_COMMON-$(JPEG)                  += libmpcodecs/vd_ijpg.c
 SRCS_COMMON-$(LADSPA)                += libaf/af_ladspa.c
 SRCS_COMMON-$(LIBA52)                += libmpcodecs/ad_hwac3.c \
-                                        libmpcodecs/ad_liba52.c \
-                                        liba52/crc.c \
+                                        libmpcodecs/ad_liba52.c
+SRCS_COMMON-$(LIBA52_INTERNAL)       += liba52/crc.c \
                                         liba52/resample.c \
                                         liba52/bit_allocate.c \
                                         liba52/bitstream.c \
@@ -752,7 +752,7 @@ mplayer$(EXESUF): $(MPLAYER_DEPS)
 	$(CC) -o $@ $^ $(LDFLAGS_MPLAYER)
 
 codec-cfg$(EXESUF): codec-cfg.c codec-cfg.h help_mp.h
-	$(HOST_CC) -O -I. -DCODECS2HTML -o $@ $<
+	$(HOST_CC) -O -DCODECS2HTML $(EXTRA_INC) -o $@ $<
 
 codecs.conf.h: codec-cfg$(EXESUF) etc/codecs.conf
 	./$^ > $@
