@@ -1168,7 +1168,7 @@ goto_redo_edl:
 
 if(sh_audio){
     // get audio:
-    while(mux_a->timer-audio_preload<mux_v->timer){
+    while(mux_a->timer-audio_preload<mux_v->timer || d_video->eof){
         float tottime;
 	int len=0;
 
@@ -1272,7 +1272,11 @@ if(sh_audio){
         sh_video->timer+=frame_data.frame_time;
     }
     frame_data.frame_time /= playback_speed;
-    if(frame_data.in_size<0){ at_eof=1; break; }
+    if (d_video->eof) {
+      if (!sh_audio || d_audio->eof)
+        at_eof=1;
+      continue;
+    }
     ++decoded_frameno;
 
     v_timer_corr-=frame_data.frame_time-(float)mux_v->h.dwScale/mux_v->h.dwRate;
