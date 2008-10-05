@@ -554,6 +554,12 @@ static int mp_property_metadata(m_option_t * prop, int action, void *arg,
     return M_PROPERTY_NOT_IMPLEMENTED;
 }
 
+static int mp_property_pause(m_option_t * prop, int action, void *arg,
+                             MPContext * mpctx)
+{
+    return m_property_flag_ro(prop, action, arg, mpctx->osd_function == OSD_PAUSE);
+}
+
 
 ///@}
 
@@ -2000,6 +2006,8 @@ static const m_option_t mp_properties[] = {
      CONF_RANGE, -2, 10, NULL },
     { "metadata", mp_property_metadata, CONF_TYPE_STRING_LIST,
      0, 0, 0, NULL },
+    { "pause", mp_property_pause, CONF_TYPE_FLAG,
+     M_OPT_RANGE, 0, 1, NULL },
 
     // Audio
     { "volume", mp_property_volume, CONF_TYPE_FLOAT,
@@ -2629,7 +2637,7 @@ int run_command(MPContext * mpctx, mp_cmd_t * cmd)
 		play_tree_add_file(e, cmd->args[0].v.s);
 
 		if (cmd->args[1].v.i)	// append
-		    play_tree_append_entry(mpctx->playtree, e);
+		    play_tree_append_entry(mpctx->playtree->child, e);
 		else {
 		    // Go back to the starting point.
 		    while (play_tree_iter_up_step
@@ -2637,7 +2645,7 @@ int run_command(MPContext * mpctx, mp_cmd_t * cmd)
 			/* NOP */ ;
 		    play_tree_free_list(mpctx->playtree->child, 1);
 		    play_tree_set_child(mpctx->playtree, e);
-		    play_tree_iter_step(mpctx->playtree_iter, 0, 0);
+		    pt_iter_goto_head(mpctx->playtree_iter);
 		    mpctx->eof = PT_NEXT_SRC;
 		}
 		brk_cmd = 1;
@@ -2651,7 +2659,7 @@ int run_command(MPContext * mpctx, mp_cmd_t * cmd)
 			   MSGTR_PlaylistLoadUnable, cmd->args[0].v.s);
 		else {
 		    if (cmd->args[1].v.i)	// append
-			play_tree_append_entry(mpctx->playtree, e);
+			play_tree_append_entry(mpctx->playtree->child, e);
 		    else {
 			// Go back to the starting point.
 			while (play_tree_iter_up_step
@@ -2660,7 +2668,7 @@ int run_command(MPContext * mpctx, mp_cmd_t * cmd)
 			    /* NOP */ ;
 			play_tree_free_list(mpctx->playtree->child, 1);
 			play_tree_set_child(mpctx->playtree, e);
-			play_tree_iter_step(mpctx->playtree_iter, 0, 0);
+			pt_iter_goto_head(mpctx->playtree_iter);
 			mpctx->eof = PT_NEXT_SRC;
 		    }
 		}

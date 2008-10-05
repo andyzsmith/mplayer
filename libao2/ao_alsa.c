@@ -707,7 +707,7 @@ static int init(int rate_hz, int channels, int format, int flags)
       /* end setting sw-params */
 
       mp_msg(MSGT_AO,MSGL_V,"alsa: %d Hz/%d channels/%d bpf/%d bytes buffer/%s\n",
-	     ao_data.samplerate, ao_data.channels, bytes_per_sample, ao_data.buffersize,
+	     ao_data.samplerate, ao_data.channels, (int)bytes_per_sample, ao_data.buffersize,
 	     snd_pcm_format_description(alsa_format));
 
     } // end switch alsa_handler (spdif)
@@ -765,6 +765,10 @@ static void audio_resume(void)
 {
     int err;
 
+    if (snd_pcm_state(alsa_handler) == SND_PCM_STATE_SUSPENDED) {
+        mp_msg(MSGT_AO,MSGL_INFO,MSGTR_AO_ALSA_PcmInSuspendModeTryingResume);
+        while ((err = snd_pcm_resume(alsa_handler)) == -EAGAIN) sleep(1);
+    }
     if (alsa_can_pause) {
         if ((err = snd_pcm_pause(alsa_handler, 0)) < 0)
         {
