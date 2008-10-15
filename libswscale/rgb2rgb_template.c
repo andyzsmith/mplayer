@@ -28,7 +28,6 @@
  */
 
 #include <stddef.h>
-#include <inttypes.h> /* for __WORDSIZE */
 
 #undef PREFETCH
 #undef MOVNTQ
@@ -53,13 +52,8 @@
 #define PREFETCHW "prefetcht0"
 #define PAVGB     "pavgb"
 #else
-#ifdef __APPLE__
-#define PREFETCH "#"
-#define PREFETCHW "#"
-#else
 #define PREFETCH  " # nop"
 #define PREFETCHW " # nop"
-#endif
 #endif
 
 #ifdef HAVE_3DNOW
@@ -1584,7 +1578,7 @@ static inline void RENAME(yuvPlanartoyuy2)(const uint8_t *ysrc, const uint8_t *u
         ysrc += lumStride;
         dst += dstStride;
 
-#elif __WORDSIZE >= 64
+#elif HAVE_FAST_64BIT
         int i;
         uint64_t *ldst = (uint64_t *) dst;
         const uint8_t *yc = ysrc, *uc = usrc, *vc = vsrc;
@@ -1690,7 +1684,7 @@ static inline void RENAME(yuvPlanartouyvy)(const uint8_t *ysrc, const uint8_t *u
 #else
 //FIXME adapt the Alpha ASM code from yv12->yuy2
 
-#if __WORDSIZE >= 64
+#if HAVE_FAST_64BIT
         int i;
         uint64_t *ldst = (uint64_t *) dst;
         const uint8_t *yc = ysrc, *uc = usrc, *vc = vsrc;
@@ -2435,7 +2429,7 @@ static inline void RENAME(rgb24toyv12)(const uint8_t *src, uint8_t *ydst, uint8_
     }
 }
 
-void RENAME(interleaveBytes)(uint8_t *src1, uint8_t *src2, uint8_t *dest,
+static void RENAME(interleaveBytes)(uint8_t *src1, uint8_t *src2, uint8_t *dest,
                              long width, long height, long src1Stride,
                              long src2Stride, long dstStride){
     long h;

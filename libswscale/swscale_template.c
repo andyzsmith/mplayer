@@ -2926,7 +2926,7 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
     const int chrSrcSliceY= srcSliceY >> c->chrSrcVSubSample;
     const int chrSrcSliceH= -((-srcSliceH) >> c->chrSrcVSubSample);
     int lastDstY;
-    uint32_t *pal=NULL;
+    uint32_t *pal=c->pal_yuv;
 
     /* vars which will change and which we need to store back in the context */
     int dstY= c->dstY;
@@ -2936,7 +2936,6 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
     int lastInChrBuf= c->lastInChrBuf;
 
     if (isPacked(c->srcFormat)){
-        pal= (uint32_t *)src[1];
         src[0]=
         src[1]=
         src[2]= src[0];
@@ -2965,12 +2964,12 @@ static int RENAME(swScale)(SwsContext *c, uint8_t* src[], int srcStride[], int s
 
     if (dstStride[0]%8 !=0 || dstStride[1]%8 !=0 || dstStride[2]%8 !=0)
     {
-        static int firstTime=1; //FIXME move this into the context perhaps
-        if (flags & SWS_PRINT_INFO && firstTime)
+        static int warnedAlready=0; //FIXME move this into the context perhaps
+        if (flags & SWS_PRINT_INFO && !warnedAlready)
         {
             av_log(c, AV_LOG_WARNING, "Warning: dstStride is not aligned!\n"
                    "         ->cannot do aligned memory accesses anymore\n");
-            firstTime=0;
+            warnedAlready=1;
         }
     }
 

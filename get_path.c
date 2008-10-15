@@ -20,8 +20,13 @@
 #include <unistd.h>
 #endif
 
-#ifdef WIN32
+#ifdef __MINGW32__
 #include <windows.h>
+#endif
+
+#ifdef __CYGWIN__
+#include <windows.h>
+#include <sys/cygwin.h>
 #endif
 
 #ifdef __OS2__
@@ -140,7 +145,7 @@ char *get_path(const char *filename){
 	return buff;
 }
 
-#if defined(WIN32) && defined(CONFIG_WIN32DLL)
+#if (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_WIN32DLL)
 void set_path_env()
 {
 	/*make our codec dirs available for LoadLibraryA()*/
@@ -176,4 +181,4 @@ void set_path_env()
 	if (!SetEnvironmentVariableA("PATH", tmppath))
 		mp_msg(MSGT_WIN32, MSGL_WARN, "Cannot set PATH!");
 }
-#endif /*WIN32 && CONFIG_WIN32DLL*/
+#endif /* (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_WIN32DLL) */

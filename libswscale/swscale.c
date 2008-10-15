@@ -155,6 +155,13 @@ unsigned swscale_version(void)
         || isRGB(x)                 \
         || isBGR(x)                 \
     )
+#define usePal(x)           (       \
+           (x)==PIX_FMT_PAL8        \
+        || (x)==PIX_FMT_BGR4_BYTE   \
+        || (x)==PIX_FMT_RGB4_BYTE   \
+        || (x)==PIX_FMT_BGR8        \
+        || (x)==PIX_FMT_RGB8        \
+    )
 
 #define RGB2YUV_SHIFT 15
 #define BY ( (int)(0.114*219/255*(1<<RGB2YUV_SHIFT)+0.5))
@@ -237,18 +244,18 @@ DECLARE_ALIGNED(8, const uint64_t, ff_bgr2YOffset)  = 0x1010101010101010ULL;
 DECLARE_ALIGNED(8, const uint64_t, ff_bgr2UVOffset) = 0x8080808080808080ULL;
 DECLARE_ALIGNED(8, const uint64_t, ff_w1111)        = 0x0001000100010001ULL;
 
-DECLARE_ALIGNED(8, const uint64_t, ff_bgr24toY1Coeff) = 0x0C88000040870C88ULL;
-DECLARE_ALIGNED(8, const uint64_t, ff_bgr24toY2Coeff) = 0x20DE4087000020DEULL;
-DECLARE_ALIGNED(8, const uint64_t, ff_rgb24toY1Coeff) = 0x20DE0000408720DEULL;
-DECLARE_ALIGNED(8, const uint64_t, ff_rgb24toY2Coeff) = 0x0C88408700000C88ULL;
-DECLARE_ALIGNED(8, const uint64_t, ff_bgr24toYOffset) = 0x0008400000084000ULL;
+DECLARE_ASM_CONST(8, uint64_t, ff_bgr24toY1Coeff) = 0x0C88000040870C88ULL;
+DECLARE_ASM_CONST(8, uint64_t, ff_bgr24toY2Coeff) = 0x20DE4087000020DEULL;
+DECLARE_ASM_CONST(8, uint64_t, ff_rgb24toY1Coeff) = 0x20DE0000408720DEULL;
+DECLARE_ASM_CONST(8, uint64_t, ff_rgb24toY2Coeff) = 0x0C88408700000C88ULL;
+DECLARE_ASM_CONST(8, uint64_t, ff_bgr24toYOffset) = 0x0008400000084000ULL;
 
-DECLARE_ALIGNED(8, const uint64_t, ff_bgr24toUV[2][4]) = {
+DECLARE_ASM_CONST(8, uint64_t, ff_bgr24toUV[2][4]) = {
     {0x38380000DAC83838ULL, 0xECFFDAC80000ECFFULL, 0xF6E40000D0E3F6E4ULL, 0x3838D0E300003838ULL},
     {0xECFF0000DAC8ECFFULL, 0x3838DAC800003838ULL, 0x38380000D0E33838ULL, 0xF6E4D0E30000F6E4ULL},
 };
 
-DECLARE_ALIGNED(8, const uint64_t, ff_bgr24toUVOffset)= 0x0040400000404000ULL;
+DECLARE_ASM_CONST(8, uint64_t, ff_bgr24toUVOffset)= 0x0040400000404000ULL;
 
 #endif /* defined(ARCH_X86) */
 
@@ -257,12 +264,12 @@ static unsigned char clip_table[768];
 
 static SwsVector *sws_getConvVec(SwsVector *a, SwsVector *b);
 
-const uint8_t  __attribute__((aligned(8))) dither_2x2_4[2][8]={
+static const uint8_t  __attribute__((aligned(8))) dither_2x2_4[2][8]={
 {  1,   3,   1,   3,   1,   3,   1,   3, },
 {  2,   0,   2,   0,   2,   0,   2,   0, },
 };
 
-const uint8_t  __attribute__((aligned(8))) dither_2x2_8[2][8]={
+static const uint8_t  __attribute__((aligned(8))) dither_2x2_8[2][8]={
 {  6,   2,   6,   2,   6,   2,   6,   2, },
 {  0,   4,   0,   4,   0,   4,   0,   4, },
 };
@@ -1707,11 +1714,44 @@ static int YUV422PToUyvyWrapper(SwsContext *c, uint8_t* src[], int srcStride[], 
     return srcSliceH;
 }
 
+static int pal2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+                          int srcSliceH, uint8_t* dst[], int dstStride[]){
+    const enum PixelFormat srcFormat= c->srcFormat;
+    const enum PixelFormat dstFormat= c->dstFormat;
+    void (*conv)(const uint8_t *src, uint8_t *dst, long num_pixels,
+                 const uint8_t *palette)=NULL;
+    int i;
+    uint8_t *dstPtr= dst[0] + dstStride[0]*srcSliceY;
+    uint8_t *srcPtr= src[0];
+
+    if (!usePal(srcFormat))
+        av_log(c, AV_LOG_ERROR, "internal error %s -> %s converter\n",
+               sws_format_name(srcFormat), sws_format_name(dstFormat));
+
+    switch(dstFormat){
+    case PIX_FMT_RGB32: conv = palette8torgb32; break;
+    case PIX_FMT_BGR32: conv = palette8tobgr32; break;
+    case PIX_FMT_RGB24: conv = palette8torgb24; break;
+    case PIX_FMT_BGR24: conv = palette8tobgr24; break;
+    default: av_log(c, AV_LOG_ERROR, "internal error %s -> %s converter\n",
+                    sws_format_name(srcFormat), sws_format_name(dstFormat)); break;
+    }
+
+
+    for (i=0; i<srcSliceH; i++) {
+        conv(srcPtr, dstPtr, c->srcW, c->pal_rgb);
+        srcPtr+= srcStride[0];
+        dstPtr+= dstStride[0];
+    }
+
+    return srcSliceH;
+}
+
 /* {RGB,BGR}{15,16,24,32,32_1} -> {RGB,BGR}{15,16,24,32} */
 static int rgb2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
                           int srcSliceH, uint8_t* dst[], int dstStride[]){
-    const int srcFormat= c->srcFormat;
-    const int dstFormat= c->dstFormat;
+    const enum PixelFormat srcFormat= c->srcFormat;
+    const enum PixelFormat dstFormat= c->dstFormat;
     const int srcBpp= (fmt_depth(srcFormat) + 7) >> 3;
     const int dstBpp= (fmt_depth(dstFormat) + 7) >> 3;
     const int srcId= fmt_depth(srcFormat) >> 2; /* 1:0, 4:1, 8:2, 15:3, 16:4, 24:6, 32:8 */
@@ -2096,7 +2136,7 @@ int sws_getColorspaceDetails(SwsContext *c, int **inv_table, int *srcRange, int 
     return 0;
 }
 
-static int handle_jpeg(int *format)
+static int handle_jpeg(enum PixelFormat *format)
 {
     switch (*format) {
         case PIX_FMT_YUVJ420P:
@@ -2116,7 +2156,7 @@ static int handle_jpeg(int *format)
     }
 }
 
-SwsContext *sws_getContext(int srcW, int srcH, int srcFormat, int dstW, int dstH, int dstFormat, int flags,
+SwsContext *sws_getContext(int srcW, int srcH, enum PixelFormat srcFormat, int dstW, int dstH, enum PixelFormat dstFormat, int flags,
                            SwsFilter *srcFilter, SwsFilter *dstFilter, double *param){
 
     SwsContext *c;
@@ -2300,6 +2340,13 @@ SwsContext *sws_getContext(int srcW, int srcH, int srcFormat, int dstW, int dstH
                                              && dstFormat != PIX_FMT_BGR32_1
            && (!needsDither || (c->flags&(SWS_FAST_BILINEAR|SWS_POINT))))
              c->swScale= rgb2rgbWrapper;
+
+        if ((usePal(srcFormat) && (
+                 dstFormat == PIX_FMT_RGB32 ||
+                 dstFormat == PIX_FMT_RGB24 ||
+                 dstFormat == PIX_FMT_BGR32 ||
+                 dstFormat == PIX_FMT_BGR24)))
+             c->swScale= pal2rgbWrapper;
 
         if (srcFormat == PIX_FMT_YUV422P)
         {
@@ -2654,12 +2701,6 @@ int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
               int srcSliceH, uint8_t* dst[], int dstStride[]){
     int i;
     uint8_t* src2[4]= {src[0], src[1], src[2]};
-    uint32_t pal[256];
-    int use_pal=   c->srcFormat == PIX_FMT_PAL8
-                || c->srcFormat == PIX_FMT_BGR4_BYTE
-                || c->srcFormat == PIX_FMT_RGB4_BYTE
-                || c->srcFormat == PIX_FMT_BGR8
-                || c->srcFormat == PIX_FMT_RGB8;
 
     if (c->sliceDir == 0 && srcSliceY != 0 && srcSliceY + srcSliceH != c->srcH) {
         av_log(c, AV_LOG_ERROR, "Slices start in the middle!\n");
@@ -2669,7 +2710,7 @@ int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
         if (srcSliceY == 0) c->sliceDir = 1; else c->sliceDir = -1;
     }
 
-    if (use_pal){
+    if (usePal(c->srcFormat)){
         for (i=0; i<256; i++){
             int p, r, g, b,y,u,v;
             if(c->srcFormat == PIX_FMT_PAL8){
@@ -2697,9 +2738,9 @@ int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
             y= av_clip_uint8((RY*r + GY*g + BY*b + ( 33<<(RGB2YUV_SHIFT-1)))>>RGB2YUV_SHIFT);
             u= av_clip_uint8((RU*r + GU*g + BU*b + (257<<(RGB2YUV_SHIFT-1)))>>RGB2YUV_SHIFT);
             v= av_clip_uint8((RV*r + GV*g + BV*b + (257<<(RGB2YUV_SHIFT-1)))>>RGB2YUV_SHIFT);
-            pal[i]= y + (u<<8) + (v<<16);
+            c->pal_yuv[i]= y + (u<<8) + (v<<16);
+            c->pal_rgb[i]= b + (g<<8) + (r<<16);
         }
-        src2[1]= (uint8_t*)pal;
     }
 
     // copy strides, so they can safely be modified
@@ -2717,7 +2758,7 @@ int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
         int dstStride2[4]= {-dstStride[0], -dstStride[1], -dstStride[2]};
 
         src2[0] += (srcSliceH-1)*srcStride[0];
-        if (!use_pal)
+        if (!usePal(c->srcFormat))
             src2[1] += ((srcSliceH>>c->chrSrcVSubSample)-1)*srcStride[1];
         src2[2] += ((srcSliceH>>c->chrSrcVSubSample)-1)*srcStride[2];
 
@@ -3082,8 +3123,8 @@ void sws_freeContext(SwsContext *c){
  * asumed to remain valid.
  */
 struct SwsContext *sws_getCachedContext(struct SwsContext *context,
-                                        int srcW, int srcH, int srcFormat,
-                                        int dstW, int dstH, int dstFormat, int flags,
+                                        int srcW, int srcH, enum PixelFormat srcFormat,
+                                        int dstW, int dstH, enum PixelFormat dstFormat, int flags,
                                         SwsFilter *srcFilter, SwsFilter *dstFilter, double *param)
 {
     static const double default_param[2] = {SWS_PARAM_DEFAULT, SWS_PARAM_DEFAULT};

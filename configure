@@ -320,7 +320,7 @@ Codecs:
   --disable-twolame         disable Twolame (MPEG layer 2) encoding [autodetect]
   --enable-xmms             enable XMMS input plugin support [disabled]
   --enable-libdca           enable libdca support [autodetect]
-  --disable-mp3lib          disable builtin mp3lib [enabled]
+  --disable-mp3lib          disable builtin mp3lib [autodetect]
   --disable-liba52          disable liba52 [autodetect] 
   --disable-liba52-internal disable builtin liba52 [autodetect] 
   --disable-libmpeg2        disable builtin libmpeg2 [autodetect]
@@ -577,9 +577,9 @@ _tremor_low=no
 _libvorbis=auto
 _speex=auto
 _theora=auto
-_mp3lib=yes
+_mp3lib=auto
 _liba52=auto
-_liba52_internal=yes
+_liba52_internal=auto
 _libdca=auto
 _libmpeg2=auto
 _faad=auto
@@ -1403,10 +1403,6 @@ if mingw32 ; then
   _need_shmem=no
 fi
 
-if cygwin ; then
-  _def_confwin32='#define WIN32'
-fi
-
 if amigaos ; then
   _select=no
   _sighandler=no
@@ -2014,6 +2010,7 @@ EOF
     _arch='POWERPC PPC'
     _def_dcbzl='#undef HAVE_DCBZL'
     _target_arch='ARCH_POWERPC = yes'
+    _def_fast_unaligned='#define HAVE_FAST_UNALIGNED 1'
     iproc='ppc'
 
     echocheck "CPU type"
@@ -2400,13 +2397,13 @@ EOF
     if $(cc_check -maltivec -mabi=altivec) ; then
     _altivec_gcc_flags="-maltivec -mabi=altivec"
     # check if <altivec.h> should be included
-    _def_altivec_h='#undef HAVE_ALTIVEC_H'
+    def_altivec_h='#undef HAVE_ALTIVEC_H'
     cat > $TMPC << EOF
 #include <altivec.h>
 int main(void) { return 0; }
 EOF
         if $(cc_check $_altivec_gcc_flags) ; then
-            _def_altivec_h='#define HAVE_ALTIVEC_H 1'
+            def_altivec_h='#define HAVE_ALTIVEC_H 1'
             inc_altivec_h='#include <altivec.h>'
         else
         cat > $TMPC << EOF
@@ -2773,9 +2770,9 @@ echores "$_socklib"
 
 if test $_winsock2_h = yes ; then
   _ld_sock="-lws2_32"
-  _def_winsock2_h='#define HAVE_WINSOCK2_H 1'
+  def_winsock2_h='#define HAVE_WINSOCK2_H 1'
 else
-  _def_winsock2_h='#undef HAVE_WINSOCK2_H'
+  def_winsock2_h='#undef HAVE_WINSOCK2_H'
 fi
 
 
@@ -2934,12 +2931,12 @@ EOF
 _malloc=no
 cc_check && _malloc=yes
 if test "$_malloc" = yes ; then
-  _def_malloc='#define HAVE_MALLOC_H 1'
+  def_malloc_h='#define HAVE_MALLOC_H 1'
 else
-  _def_malloc='#undef HAVE_MALLOC_H'
+  def_malloc_h='#undef HAVE_MALLOC_H'
 fi
 # malloc.h emits a warning in FreeBSD and OpenBSD
-freebsd || openbsd || dragonfly && _def_malloc='#undef HAVE_MALLOC_H'
+freebsd || openbsd || dragonfly && def_malloc_h='#undef HAVE_MALLOC_H'
 echores "$_malloc"
 
 
@@ -2969,26 +2966,11 @@ EOF
 _alloca=no
 cc_check && _alloca=yes
 if cc_check ; then
-  _def_alloca='#define HAVE_ALLOCA_H 1'
+  def_alloca_h='#define HAVE_ALLOCA_H 1'
 else
-  _def_alloca='#undef HAVE_ALLOCA_H'
+  def_alloca_h='#undef HAVE_ALLOCA_H'
 fi
 echores "$_alloca"
-
-
-echocheck "byteswap.h"
-cat > $TMPC << EOF
-#include <byteswap.h>
-int main(void) {  bswap_16(0); return 0; }
-EOF
-_byteswap_h=no
-cc_check && _byteswap_h=yes
-if cc_check ; then
-  _def_byteswap_h='#define HAVE_BYTESWAP_H 1'
-else
-  _def_byteswap_h='#undef HAVE_BYTESWAP_H'
-fi
-echores "$_byteswap_h"
 
 
 echocheck "mman.h"
@@ -3000,9 +2982,9 @@ EOF
 _mman=no
 cc_check && _mman=yes
 if test "$_mman" = yes ; then
-  _def_mman='#define HAVE_SYS_MMAN_H 1'
+  def_mman_h='#define HAVE_SYS_MMAN_H 1'
 else
-  _def_mman='#undef HAVE_SYS_MMAN_H'
+  def_mman_h='#undef HAVE_SYS_MMAN_H'
   os2 && _need_mmap=yes
 fi
 echores "$_mman"
@@ -3151,8 +3133,8 @@ echores "$_iconv"
 
 echocheck "soundcard.h"
 _soundcard_h=no
-_def_soundcard='#undef HAVE_SOUNDCARD_H'
-_def_sys_soundcard='#undef HAVE_SYS_SOUNDCARD_H'
+def_soundcard_h='#undef HAVE_SOUNDCARD_H'
+def_sys_soundcard_h='#undef HAVE_SYS_SOUNDCARD_H'
 for _soundcard_header in "sys/soundcard.h" "soundcard.h"; do
   cat > $TMPC << EOF
 #include <$_soundcard_header>
@@ -3163,9 +3145,9 @@ done
 
 if test "$_soundcard_h" = yes ; then
   if test $_soundcard_header = "sys/soundcard.h"; then
-    _def_sys_soundcard='#define HAVE_SYS_SOUNDCARD_H 1'
+    def_sys_soundcard_h='#define HAVE_SYS_SOUNDCARD_H 1'
   else
-    _def_soundcard='#define HAVE_SOUNDCARD_H 1'
+    def_soundcard_h='#define HAVE_SOUNDCARD_H 1'
   fi
 fi
 echores "$_soundcard_h"
@@ -3313,8 +3295,8 @@ echores "$_termcap"
 
 echocheck "termios"
 _def_termios='#undef HAVE_TERMIOS'
-_def_termios_h='#undef HAVE_TERMIOS_H'
-_def_termios_sys_h='#undef HAVE_SYS_TERMIOS_H'
+def_termios_h='#undef HAVE_TERMIOS_H'
+def_termios_sys_h='#undef HAVE_SYS_TERMIOS_H'
 if test "$_termios" = auto ; then
   _termios=no
   for _termios_header in "sys/termios.h" "termios.h"; do
@@ -3329,9 +3311,9 @@ fi
 if test "$_termios" = yes ; then
   _def_termios='#define HAVE_TERMIOS 1'
   if test "$_termios_header" = "termios.h" ; then
-    _def_termios_h='#define HAVE_TERMIOS_H 1'
+    def_termios_h='#define HAVE_TERMIOS_H 1'
   else
-    _def_termios_sys_h='#define HAVE_SYS_TERMIOS_H 1'
+    def_termios_sys_h='#define HAVE_SYS_TERMIOS_H 1'
   fi
 fi
 echores "$_termios"
@@ -3512,9 +3494,9 @@ EOF
 _sys_sysinfo=no
 cc_check && _sys_sysinfo=yes
 if test "$_sys_sysinfo" = yes ; then
-  _def_sys_sysinfo='#define HAVE_SYS_SYSINFO_H 1'
+  def_sys_sysinfo_h='#define HAVE_SYS_SYSINFO_H 1'
 else
-  _def_sys_sysinfo='#undef HAVE_SYS_SYSINFO_H'
+  def_sys_sysinfo_h='#undef HAVE_SYS_SYSINFO_H'
 fi
 echores "$_sys_sysinfo"
 
@@ -5276,8 +5258,8 @@ _def_alsa='#undef CONFIG_ALSA'
 _def_alsa5='#undef CONFIG_ALSA5'
 _def_alsa9='#undef CONFIG_ALSA9'
 _def_alsa1x='#undef CONFIG_ALSA1X'
-_def_sys_asoundlib_h='#undef HAVE_SYS_ASOUNDLIB_H'
-_def_alsa_asoundlib_h='#undef HAVE_ALSA_ASOUNDLIB_H'
+def_sys_asoundlib_h='#undef HAVE_SYS_ASOUNDLIB_H'
+def_alsa_asoundlib_h='#undef HAVE_ALSA_ASOUNDLIB_H'
 if test "$_alsaver" ; then
   _alsa=yes
   if test "$_alsaver" = '0.5.x' ; then
@@ -5285,7 +5267,7 @@ if test "$_alsaver" ; then
     _aosrc="$_aosrc ao_alsa5.c"
     _aomodules="alsa5 $_aomodules"
     _def_alsa5='#define CONFIG_ALSA5 1'
-    _def_sys_asoundlib_h='#define HAVE_SYS_ASOUNDLIB_H 1'
+    def_sys_asoundlib_h='#define HAVE_SYS_ASOUNDLIB_H 1'
     _res_comment="using alsa 0.5.x and sys/asoundlib.h"
   elif test "$_alsaver" = '0.9.x-sys' ; then
     _alsa9=yes
@@ -5293,7 +5275,7 @@ if test "$_alsaver" ; then
     _aomodules="alsa $_aomodules"
     _def_alsa='#define CONFIG_ALSA 1'
     _def_alsa9='#define CONFIG_ALSA9 1'
-    _def_sys_asoundlib_h='#define HAVE_SYS_ASOUNDLIB_H 1'
+    def_sys_asoundlib_h='#define HAVE_SYS_ASOUNDLIB_H 1'
     _res_comment="using alsa 0.9.x and sys/asoundlib.h"
   elif test "$_alsaver" = '0.9.x-alsa' ; then
     _alsa9=yes
@@ -5301,7 +5283,7 @@ if test "$_alsaver" ; then
     _aomodules="alsa $_aomodules"
     _def_alsa='#define CONFIG_ALSA 1'
     _def_alsa9='#define CONFIG_ALSA9 1'
-    _def_alsa_asoundlib_h='#define HAVE_ALSA_ASOUNDLIB_H 1'
+    def_alsa_asoundlib_h='#define HAVE_ALSA_ASOUNDLIB_H 1'
     _res_comment="using alsa 0.9.x and alsa/asoundlib.h"
   elif test "$_alsaver" = '1.0.x-sys' ; then
     _alsa1x=yes
@@ -5309,7 +5291,7 @@ if test "$_alsaver" ; then
     _aomodules="alsa $_aomodules"
     _def_alsa='#define CONFIG_ALSA 1'
     _def_alsa1x="#define CONFIG_ALSA1X 1"
-    _def_alsa_asoundlib_h='#define HAVE_SYS_ASOUNDLIB_H 1'
+    def_alsa_asoundlib_h='#define HAVE_SYS_ASOUNDLIB_H 1'
     _res_comment="using alsa 1.0.x and sys/asoundlib.h"
   elif test "$_alsaver" = '1.0.x-alsa' ; then
     _alsa1x=yes
@@ -5317,7 +5299,7 @@ if test "$_alsaver" ; then
     _aomodules="alsa $_aomodules"
     _def_alsa='#define CONFIG_ALSA 1'
     _def_alsa1x="#define CONFIG_ALSA1X 1"
-    _def_alsa_asoundlib_h='#define HAVE_ALSA_ASOUNDLIB_H 1'
+    def_alsa_asoundlib_h='#define HAVE_ALSA_ASOUNDLIB_H 1'
     _res_comment="using alsa 1.0.x and alsa/asoundlib.h"
   else
     _alsa=no
@@ -5475,7 +5457,7 @@ if test "$_libdvdcss_internal" = yes ; then
     _def_dvd_darwin='#define DARWIN_DVD_IOCTL'
     _ld_extra="$_ld_extra -framework IOKit"
   elif cygwin ; then
-    cflags_libdvdcss="-DSYS_CYGWIN"
+    cflags_libdvdcss="-DSYS_CYGWIN -DWIN32"
   elif beos ; then
     cflags_libdvdcss="-DSYS_BEOS"
   elif os2 ; then
@@ -6006,6 +5988,9 @@ fi
 echores "$_theora"
 
 echocheck "internal mp3lib support"
+if test "$_mp3lib" = auto ; then
+  test "$cc_vendor" = intel && _mp3lib=no || _mp3lib=yes
+fi
 if test "$_mp3lib" = yes ; then
   _def_mp3lib='#define CONFIG_MP3LIB 1'
   _codecmodules="mp3lib $_codecmodules"
@@ -6016,6 +6001,9 @@ fi
 echores "$_mp3lib"
 
 echocheck "liba52 support"
+if test "$_liba52_internal" = auto ; then
+  test "$cc_vendor" = intel && _liba52_internal=no || _liba52_internal=yes
+fi
 _def_liba52='#undef CONFIG_LIBA52'
 _def_liba52_internal="#undef CONFIG_LIBA52_INTERNAL"
 if test "$_liba52_internal" = yes ; then
@@ -7799,7 +7787,7 @@ EXTRALIBS_MENCODER = $_libs_mencoder
 DEPEND_CMD   = \$(CC) -MM \$(CFLAGS) \$(filter-out %.h,\$^) | sed "s,[0-9a-z._-]*: \(\$(SRC_DIR)/\)*\([a-z0-9]*/\)[^/]* ,\\2&,"
 
 MPDEPEND_CMD     = \$(CC) -MM \$(CFLAGS)   \$(filter-out %.xpm,\$(filter-out %.h,$^)) | sed -e "s,[0-9a-z._-]*: \([a-z0-9/]*/\)[^/]* ,\1&," -e "s,\(.*\)\.o: ,\1.d &,"
-MPDEPEND_CMD_CXX = \$(CC) -MM \$(CXXFLAGS) \$(filter-out %.xpm,\$(filter-out %.h,$^)) | sed -e "s,[0-9a-z._-]*: \([a-z0-9/]*/\)[^/]* ,\1&," -e "s,\(.*\)\.o: ,\1.d &,"
+MPDEPEND_CMD_CXX = \$(CC) -MM \$(CXXFLAGS) \$(filter-out %.hh,\$(filter-out %.h,$^))  | sed -e "s,[0-9a-z._-]*: \([a-z0-9/]*/\)[^/]* ,\1&," -e "s,\(.*\)\.o: ,\1.d &,"
 
 GETCH = $_getch
 HELP_FILE = $_mp_help
@@ -8059,10 +8047,68 @@ $_def_fast_inttypes
 
 /* libfaad2 */
 #define HAVE_MEMCPY 1
-#define HAVE_STRCHR 1
 
 /* libdvdread */
 #define HAVE_UINTPTR_T 1
+
+/* Define this if your system has the "alloca.h" header file */
+$def_alloca_h
+
+/* Define this if your system has the "sys/mman.h" header file */
+$def_mman_h
+$_def_mman_has_map_failed
+
+/* Define this if your system has the header file for the OSS sound interface */
+$def_sys_soundcard_h
+
+/* Define this if your system has the header file for the OSS sound interface
+ * in /usr/include */
+$def_soundcard_h
+
+/* Define this if your system has the sysinfo header */
+$def_sys_sysinfo_h
+
+/* Define this if your system has the "malloc.h" header file */
+$def_malloc_h
+
+/* memalign is mapped to malloc if unsupported */
+$_def_memalign
+$_def_map_memalign
+$_def_memalign_hack
+
+/* define this to use nl_langinfo function */
+$_def_langinfo
+
+/* nanosleep support */
+$_def_nanosleep
+
+/* do we have gethostbyname2? */
+$_def_gethostbyname2
+
+/* Define this if your system has swab */
+$_def_swab
+
+/* Define this if your system has posix select */
+$_def_posix_select
+
+/* Define this if your system has gettimeofday */
+$_def_gettimeofday
+
+/* Define this if your system has glob */
+$_def_glob
+
+/* Define this if your system has setenv */
+$_def_setenv
+
+/* Define this if your system has strsep */
+$_def_strsep
+
+/* Define this if your system has vsscanf */
+$_def_vsscanf
+
+/* Define this if your system has sysi86 */
+$_def_sysi86
+$_def_sysi86_iv
 
 /* C99 *lrint* and round* functions available */
 $_def_llrint
@@ -8070,9 +8116,6 @@ $_def_lrint
 $_def_lrintf
 $_def_round
 $_def_roundf
-
-/* nanosleep support */
-$_def_nanosleep
 
 /* name of messages charset */
 $_def_charset
@@ -8084,16 +8127,13 @@ $_def_runtime_cpudetection
    byte first (like Motorola and SPARC, unlike Intel and VAX).  */
 $_def_words_endian
 
-/* Define if your processor can access unaligned data in a fast way */
-$_def_fast_unaligned
-
 `ff_config_enable "$_arch_all" "$_arch" "ARCH"`
 
 /* Extension defines */
 `ff_config_enable "$_cpuexts_all" "$_cpuexts" "HAVE"`
 
 /* altivec.h support */
-$_def_altivec_h
+$def_altivec_h
 
 /* For the PPC.  G5 has the dcbzl when in 64bit mode but G4s and earlier do not
    have the instruction. */
@@ -8101,6 +8141,18 @@ $_def_dcbzl
 
 /* Define this to any prefered value from 386 up to infinity with step 100 */
 #define __CPU__ $iproc
+
+/* Use 3dnow/mmxext/sse/mmx optimized fast memcpy() [maybe buggy... signal 4]*/
+$_def_fastmemcpy
+
+/* enable/disable SIGHANDLER */
+$_def_sighandler
+
+/* enable/disable automatic gdb attach on crash, requires SIGHANDLER */
+$_def_crash_debug
+
+/* Toggles debugging informations */
+$_def_debug
 
 /* Dynamic a/v plugins */
 $_def_dynamic_plugins
@@ -8134,80 +8186,6 @@ $_def_named_asm_args
 
 /* assembler handling of .align */
 $_def_asmalign_pot
-
-/* Use 3dnow/mmxext/sse/mmx optimized fast memcpy() [maybe buggy... signal 4]*/
-$_def_fastmemcpy
-
-/* Define this if your system has the "malloc.h" header file */
-$_def_malloc
-
-/* memalign is mapped to malloc if unsupported */
-$_def_memalign
-$_def_map_memalign
-$_def_memalign_hack
-
-/* Define this if your system has the "alloca.h" header file */
-$_def_alloca
-
-/* Define this if your system has the "byteswap.h" header file */
-$_def_byteswap_h
-
-/* Define this if your system has the "sys/mman.h" header file */
-$_def_mman
-$_def_mman_has_map_failed
-
-/* Define this if your system has the header file for the OSS sound interface */
-$_def_sys_soundcard
-
-/* Define this if your system has the header file for the OSS sound interface
- * in /usr/include */
-$_def_soundcard
-
-/* Define this if your system has the sysinfo header */
-$_def_sys_sysinfo
-
-/* do we have gethostbyname2? */
-$_def_gethostbyname2
-
-/* Define this if your system has swab */
-$_def_swab
-
-/* Define this if your system has posix select */
-$_def_posix_select
-
-/* Define this if your system has gettimeofday */
-$_def_gettimeofday
-
-/* Define this if your system has glob */
-$_def_glob
-
-/* Define this if your system has setenv */
-$_def_setenv
-#ifndef HAVE_SETENV
-int setenv(const char *name, const char *val, int overwrite);
-#endif
-
-/* Define this if your system has strsep */
-$_def_strsep
-
-/* Define this if your system has vsscanf */
-$_def_vsscanf
-
-/* Define this if your system has sysi86 */
-$_def_sysi86
-$_def_sysi86_iv
-
-/* Define this if your system has pthreads */
-$_def_pthreads
-
-/* Toggles debugging informations */
-$_def_debug
-
-/* enable/disable SIGHANDLER */
-$_def_sighandler
-
-/* enable/disable automatic gdb attach on crash, requires SIGHANDLER */
-$_def_crash_debug
 
 /* enables / disables cdparanoia support */
 $_def_cdparanoia
@@ -8243,7 +8221,7 @@ $_def_vcd
 #ifdef sun
 #define	DEFAULT_CDROM_DEVICE	"/vol/dev/aliases/cdrom0"
 #define DEFAULT_DVD_DEVICE	DEFAULT_CDROM_DEVICE
-#elif defined(WIN32) || defined(__OS2__)
+#elif defined(__MINGW32__) || defined(__CYGWIN__) || defined(__OS2__)
 #define DEFAULT_CDROM_DEVICE    "D:"
 #define DEFAULT_DVD_DEVICE	DEFAULT_CDROM_DEVICE
 #elif defined(__APPLE__) || defined(__DARWIN__)
@@ -8267,29 +8245,8 @@ $_def_vcd
 #endif
 
 
-/* Define if you are using Xvid library */
-$_def_xvid
-
-/* Define if you are using the X.264 library */
-$_def_x264
-
-/* Define if you are using libnut */
-$_def_libnut
-
-/* Define to include support for libdv-0.9.5 */
-$_def_libdv
-
-/* Indicates if libmp3lame is available
-   Note: for mencoder */
-$_def_mp3lame
-$_def_mp3lame_preset
-$_def_mp3lame_preset_medium
-
 /* define this to use iconv(3) function to codepage conversions */
 $_def_iconv
-
-/* define this to use nl_langinfo function */
-$_def_langinfo
 
 /* define this to use RTC (/dev/rtc) for video timers */
 $_def_rtc
@@ -8323,6 +8280,9 @@ $_def_apple_remote
 /* Apple IR Remote (Linux remote control driver) */
 $_def_apple_ir
 
+/* enables / disables new input joystick support */
+$_def_joystick
+
 /* Support for maemo (http://www.maemo.org) */
 $_def_maemo
 
@@ -8347,6 +8307,31 @@ $_def_libmpeg2
 /* maximum alignment used by libmpeg2 */
 #define ATTRIBUTE_ALIGNED_MAX 16
 
+/* enable FAAD (AAC) support */
+$_def_faad
+$_def_faad_internal
+
+/* enable FAAC (AAC encoder) support */
+$_def_faac
+
+/* Define if you are using the Xvid library */
+$_def_xvid
+
+/* Define if you are using the X.264 library */
+$_def_x264
+
+/* Define to include support for libdv-0.9.5 */
+$_def_libdv
+
+/* Indicates if libmp3lame is available
+   Note: for mencoder */
+$_def_mp3lame
+$_def_mp3lame_preset
+$_def_mp3lame_preset_medium
+
+$_def_toolame
+$_def_twolame
+
 /* liblzo support */
 $_def_liblzo
 
@@ -8365,13 +8350,6 @@ $_def_musepack
 
 /* enable OggTheora support */
 $_def_theora
-
-/* enable FAAD (AAC) support */
-$_def_faad
-$_def_faad_internal
-
-/* enable FAAC (AAC encoder) support */
-$_def_faac
 
 /* enable libdca support */
 $_def_libdca
@@ -8397,11 +8375,12 @@ $_def_real_path
 $_def_qtx
 $_def_qtx_win32
 
-/* LIVE555 Streaming Media library support */
-$_def_live
+/* Define if you are using libnut */
+$_def_libnut
 
-/* libnemesi Streaming Media library support */
-$_def_nemesi
+/* XMMS input plugin support */
+$_def_xmms
+#define XMMS_INPUT_PLUGIN_DIR "$_xmmsplugindir"
 
 /* Use UnRAR executable for Vobsubs */
 $_def_unrar_exec
@@ -8409,6 +8388,9 @@ $_def_unrar_exec
 /* gui support */
 $_def_gui
 $_def_gtk2
+
+/* used by GUI: */
+$_def_xshape
 
 /* Audio output drivers */
 $_def_ossaudio
@@ -8425,8 +8407,8 @@ $_def_pulse
 $_def_jack
 $_def_openal
 $_def_openal_h
-$_def_sys_asoundlib_h
-$_def_alsa_asoundlib_h
+$def_sys_asoundlib_h
+$def_alsa_asoundlib_h
 $_def_sunaudio
 $_def_sgiaudio
 $_def_win32waveout
@@ -8475,19 +8457,13 @@ $_def_radio_bsdbt848
 /* Enable Video 4 Linux 2 MPEG PVR support */
 $_def_pvr
 
-/* Define this for Cygwin build for win32 */
-$_def_confwin32
-
-/* SMB support */
-$_def_smb
-
 /* termcap flag for getch2.c */
 $_def_termcap
 
 /* termios flag for getch2.c */
 $_def_termios
-$_def_termios_h
-$_def_termios_sys_h
+$def_termios_h
+$def_termios_sys_h
 
 /* enable PNG support */
 $_def_png
@@ -8539,6 +8515,15 @@ $_def_ladspa
 /* enable network */
 $_def_network
 
+/* LIVE555 Streaming Media library support */
+$_def_live
+
+/* libnemesi Streaming Media library support */
+$_def_nemesi
+
+/* SMB support */
+$_def_smb
+
 /* enable ftp support */
 $_def_ftp
 
@@ -8546,17 +8531,13 @@ $_def_ftp
 $_def_vstream
 
 /* enable winsock2 instead of Unix functions*/
-$_def_winsock2_h
+$def_winsock2_h
 
 /* define this to use inet_aton() instead of inet_pton() */
 $_def_use_aton
 
 /* socklen_t support */
 $_def_socklen_t
-#ifndef HAVE_SOCKLEN_T
-#define HAVE_SOCKLEN_T 1
-typedef int socklen_t;
-#endif
 
 /* closesocket() support */
 $_def_closesocket
@@ -8580,13 +8561,6 @@ $_def_vidix_drv_sh_veu
 $_def_vidix_drv_sis
 $_def_vidix_drv_unichrome
 $_def_vidix_pfx
-
-/* enables / disables new input joystick support */
-$_def_joystick
-
-/* XMMS input plugin support */
-$_def_xmms
-#define XMMS_INPUT_PLUGIN_DIR "$_xmmsplugindir"
 
 /* libvo options */
 #define SCREEN_SIZE_X 1
@@ -8636,14 +8610,9 @@ $_def_xdpms
 $_def_aa
 $_def_caca
 $_def_tga
-$_def_toolame
-$_def_twolame
 
 /* Define this if you have shm support */
 $_def_shm
-
-/* used by GUI: */
-$_def_xshape
 
 #if defined(CONFIG_GL) || defined(CONFIG_X11) || defined(CONFIG_XV)
 #define X11_FULLSCREEN 1
@@ -8676,6 +8645,7 @@ $_def_libswscale_so
 
 /* Define this if you enabled thread support for libavcodec */
 $_def_threads
+$_def_pthreads
 #ifdef HAVE_THREADS
 #define ENABLE_THREADS 1
 #else
@@ -8700,6 +8670,9 @@ $_def_muxers
 #ifndef MP_DEBUG
 #define HAVE_EBP_AVAILABLE 1
 #endif
+
+/* Define if your processor can access unaligned data in a fast way */
+$_def_fast_unaligned
 
 #define CONFIG_GPL 1
 #define ENABLE_SMALL 0
