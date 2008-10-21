@@ -56,6 +56,7 @@ fail:
  * (a) have at least one frame from each stream
  * (b) run out of memory */
 void muxer_write_chunk(muxer_stream_t *s, size_t len, unsigned int flags, double dts, double pts) {
+    double in_dts = dts;
     if(dts == MP_NOPTS_VALUE) dts= s->timer;
     if(pts == MP_NOPTS_VALUE) pts= s->timer; // this is wrong
 
@@ -144,7 +145,8 @@ void muxer_write_chunk(muxer_stream_t *s, size_t len, unsigned int flags, double
       // VBR
       s->h.dwLength++;
     }
-    s->timer=(double)s->h.dwLength*s->h.dwScale/s->h.dwRate;
+    // use dts for timer so we encode VFR video
+    s->timer= in_dts != MP_NOPTS_VALUE ? in_dts : (double)s->h.dwLength*s->h.dwScale/s->h.dwRate;
     s->size+=len;
     
     return;

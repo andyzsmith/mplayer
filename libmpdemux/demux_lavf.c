@@ -543,6 +543,7 @@ static int demux_lavf_fill_buffer(demuxer_t *demux, demux_stream_t *dsds){
     demux_packet_t *dp;
     demux_stream_t *ds;
     int id;
+    int64_t ts;
     mp_msg(MSGT_DEMUX,MSGL_DBG2,"demux_lavf_fill_buffer()\n");
 
     demux->filepos=stream_tell(demux->stream);
@@ -551,6 +552,7 @@ static int demux_lavf_fill_buffer(demuxer_t *demux, demux_stream_t *dsds){
         return 0;
 
     id= pkt.stream_index;
+    ts = pkt.pts;
 
     if(id==demux->audio->id){
         // audio
@@ -566,6 +568,8 @@ static int demux_lavf_fill_buffer(demuxer_t *demux, demux_stream_t *dsds){
             ds->sh=demux->v_streams[id];
             mp_msg(MSGT_DEMUX,MSGL_V,"Auto-selected LAVF video ID = %d\n",ds->id);
         }
+        // use dts for video because pts can be misordered due to QT 'ctts'
+        if (pkt.dts != AV_NOPTS_VALUE) ts = pkt.dts;
     } else if(id==demux->sub->id){
         // subtitle
         ds=demux->sub;
@@ -590,8 +594,8 @@ static int demux_lavf_fill_buffer(demuxer_t *demux, demux_stream_t *dsds){
         av_free_packet(&pkt);
     }
 
-    if(pkt.pts != AV_NOPTS_VALUE){
-        dp->pts=pkt.pts * av_q2d(priv->avfc->streams[id]->time_base);
+    if(ts != AV_NOPTS_VALUE){
+        dp->pts=ts * av_q2d(priv->avfc->streams[id]->time_base);
         priv->last_pts= dp->pts * AV_TIME_BASE;
         if(pkt.convergence_duration)
             dp->endpts = dp->pts + pkt.convergence_duration * av_q2d(priv->avfc->streams[id]->time_base);
