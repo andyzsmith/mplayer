@@ -2440,6 +2440,14 @@ EOF
 fi
 
 if arm ; then
+  echocheck "ARM pld instruction"
+  cat > $TMPC << EOF
+int main(void) { __asm__ volatile ("pld [r0]"); return 0; }
+EOF
+  pld=no
+  cc_check && pld=yes
+  echores "$pld"
+
   echocheck "ARMv5TE (Enhanced DSP Extensions)"
   if test $_armv5te = "auto" ; then
     cat > $TMPC << EOF
@@ -2481,7 +2489,7 @@ EOF
   echores "$_iwmmxt"
 fi
 
-_cpuexts_all='ALTIVEC MMX MMX2 3DNOW 3DNOWEX SSE SSE2 SSSE3 FAST_CMOV CMOV ARMV5TE ARMV6 ARMVFP IWMMXT MLIB MMI SH4 VIS MVI'
+_cpuexts_all='ALTIVEC MMX MMX2 3DNOW 3DNOWEX SSE SSE2 SSSE3 FAST_CMOV CMOV PLD ARMV5TE ARMV6 ARMVFP IWMMXT MLIB MMI SH4 VIS MVI'
 test "$_altivec"   = yes && _cpuexts="ALTIVEC $_cpuexts"
 test "$_mmx"       = yes && _cpuexts="MMX $_cpuexts"
 test "$_mmxext"    = yes && _cpuexts="MMX2 $_cpuexts"
@@ -2492,6 +2500,7 @@ test "$_sse2"      = yes && _cpuexts="SSE2 $_cpuexts"
 test "$_ssse3"     = yes && _cpuexts="SSSE3 $_cpuexts"
 test "$_cmov"      = yes && _cpuexts="CMOV $_cpuexts"
 test "$_fast_cmov" = yes && _cpuexts="FAST_CMOV $_cpuexts"
+test "$pld"        = yes && _cpuexts="PLD $_cpuexts"
 test "$_armv5te"   = yes && _cpuexts="ARMV5TE $_cpuexts"
 test "$_armv6"     = yes && _cpuexts="ARMV6 $_cpuexts"
 test "$_armvfp"    = yes && _cpuexts="ARMVFP $_cpuexts"
@@ -7714,7 +7723,7 @@ _ld_tmp=""
 for I in $_libs_mplayer ; do
   _tmp=`echo $I | sed -e 's/^-L.*$//'`
   if test -z "$_tmp" ; then
-    _ld_extra="$I $_ld_extra"
+    _ld_extra="$_ld_extra $I"
   else
     _ld_tmp="$_ld_tmp $I"
   fi
@@ -7972,9 +7981,13 @@ LIBPREF=lib
 LIBSUF=.a
 LIBNAME=\$(LIBPREF)\$(NAME)\$(LIBSUF)
 
+# Some FFmpeg codecs depend on these. Enable them unconditionally for now.
+CONFIG_FFT=yes
+CONFIG_GOLOMB=yes
+CONFIG_MDCT=yes
+
 CONFIG_ENCODERS=yes
 CONFIG_GPL=yes
-CONFIG_MUXERS=$_mencoder
 CONFIG_LIBAMR=$_libamr
 CONFIG_LIBAMR_NB=$_libamr_nb
 CONFIG_LIBAMR_WB=$_libamr_wb
@@ -7986,6 +7999,7 @@ CONFIG_LIBVORBIS=$_libvorbis
 CONFIG_LIBX264=$_x264_lavc
 CONFIG_LIBXVID=$_xvid_lavc
 CONFIG_MLIB = $_mlib
+CONFIG_MUXERS=$_mencoder
 CONFIG_POSTPROC = yes
 # Prevent building libavcodec/imgresample.c with conflicting symbols
 CONFIG_SWSCALE=yes
@@ -8401,6 +8415,20 @@ $_def_threads
 #define ENABLE_SMALL 0
 #define ENABLE_GRAY 0
 
+/* Some FFmpeg codecs depend on these. Enable them unconditionally for now. */
+#define CONFIG_FFT 1
+#define ENABLE_FFT 1
+#define CONFIG_GOLOMB 1
+#define ENABLE_GOLOMB 1
+#define CONFIG_MDCT 1
+#define ENABLE_MDCT 1
+
+/* Use these registers in FFmpeg x86 inline asm. No proper detection yet. */
+#define HAVE_EBX_AVAILABLE 1
+#ifndef MP_DEBUG
+#define HAVE_EBP_AVAILABLE 1
+#endif
+
 #define CONFIG_DECODERS 1
 #define ENABLE_DECODERS 1
 #define CONFIG_ENCODERS 1
@@ -8408,13 +8436,8 @@ $_def_threads
 
 #define CONFIG_DEMUXERS 1
 #define ENABLE_DEMUXERS 1
-$_def_muxers
 
-/* Use these registers in FFmpeg x86 inline asm. No proper detection yet. */
-#define HAVE_EBX_AVAILABLE 1
-#ifndef MP_DEBUG
-#define HAVE_EBP_AVAILABLE 1
-#endif
+$_def_muxers
 
 /* External libraries used through libavcodec. */
 $_def_faac_lavc
