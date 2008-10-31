@@ -161,8 +161,9 @@ static int audio_density=2;
 
 double force_fps=0;
 static double force_ofps=0; // set to 24 for inverse telecine
-static int skip_limit=0; // default to noskip since we encode VFR
+static int skip_limit=-1;
 float playback_speed=1.0;
+static int vfr=0; // set to 1 if we should encode VFR
 
 static int force_srate=0;
 static int audio_output_format=0;
@@ -892,6 +893,8 @@ default: {
     init_best_video_codec(sh_video,video_codec_list,video_fm_list);
     mp_msg(MSGT_CPLAYER,MSGL_INFO,"==========================================================================\n");
     if(!sh_video->initialized) mencoder_exit(1,NULL);
+    vfr = video_vfr(sh_video);
+    if (vfr) skip_limit = 0;  // force noskip if encoding VFR
  }
 }
 
@@ -1342,8 +1345,8 @@ case VCODEC_FRAMENO:
 default:
     // decode_video will callback down to ve_*.c encoders, through the video filters
     {void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
-      skip_flag>0 && (!sh_video->vfilter || ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE), sh_video->pts);
-    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, sh_video->pts);}
+      skip_flag>0 && (!sh_video->vfilter || ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE), vfr ? sh_video->pts : MP_NOPTS_VALUE);
+    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE);}
     
     if (sh_video->vf_initialized < 0) mencoder_exit(1, NULL);
     
