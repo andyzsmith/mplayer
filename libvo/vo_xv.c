@@ -89,8 +89,7 @@ static int flip_flag;
 
 static int int_pause;
 
-static Window mRoot;
-static uint32_t drwX, drwY, drwBorderWidth, drwDepth;
+static uint32_t drwX, drwY;
 static uint32_t max_width = 0, max_height = 0; // zero means: not set
 
 static void (*draw_alpha_fnc) (int x0, int y0, int w, int h,
@@ -166,9 +165,7 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
                        uint32_t d_height, uint32_t flags, char *title,
                        uint32_t format)
 {
-    XSizeHints hint;
     XVisualInfo vinfo;
-    XGCValues xgcv;
     XSetWindowAttributes xswa;
     XWindowAttributes attribs;
     unsigned long xswamask;
@@ -176,9 +173,6 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
 
 #ifdef CONFIG_XF86VM
     int vm = 0;
-    unsigned int modeline_width, modeline_height;
-    static uint32_t vm_width;
-    static uint32_t vm_height;
 #endif
 
     image_height = height;
@@ -192,8 +186,6 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
                 image_width, image_height, max_width, max_height);
         return -1;
     }
-
-    vo_mouse_autohide = 1;
 
     int_pause = 0;
     visible_buf = -1;
@@ -226,38 +218,16 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
 
 #ifdef CONFIG_GUI
     if (use_gui)
-        guiGetEvent(guiSetShVideo, 0);  // let the GUI to setup/resize our window
+        guiGetEvent(guiSetShVideo, 0);  // the GUI will set up / resize the window
     else
 #endif
     {
-        hint.x = vo_dx;
-        hint.y = vo_dy;
-        hint.width = d_width;
-        hint.height = d_height;
 #ifdef CONFIG_XF86VM
         if (vm)
         {
-            if ((d_width == 0) && (d_height == 0))
-            {
-                vm_width = image_width;
-                vm_height = image_height;
-            } else
-            {
-                vm_width = d_width;
-                vm_height = d_height;
-            }
-            vo_vm_switch(vm_width, vm_height, &modeline_width,
-                         &modeline_height);
-            hint.x = (vo_screenwidth - modeline_width) / 2;
-            hint.y = (vo_screenheight - modeline_height) / 2;
-            hint.width = modeline_width;
-            hint.height = modeline_height;
-            aspect_save_screenres(modeline_width, modeline_height);
-        } else
+            vo_vm_switch();
+        }
 #endif
-        hint.flags = PPosition | PSize /* | PBaseSize */ ;
-        hint.base_width = hint.width;
-        hint.base_height = hint.height;
         XGetWindowAttributes(mDisplay, DefaultRootWindow(mDisplay),
                              &attribs);
         depth = attribs.depth;
@@ -273,41 +243,10 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
         xswa.border_pixel = 0;
         xswamask = CWBackPixel | CWBorderPixel;
 
-        if (WinID >= 0)
-        {
-            vo_window = WinID ? ((Window) WinID) : mRootWin;
-            if (WinID)
-            {
-                XUnmapWindow(mDisplay, vo_window);
-                XChangeWindowAttributes(mDisplay, vo_window, xswamask,
-                                        &xswa);
-                vo_x11_selectinput_witherr(mDisplay, vo_window,
-                                           StructureNotifyMask |
-                                           KeyPressMask |
-                                           PropertyChangeMask |
-                                           PointerMotionMask |
-                                           ButtonPressMask |
-                                           ButtonReleaseMask |
-                                           ExposureMask);
-                XMapWindow(mDisplay, vo_window);
-                XGetGeometry(mDisplay, vo_window, &mRoot,
-                             &drwX, &drwY, &vo_dwidth, &vo_dheight,
-                             &drwBorderWidth, &drwDepth);
-                if (vo_dwidth <= 0) vo_dwidth = d_width;
-                if (vo_dheight <= 0) vo_dheight = d_height;
-                aspect_save_prescale(vo_dwidth, vo_dheight);
-            }
-        } else
-        {
-            vo_x11_create_vo_window(&vinfo, vo_dx, vo_dy, d_width, d_height,
+            vo_x11_create_vo_window(&vinfo, vo_dx, vo_dy, vo_dwidth, vo_dheight,
                    flags, CopyFromParent, "xv", title);
             XChangeWindowAttributes(mDisplay, vo_window, xswamask, &xswa);
-        }
 
-        if (vo_gc != None)
-            XFreeGC(mDisplay, vo_gc);
-        vo_gc = XCreateGC(mDisplay, vo_window, 0L, &xgcv);
-        XSync(mDisplay, False);
 #ifdef CONFIG_XF86VM
         if (vm)
         {
@@ -352,10 +291,6 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
     current_buf = 0;
     current_ip_buf = 0;
 
-#if 0
-    set_gamma_correction();
-#endif
-
     aspect(&vo_dwidth, &vo_dheight, A_NOZOOM);
     if ((flags & VOFLAG_FULLSCREEN) && WinID <= 0) vo_fs = 1;
     calc_drwXY(&drwX, &drwY);
@@ -367,36 +302,8 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
                         vo_dwidth + vo_panscan_x - 1,
                         vo_dheight + vo_panscan_y - 1);
 
-
-#if 0
-#ifdef HAVE_SHM
-    if (Shmem_Flag)
-    {
-        XvShmPutImage(mDisplay, xv_port, vo_window, vo_gc,
-                      xvimage[current_buf], 0, 0, image_width,
-                      image_height, drwX, drwY, 1, 1, False);
-        XvShmPutImage(mDisplay, xv_port, vo_window, vo_gc,
-                      xvimage[current_buf], 0, 0, image_width,
-                      image_height, drwX, drwY, vo_dwidth,
-                      (vo_fs ? vo_dheight - 1 : vo_dheight), False);
-    } else
-#endif
-    {
-        XvPutImage(mDisplay, xv_port, vo_window, vo_gc,
-                   xvimage[current_buf], 0, 0, image_width, image_height,
-                   drwX, drwY, 1, 1);
-        XvPutImage(mDisplay, xv_port, vo_window, vo_gc,
-                   xvimage[current_buf], 0, 0, image_width, image_height,
-                   drwX, drwY, vo_dwidth,
-                   (vo_fs ? vo_dheight - 1 : vo_dheight));
-    }
-#endif
-
     mp_msg(MSGT_VO, MSGL_V, "[xv] dx: %d dy: %d dw: %d dh: %d\n", drwX,
            drwY, vo_dwidth, vo_dheight);
-
-    if (vo_ontop)
-        vo_x11_setlayer(mDisplay, vo_window, vo_ontop);
 
     return 0;
 }
@@ -491,11 +398,6 @@ static void check_events(void)
 
     if (e & VO_EVENT_RESIZE)
     {
-        XGetGeometry(mDisplay, vo_window, &mRoot, &drwX, &drwY, &vo_dwidth,
-                     &vo_dheight, &drwBorderWidth, &drwDepth);
-        mp_msg(MSGT_VO, MSGL_V, "[xv] dx: %d dy: %d dw: %d dh: %d\n", drwX,
-               drwY, vo_dwidth, vo_dheight);
-
         calc_drwXY(&drwX, &drwY);
     }
 
@@ -580,8 +482,7 @@ static int draw_slice(uint8_t * image[], int stride[], int w, int h,
 
 static int draw_frame(uint8_t * src[])
 {
-    mp_msg(MSGT_VO,MSGL_INFO, MSGTR_LIBVO_XV_DrawFrameCalled);
-    return -1;
+    return VO_ERROR;
 }
 
 static uint32_t draw_image(mp_image_t * mpi)
@@ -711,7 +612,7 @@ static void uninit(void)
     for (i = 0; i < num_buffers; i++)
         deallocate_xvimage(i);
 #ifdef CONFIG_XF86VM
-    vo_vm_close(mDisplay);
+    vo_vm_close();
 #endif
     mp_input_rm_event_fd(ConnectionNumber(mDisplay));
     vo_x11_uninit();

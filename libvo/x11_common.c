@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <inttypes.h>
+#include <limits.h>
 
 #include "config.h"
 #include "mp_msg.h"
@@ -1040,25 +1041,7 @@ int vo_x11_check_events(Display * mydisplay)
 //         if (vo_fs && Event.xconfigure.width != vo_screenwidth && Event.xconfigure.height != vo_screenheight) break;
                 if (vo_window == None)
                     break;
-                vo_dwidth = Event.xconfigure.width;
-                vo_dheight = Event.xconfigure.height;
-#if 0
-                /* when resizing, x and y are zero :( */
-                vo_dx = Event.xconfigure.x;
-                vo_dy = Event.xconfigure.y;
-#else
-                {
-                    Window root;
-                    int foo;
-                    Window win;
-
-                    XGetGeometry(mydisplay, vo_window, &root, &foo, &foo,
-                                 &foo /*width */ , &foo /*height */ , &foo,
-                                 &foo);
-                    XTranslateCoordinates(mydisplay, vo_window, root, 0, 0,
-                                          &vo_dx, &vo_dy, &win);
-                }
-#endif
+                vo_x11_update_geometry();
                 ret |= VO_EVENT_RESIZE;
                 break;
             case KeyPress:
@@ -1286,6 +1269,23 @@ void vo_x11_create_vo_window(XVisualInfo *vis, int x, int y,
                              Colormap col_map,
                              const char *classname, const char *title)
 {
+  XGCValues xgcv;
+  if (WinID >= 0) {
+    vo_window = WinID ? (Window)WinID : mRootWin;
+    if (col_map != CopyFromParent) {
+      unsigned long xswamask = CWColormap;
+      XSetWindowAttributes xswa;
+      xswa.colormap = col_map;
+      XUnmapWindow(mDisplay, vo_window);
+      XChangeWindowAttributes(mDisplay, vo_window, xswamask, &xswa);
+      XMapWindow(mDisplay, vo_window);
+    }
+    if (WinID) vo_x11_update_geometry();
+    vo_x11_selectinput_witherr(mDisplay, vo_window,
+          StructureNotifyMask | KeyPressMask | PointerMotionMask |
+          ButtonPressMask | ButtonReleaseMask | ExposureMask);
+    goto final;
+  }
   if (vo_window == None) {
     XSizeHints hint;
     XEvent xev;
@@ -1321,6 +1321,12 @@ void vo_x11_create_vo_window(XVisualInfo *vis, int x, int y,
   vo_x11_nofs_sizepos(vo_dx, vo_dy, width, height);
   if (!!vo_fs != !!(flags & VOFLAG_FULLSCREEN))
     vo_x11_fullscreen();
+final:
+  if (vo_gc != None)
+    XFreeGC(mDisplay, vo_gc);
+  vo_gc = XCreateGC(mDisplay, vo_window, GCForeground, &xgcv);
+  XSync(mDisplay, False);
+  vo_mouse_autohide = 1;
 }
 
 void vo_x11_clearwindow_part(Display * mDisplay, Window vo_window,
@@ -1494,6 +1500,22 @@ static int vo_x11_get_fs_type(int supported)
     }
 
     return type;
+}
+
+/**
+ * \brief update vo_dx, vo_dy, vo_dwidth and vo_dheight with current values of vo_window
+ * \return returns current color depth of vo_window
+ */
+int vo_x11_update_geometry(void) {
+    unsigned depth, w, h;
+    int dummy_int;
+    Window dummy_win;
+    XGetGeometry(mDisplay, vo_window, &dummy_win, &dummy_int, &dummy_int,
+                 &w, &h, &dummy_int, &depth);
+    if (w <= INT_MAX && h <= INT_MAX) { vo_dwidth = w; vo_dheight = h; }
+    XTranslateCoordinates(mDisplay, vo_window, mRootWin, 0, 0, &vo_dx, &vo_dy,
+                          &dummy_win);
+    return depth <= INT_MAX ? depth : 0;
 }
 
 void vo_x11_fullscreen(void)
@@ -1745,12 +1767,13 @@ void vo_x11_selectinput_witherr(Display * display, Window w,
 }
 
 #ifdef CONFIG_XF86VM
-void vo_vm_switch(uint32_t X, uint32_t Y, int *modeline_width,
-                  int *modeline_height)
+void vo_vm_switch(void)
 {
     int vm_event, vm_error;
     int vm_ver, vm_rev;
     int i, j, have_vm = 0;
+    int X = vo_dwidth, Y = vo_dheight;
+    int modeline_width, modeline_height;
 
     int modecount;
 
@@ -1760,9 +1783,10 @@ void vo_vm_switch(uint32_t X, uint32_t Y, int *modeline_width,
         mp_msg(MSGT_VO, MSGL_V, "XF86VidMode extension v%i.%i\n", vm_ver,
                vm_rev);
         have_vm = 1;
-    } else
+    } else {
         mp_msg(MSGT_VO, MSGL_WARN,
                "XF86VidMode extension not available.\n");
+    }
 
     if (have_vm)
     {
@@ -1770,32 +1794,39 @@ void vo_vm_switch(uint32_t X, uint32_t Y, int *modeline_width,
             XF86VidModeGetAllModeLines(mDisplay, mScreen, &modecount,
                                        &vidmodes);
         j = 0;
-        *modeline_width = vidmodes[0]->hdisplay;
-        *modeline_height = vidmodes[0]->vdisplay;
+        modeline_width = vidmodes[0]->hdisplay;
+        modeline_height = vidmodes[0]->vdisplay;
 
         for (i = 1; i < modecount; i++)
             if ((vidmodes[i]->hdisplay >= X)
                 && (vidmodes[i]->vdisplay >= Y))
-                if ((vidmodes[i]->hdisplay <= *modeline_width)
-                    && (vidmodes[i]->vdisplay <= *modeline_height))
+                if ((vidmodes[i]->hdisplay <= modeline_width)
+                    && (vidmodes[i]->vdisplay <= modeline_height))
                 {
-                    *modeline_width = vidmodes[i]->hdisplay;
-                    *modeline_height = vidmodes[i]->vdisplay;
+                    modeline_width = vidmodes[i]->hdisplay;
+                    modeline_height = vidmodes[i]->vdisplay;
                     j = i;
                 }
 
         mp_msg(MSGT_VO, MSGL_INFO, MSGTR_SelectedVideoMode,
-               *modeline_width, *modeline_height, X, Y);
+               modeline_width, modeline_height, X, Y);
         XF86VidModeLockModeSwitch(mDisplay, mScreen, 0);
         XF86VidModeSwitchToMode(mDisplay, mScreen, vidmodes[j]);
         XF86VidModeSwitchToMode(mDisplay, mScreen, vidmodes[j]);
-        X = (vo_screenwidth - *modeline_width) / 2;
-        Y = (vo_screenheight - *modeline_height) / 2;
+
+        // FIXME: all this is more of a hack than proper solution
+        X = (vo_screenwidth - modeline_width) / 2;
+        Y = (vo_screenheight - modeline_height) / 2;
         XF86VidModeSetViewPort(mDisplay, mScreen, X, Y);
+        vo_dx = X;
+        vo_dy = Y;
+        vo_dwidth = modeline_width;
+        vo_dheight = modeline_height;
+        aspect_save_screenres(modeline_width, modeline_height);
     }
 }
 
-void vo_vm_close(Display * dpy)
+void vo_vm_close(void)
 {
 #ifdef CONFIG_GUI
     if (vidmodes != NULL && vo_window != None)
@@ -1804,9 +1835,6 @@ void vo_vm_close(Display * dpy)
 #endif
     {
         int i, modecount;
-        int screen;
-
-        screen = DefaultScreen(dpy);
 
         free(vidmodes);
         vidmodes = NULL;
@@ -1822,8 +1850,8 @@ void vo_vm_close(Display * dpy)
                 break;
             }
 
-        XF86VidModeSwitchToMode(dpy, screen, vidmodes[i]);
-        XF86VidModeSwitchToMode(dpy, screen, vidmodes[i]);
+        XF86VidModeSwitchToMode(mDisplay, mScreen, vidmodes[i]);
+        XF86VidModeSwitchToMode(mDisplay, mScreen, vidmodes[i]);
         free(vidmodes);
         vidmodes = NULL;
     }
