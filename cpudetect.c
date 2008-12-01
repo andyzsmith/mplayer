@@ -57,10 +57,17 @@ static int has_cpuid(void)
 	long a, c;
 
 // code from libavcodec:
+#ifdef ARCH_X86_64
+#define PUSHF "pushfq\n\t"
+#define POPF "popfq\n\t"
+#else
+#define PUSHF "pushfl\n\t"
+#define POPF "popfl\n\t"
+#endif
     __asm__ volatile (
                           /* See if CPUID instruction is supported ... */
                           /* ... Get copies of EFLAGS into eax and ecx */
-                          "pushf\n\t"
+                          PUSHF
                           "pop %0\n\t"
                           "mov %0, %1\n\t"
                           
@@ -68,15 +75,17 @@ static int has_cpuid(void)
                           /*     to the EFLAGS reg */
                           "xor $0x200000, %0\n\t"
                           "push %0\n\t"
-                          "popf\n\t"
+                          POPF
                           
                           /* ... Get the (hopefully modified) EFLAGS */
-                          "pushf\n\t"
+                          PUSHF
                           "pop %0\n\t"
                           : "=a" (a), "=c" (c)
                           :
                           : "cc" 
                           );
+#undef PUSHF
+#undef POPF
 
 	return a != c;
 }
@@ -144,8 +153,7 @@ void GetCpuCaps( CpuCaps *caps)
 		caps->hasMMX  = (regs2[3] & (1 << 23 )) >> 23; // 0x0800000
 		caps->hasSSE  = (regs2[3] & (1 << 25 )) >> 25; // 0x2000000
 		caps->hasSSE2 = (regs2[3] & (1 << 26 )) >> 26; // 0x4000000
-		caps->hasSSSE3 = (regs2[3] & (1 << 9 )) >>  9; // 0x0000200
-		caps->hasSSE4a = (regs2[3] & (1 << 6 )) >>  6; // 0x0000040
+		caps->hasSSSE3 = (regs2[2] & (1 << 9 )) >>  9; // 0x0000200
 		caps->hasMMX2 = caps->hasSSE; // SSE cpus supports mmxext too
 		cl_size = ((regs2[1] >> 8) & 0xFF)*8;
 		if(cl_size) caps->cl_size = cl_size;
@@ -167,6 +175,7 @@ void GetCpuCaps( CpuCaps *caps)
 		caps->hasMMX2 |= (regs2[3] & (1 << 22 )) >> 22; // 0x400000
 		caps->has3DNow    = (regs2[3] & (1 << 31 )) >> 31; //0x80000000
 		caps->has3DNowExt = (regs2[3] & (1 << 30 )) >> 30;
+		caps->hasSSE4a = (regs2[2] & (1 << 6 )) >>  6; // 0x0000040
 	}
 	if(regs[0]>=0x80000006)
 	{
