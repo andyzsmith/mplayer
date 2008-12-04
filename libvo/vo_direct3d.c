@@ -168,48 +168,84 @@ static void calc_fs_rect(void)
     priv->is_clear_needed = 1;
 }
 
-/** @brief Destroy D3D Context related to the current window.
+/** @brief Destroy D3D Offscreen and Backbuffer surfaces.
  */
-static void destroy_d3d_context(void)
+static void destroy_d3d_surfaces(void)
 {
-    mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d>destroy_d3d_context called\r\n");
-    /* Let's destroy the old (if any) D3D Content */
+    mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d>destroy_d3d_surfaces called\r\n");
+    /* Let's destroy the old (if any) D3D Surfaces */
 
     if (priv->locked_rect.pBits) {
         IDirect3DSurface9_UnlockRect(priv->d3d_surface);
         priv->locked_rect.pBits = NULL;
     }
 
-    if (priv->d3d_surface != NULL) {
+    if (priv->d3d_surface) {
         IDirect3DSurface9_Release(priv->d3d_surface);
         priv->d3d_surface = NULL;
     }
 
-    if (priv->d3d_device != NULL) {
-        IDirect3DDevice9_Release(priv->d3d_device);
-        priv->d3d_device = NULL;
+    if (priv->d3d_backbuf) {
+        IDirect3DSurface9_Release(priv->d3d_backbuf);
+        priv->d3d_backbuf = NULL;
     }
-
-    /* The following is not a memory leak. d3d_backbuf is not malloc'ed
-     * but just holds a pointer to the back buffer. Nobody gets hurt from
-     * setting it to NULL.
-     */
-    priv->d3d_backbuf = NULL;
 }
 
-
-/** @brief (Re)Initialize Direct3D. Kill and recreate context.
- *  The first function called to initialize D3D context.
+/** @brief Create D3D Offscreen and Backbuffer surfaces.
  *  @return 1 on success, 0 on failure
  */
-static int reconfigure_d3d(void)
+static int create_d3d_surfaces(void)
+{
+    mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d><INFO>create_d3d_surfaces called.\n");
+
+    if (FAILED(IDirect3DDevice9_CreateOffscreenPlainSurface(
+               priv->d3d_device, priv->src_width, priv->src_height,
+               priv->movie_src_fmt, D3DPOOL_DEFAULT, &priv->d3d_surface, NULL))) {
+        mp_msg(MSGT_VO, MSGL_ERR,
+               "<vo_direct3d><INFO>IDirect3D9_CreateOffscreenPlainSurface Failed.\n");
+        return 0;
+    }
+
+    if (FAILED(IDirect3DDevice9_GetBackBuffer(priv->d3d_device, 0, 0,
+                                              D3DBACKBUFFER_TYPE_MONO,
+                                              &priv->d3d_backbuf))) {
+        mp_msg(MSGT_VO, MSGL_ERR, "<vo_direct3d>Back Buffer address get failed\n");
+        return 0;
+    }
+
+    return 1;
+}
+
+/** @brief Fill D3D Presentation parameters
+ */
+static void fill_d3d_presentparams(D3DPRESENT_PARAMETERS *present_params)
+{
+    /* Prepare Direct3D initialization parameters. */
+    memset(present_params, 0, sizeof(D3DPRESENT_PARAMETERS));
+    present_params->Windowed               = TRUE;
+    present_params->SwapEffect             = D3DSWAPEFFECT_COPY;
+    present_params->Flags                  = D3DPRESENTFLAG_VIDEO;
+    present_params->hDeviceWindow          = vo_w32_window; /* w32_common var */
+    present_params->BackBufferWidth        = 0; /* Fill up window Width */
+    present_params->BackBufferHeight       = 0; /* Fill up window Height */
+    present_params->MultiSampleType        = D3DMULTISAMPLE_NONE;
+    /* D3DPRESENT_INTERVAL_ONE = vsync */
+    present_params->PresentationInterval   = D3DPRESENT_INTERVAL_ONE;
+    present_params->BackBufferFormat       = priv->desktop_fmt;
+    present_params->BackBufferCount        = 1;
+    present_params->EnableAutoDepthStencil = FALSE;
+}
+
+/** @brief Configure initial Direct3D context. The first
+ *  function called to initialize the D3D context.
+ *  @return 1 on success, 0 on failure
+ */
+static int configure_d3d(void)
 {
     D3DPRESENT_PARAMETERS present_params;
     D3DDISPLAYMODE disp_mode;
 
-    mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d><INFO>reconfigure_d3d called \n");
-
-    destroy_d3d_context();
+    mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d><INFO>configure_d3d called\n");
 
     /* Get the current desktop display mode, so we can set up a back buffer
      * of the same format. */
@@ -224,20 +260,7 @@ static int reconfigure_d3d(void)
     /* Write current Desktop's colorspace format in the global storage. */
     priv->desktop_fmt = disp_mode.Format;
 
-    /* Prepare Direct3D initialization parameters. */
-    memset(&present_params, 0, sizeof(D3DPRESENT_PARAMETERS));
-    present_params.Windowed               = TRUE;
-    present_params.SwapEffect             = D3DSWAPEFFECT_COPY;
-    present_params.Flags                  = D3DPRESENTFLAG_VIDEO;
-    present_params.hDeviceWindow          = vo_w32_window; /* w32_common var */
-    present_params.BackBufferWidth        = 0; /* Fill up window Width */
-    present_params.BackBufferHeight       = 0; /* Fill up window Height */
-    present_params.MultiSampleType        = D3DMULTISAMPLE_NONE;
-    /* D3DPRESENT_INTERVAL_ONE = vsync */
-    present_params.PresentationInterval   = D3DPRESENT_INTERVAL_ONE;
-    present_params.BackBufferFormat       = priv->desktop_fmt;
-    present_params.BackBufferCount        = 1;
-    present_params.EnableAutoDepthStencil = FALSE;
+    fill_d3d_presentparams(&present_params);
 
     /* vo_w32_window is w32_common variable. It's a handle to the window. */
     if (FAILED(IDirect3D9_CreateDevice(priv->d3d_handle,
@@ -250,29 +273,82 @@ static int reconfigure_d3d(void)
         return 0;
     }
 
+    if (!create_d3d_surfaces())
+        return 0;
+
     mp_msg(MSGT_VO, MSGL_V,
            "New BackBuffer: Width: %d, Height:%d. VO Dest Width:%d, Height: %d\n",
             present_params.BackBufferWidth, present_params.BackBufferHeight,
             vo_dwidth, vo_dheight);
 
-    if (FAILED(IDirect3DDevice9_CreateOffscreenPlainSurface(priv->d3d_device,
-                                                            priv->src_width,
-                                                            priv->src_height,
-                                                            priv->movie_src_fmt,
-                                                            D3DPOOL_DEFAULT,
-                                                            &priv->d3d_surface,
-                                                            NULL))) {
+    calc_fs_rect();
+
+    return 1;
+}
+
+/** @brief Reconfigure the whole Direct3D. Called only
+ *  when the video adapter becomes uncooperative.
+ *  @return 1 on success, 0 on failure
+ */
+static int reconfigure_d3d(void)
+{
+    mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d><INFO>reconfigure_d3d called.\n");
+
+    /* Destroy the Offscreen and Backbuffer surfaces */
+    destroy_d3d_surfaces();
+
+    /* Destroy the D3D Device */
+    if (priv->d3d_device) {
+        IDirect3DDevice9_Release(priv->d3d_device);
+        priv->d3d_device = NULL;
+    }
+
+    /* Stop the whole Direct3D */
+    IDirect3D9_Release(priv->d3d_handle);
+
+    /* Initialize Direct3D from the beginning */
+    priv->d3d_handle = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!priv->d3d_handle) {
+        mp_msg(MSGT_VO, MSGL_ERR, "<vo_direct3d>Unable to initialize Direct3D\n");
+        return -1;
+    }
+
+    /* Configure Direct3D */
+    if (!configure_d3d())
+        return 0;
+
+    return 1;
+}
+
+
+/** @brief Resize Direct3D context on window resize.
+ *  @return 1 on success, 0 on failure
+ */
+static int resize_d3d(void)
+{
+    D3DPRESENT_PARAMETERS present_params;
+
+    mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d><INFO>resize_d3d called.\n");
+
+    destroy_d3d_surfaces();
+
+    /* Reset the D3D Device with all parameters the same except the new
+     * width/height.
+     */
+    fill_d3d_presentparams(&present_params);
+    if (FAILED(IDirect3DDevice9_Reset(priv->d3d_device, &present_params))) {
         mp_msg(MSGT_VO, MSGL_ERR,
-               "<vo_direct3d><INFO>IDirect3D9_CreateOffscreenPlainSurface Failed.\n");
+               "<vo_direct3d><INFO>Could not reset the D3D device\n");
         return 0;
     }
 
-    if (FAILED(IDirect3DDevice9_GetBackBuffer(priv->d3d_device, 0, 0,
-                                              D3DBACKBUFFER_TYPE_MONO,
-                                              &(priv->d3d_backbuf)))) {
-        mp_msg(MSGT_VO, MSGL_ERR, "<vo_direct3d>Back Buffer address get failed\n");
+    if (!create_d3d_surfaces())
         return 0;
-    }
+
+    mp_msg(MSGT_VO, MSGL_V,
+           "New BackBuffer: Width: %d, Height:%d. VO Dest Width:%d, Height: %d\n",
+           present_params.BackBufferWidth, present_params.BackBufferHeight,
+           vo_dwidth, vo_dheight);
 
     calc_fs_rect();
 
@@ -285,11 +361,16 @@ static void uninit_d3d(void)
 {
     mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d>uninit_d3d called\r\n");
 
-    /* Destroy D3D Context inside the window. */
-    destroy_d3d_context();
+    destroy_d3d_surfaces();
+
+    /* Destroy the D3D Device */
+    if (priv->d3d_device) {
+        IDirect3DDevice9_Release(priv->d3d_device);
+        priv->d3d_device = NULL;
+    }
 
     /* Stop the whole D3D. */
-    if (NULL != priv->d3d_handle) {
+    if (priv->d3d_handle) {
         mp_msg(MSGT_VO, MSGL_V, "<vo_direct3d>Calling IDirect3D9_Release\r\n");
         IDirect3D9_Release(priv->d3d_handle);
     }
@@ -422,7 +503,7 @@ static int preinit(const char *arg)
     D3DDISPLAYMODE disp_mode;
 
     /* Set to zero all global variables. */
-    priv = calloc(1, sizeof (struct global_priv));
+    priv = calloc(1, sizeof(struct global_priv));
     if (!priv) {
         mp_msg(MSGT_VO, MSGL_ERR, "<vo_direct3d>Not enough memory\r\n");
         return -1;
@@ -481,7 +562,7 @@ static int control(uint32_t request, void *data, ...)
         return render_d3d_frame(data);
     case VOCTRL_FULLSCREEN:
         vo_w32_fullscreen();
-        reconfigure_d3d();
+        resize_d3d();
         return VO_TRUE;
     case VOCTRL_RESET:
         return VO_NOTIMPL;
@@ -502,13 +583,13 @@ static int control(uint32_t request, void *data, ...)
         return VO_TRUE;
     case VOCTRL_BORDER:
         vo_w32_border();
-        reconfigure_d3d();
+        resize_d3d();
         return VO_TRUE;
     case VOCTRL_UPDATE_SCREENINFO:
         w32_update_xinerama_info();
         return VO_TRUE;
     case VOCTRL_SET_PANSCAN:
-        calc_fs_rect ();
+        calc_fs_rect();
         return VO_TRUE;
     case VOCTRL_GET_PANSCAN:
         return VO_TRUE;
@@ -543,7 +624,20 @@ static int config(uint32_t width, uint32_t height, uint32_t d_width,
         return VO_ERROR;
     }
 
-    if (!reconfigure_d3d())
+    /* "config" may be called several times, so if this is not the first
+     * call, we should destroy Direct3D adapter and surfaces before
+     * calling configure_d3d, which will create them again.
+     */
+
+    destroy_d3d_surfaces();
+
+    /* Destroy the D3D Device */
+    if (priv->d3d_device) {
+        IDirect3DDevice9_Release(priv->d3d_device);
+        priv->d3d_device = NULL;
+    }
+
+    if (!configure_d3d())
         return VO_ERROR;
 
     return 0; /* Success */
@@ -590,7 +684,7 @@ static void uninit(void)
 
     uninit_d3d();
     vo_w32_uninit(); /* w32_common framework call */
-    free (priv);
+    free(priv);
     priv = NULL;
 }
 
@@ -606,7 +700,7 @@ static void check_events(void)
      */
     flags = vo_w32_check_events();
     if (flags & VO_EVENT_RESIZE)
-        reconfigure_d3d();
+        resize_d3d();
 
     if ((flags & VO_EVENT_EXPOSE) && priv->is_paused)
         flip_page();

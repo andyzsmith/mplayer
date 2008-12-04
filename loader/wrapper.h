@@ -13,8 +13,8 @@ extern wrapper_func_t report_entry, report_ret;
 
 extern void (*wrapper_target)(void);
 
-extern int wrapper(void);
-extern int null_call(void);
+int wrapper(void);
+int null_call(void);
 
 #endif /* MPLAYER_WRAPPER_H */
 
