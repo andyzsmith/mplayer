@@ -12,6 +12,7 @@
 	{"msgcolor", &mp_msg_color, CONF_TYPE_FLAG, CONF_GLOBAL, 0, 1, NULL},
 	{"nomsgcolor", &mp_msg_color, CONF_TYPE_FLAG, CONF_GLOBAL, 1, 0, NULL},
 	{"msgmodule", &mp_msg_module, CONF_TYPE_FLAG, CONF_GLOBAL, 0, 1, NULL},
+	{"nomsgmodule", &mp_msg_module, CONF_TYPE_FLAG, CONF_GLOBAL, 1, 0, NULL},
 #ifdef CONFIG_ICONV
 	{"msgcharset", &mp_msg_charset, CONF_TYPE_STRING, CONF_GLOBAL, 0, 0, NULL},
 #endif
@@ -122,6 +123,7 @@
 
 	// select audio/video/subtitle stream
 	{"aid", &audio_id, CONF_TYPE_INT, CONF_RANGE, 0, 8190, NULL},
+	{"ausid", &audio_substream_id, CONF_TYPE_INT, 0, 0, 0, NULL},
 	{"vid", &video_id, CONF_TYPE_INT, CONF_RANGE, 0, 8190, NULL},
 	{"sid", &dvdsub_id, CONF_TYPE_INT, CONF_RANGE, 0, 8190, NULL},
 	{"novideo", &video_id, CONF_TYPE_FLAG, 0, -1, -2, NULL},

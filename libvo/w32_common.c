@@ -40,9 +40,34 @@ static HMONITOR (WINAPI* myMonitorFromWindow)(HWND, DWORD);
 static BOOL (WINAPI* myGetMonitorInfo)(HMONITOR, LPMONITORINFO);
 static BOOL (WINAPI* myEnumDisplayMonitors)(HDC, LPCRECT, MONITORENUMPROC, LPARAM);
 
+static const struct keymap vk_map[] = {
+    // special keys
+    {VK_ESCAPE, KEY_ESC}, {VK_BACK, KEY_BS}, {VK_TAB, KEY_TAB}, {VK_CONTROL, KEY_CTRL},
+
+    // cursor keys
+    {VK_LEFT, KEY_LEFT}, {VK_UP, KEY_UP}, {VK_RIGHT, KEY_RIGHT}, {VK_DOWN, KEY_DOWN},
+
+    // navigation block
+    {VK_INSERT, KEY_INSERT}, {VK_DELETE, KEY_DELETE}, {VK_HOME, KEY_HOME}, {VK_END, KEY_END},
+    {VK_PRIOR, KEY_PAGE_UP}, {VK_NEXT, KEY_PAGE_DOWN},
+
+    // F-keys
+    {VK_F1, KEY_F+1}, {VK_F2, KEY_F+2}, {VK_F3, KEY_F+3}, {VK_F4, KEY_F+4},
+    {VK_F5, KEY_F+5}, {VK_F6, KEY_F+6}, {VK_F7, KEY_F+7}, {VK_F8, KEY_F+8},
+    {VK_F9, KEY_F+9}, {VK_F10, KEY_F+10}, {VK_F11, KEY_F+11}, {VK_F1, KEY_F+12},
+    // numpad
+    {VK_NUMPAD0, KEY_KP0}, {VK_NUMPAD1, KEY_KP1}, {VK_NUMPAD2, KEY_KP2},
+    {VK_NUMPAD3, KEY_KP3}, {VK_NUMPAD4, KEY_KP4}, {VK_NUMPAD5, KEY_KP5},
+    {VK_NUMPAD6, KEY_KP6}, {VK_NUMPAD7, KEY_KP7}, {VK_NUMPAD8, KEY_KP8},
+    {VK_NUMPAD9, KEY_KP9}, {VK_DECIMAL, KEY_KPDEC},
+
+    {0, 0}
+};
+
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     RECT r;
     POINT p;
+    int mpkey;
     switch (message) {
         case WM_ERASEBKGND: // no need to erase background seperately
             return 1;
@@ -88,22 +113,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
             }
             break;
         case WM_KEYDOWN:
-            switch (wParam) {
-                case VK_LEFT:    mplayer_put_key(KEY_LEFT);      break;
-                case VK_UP:      mplayer_put_key(KEY_UP);        break;
-                case VK_RIGHT:   mplayer_put_key(KEY_RIGHT);     break;
-                case VK_DOWN:    mplayer_put_key(KEY_DOWN);      break;
-                case VK_TAB:     mplayer_put_key(KEY_TAB);       break;
-                case VK_CONTROL: mplayer_put_key(KEY_CTRL);      break;
-                case VK_BACK:    mplayer_put_key(KEY_BS);        break;
-                case VK_DELETE:  mplayer_put_key(KEY_DELETE);    break;
-                case VK_INSERT:  mplayer_put_key(KEY_INSERT);    break;
-                case VK_HOME:    mplayer_put_key(KEY_HOME);      break;
-                case VK_END:     mplayer_put_key(KEY_END);       break;
-                case VK_PRIOR:   mplayer_put_key(KEY_PAGE_UP);   break;
-                case VK_NEXT:    mplayer_put_key(KEY_PAGE_DOWN); break;
-                case VK_ESCAPE:  mplayer_put_key(KEY_ESC);       break;
-            }
+            mpkey = lookup_keymap_table(vk_map, wParam);
+            if (mpkey)
+                mplayer_put_key(mpkey);
             break;
         case WM_CHAR:
             mplayer_put_key(wParam);

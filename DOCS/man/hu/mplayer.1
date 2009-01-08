@@ -1,5 +1,5 @@
-.\" Synced with r28056
-.\" MPlayer (C) 2000-2008 MPlayer Team
+.\" Synced with r28245
+.\" MPlayer (C) 2000-2009 MPlayer Team
 .\" Ezt a man oldalt Gabucino, Diego Biurrun és Jonas Jermann készíti/készítette
 .\" Karbantartó: Gabrov
 .\" Encoding/kódolás: iso-8859-2
@@ -33,7 +33,7 @@
 .\" Név
 .\" --------------------------------------------------------------------------
 .
-.TH MPlayer 1 "2008. 12. 05." "MPlayer Project" "A film lejátszó"
+.TH MPlayer 1 "2009. 01. 05." "MPlayer Project" "A film lejátszó"
 .
 .SH NÉV
 mplayer  \- film lejátszó
@@ -592,6 +592,7 @@ alang=en
 profile-desc="profil dvdnav:// folyamokhoz"
 profile=protocol.dvd
 mouse-movements=yes
+nocache=yes
 
 [extension.flv]
 profile-desc="profil .flv fájlokhoz"
@@ -1034,9 +1035,10 @@ A fõmenü megjelenítése az MPlayer indításakor.
 .TP
 .B \-mouse\-movements
 Engedélyezi az MPlayernek a pozícionáló eszköz eseményeinek fogadását,
-melyeket a videó kimeneti eszköz küld (jelenleg csak az X11 leszármazottak
-támogatottak).
+melyeket a videó kimeneti eszköz küld.
 Szükséges a dvd menükben a gombok kiválasztásához.
+Az X11 alapú VO-kban (x11, xv, xvmc, stb.), a gl, a gl2, a direct3d és a
+macosx VO-kban támogatott.
 .
 .TP
 .B \-noar
@@ -1165,6 +1167,16 @@ VOB(AC-3): 128\-159, VOB(LPCM): 160\-191, MPEG-TS 17\-8190).
 Az MPlayer kiírja a használható audió ID-ket, ha bõbeszédû (\-v) módban
 fut. Ha egy MPEG-TS folyamot játszol le, az MPlayer/\:MEncoder az elsõ
 programot (ha van) fogja használni a kiválaszott audió folyammal.
+.
+.TP
+.B \-ausid <ID> (lásd még \-alang)
+Kiválasztja az audió alfolyam csatornáját.
+Jelenleg az érvényes tartomány 0x55..0x75 és csak az MPEG-TS-re vonatkozik,
+amennyiben azt a natív demuxer kezeli (nem a libavformat).
+A formátum típus lehet, hogy rosszul lesz megállapítva, attól függõen, hogy
+ez az információ (vagy annak hiánya) hogyan van az adatfolyamban, de jól
+demux-álja az audió folyamokat, ha több alfolyam található.
+Az MPlayer kiírja az elérhetõ alfolyam ID-ket a \-identify kapcsolóval.
 .
 .TP
 .B \-alang <nyelv kód[,nyelv kód,...]> (lásd még \-aid)
@@ -2768,6 +2780,9 @@ Hasznos, ha bizonyos kapcsolatokat automatikusan akarsz felépíteni.
 .IPs (no)estimate
 Megbecsüli az audió késleltetést, a szándékok szerint folyamatosabbá
 teszi a videó lejátszást (alapértelmezett: engedélyezve).
+.IPs (no)autostart (alapértelmezett: letiltva)
+Automatikusan elindítja a jackd-t, ha szükséges.
+Emlékezz rá, hogy ez nem megbízható és a szerver üzenetek bepiszkítják az stdout-ot.
 .RE
 .PD 1
 .
@@ -3560,6 +3575,13 @@ Mac OS X CoreVideo kimeneti videó vezérlõ
 .RSs
 .IPs device_id=<szám>
 Teljes képernyõs lejátszásnál a használni kívánt képernyõ eszköz.
+.IPs shared_buffer
+A kimenetet egy osztott memória bufferbe írja a megjelenítése helyett és
+megpróbál megnyitni egy létezõ NSConnection-t a GUI-val történõ kommunikációhoz.
+.IPs buffer_name=<név>
+Az osztott buffer neve, mely az shm_open-nel jön létre, valamint az
+NSConnection neve, amit az MPlayer megpróbál megnyitni (alapértelmezett: "mplayerosx").
+A buffer_name megadása implicit engedélyezi a shared_buffer-t.
 .RE
 .PD 1
 .
@@ -3640,7 +3662,7 @@ használhat újabb kiterjesztéseket is, melyek engedélyezik több színtér és a
 direct rendering támogatását.
 Az optimális sebességhez próbálj ki valami ehhez hasonlót
 .br
-\-vo gl:yuv=2:force\-pbo:ati\-hack \-dr \-noslices
+\-vo gl:yuv=2:rectangle=2:force\-pbo:ati\-hack \-dr \-noslices
 .br
 A kód nagyon kevés ellenõrzést végez, így ha egy tulajdonság nem elérhetõ, az
 azért lehet, mert a kártyád/OpenGL implementációd nem támogatja, akkor sem, ha
@@ -3738,6 +3760,9 @@ beállítását teszi lehetõvé.
 A gamma külön állítható a vörös, zöld és kék színre.
 A sebessége jobban függ a GPU memória sávszélességétõl, mint a többi módszernél.
 .RE
+.IPs ycbcr
+Használja a GL_MESA_ycbcr_texture bõvítményt a YUV-RGB konverzióknál.
+A legtöbb esetben ez valószínûleg lassabb, mint az RGB-be történõ szoftveres konverzió.
 .IPs lscale=<n>
 Kiválasztja a használandó méretezõ függvényt a fényerõsséghez.
 Csak a 2-es, 3-as, 4-es és 6-os yuv módoknál helyes.
@@ -3754,13 +3779,17 @@ Egy kicsit több kártyán mûködik, mint az 1.
 3: Ugyan az, mint az 1, de nem használ texturát.
 Néhány kártyán gyorsabb lehet.
 .br
-4: Kísérleti életlenítõ maszkot használ 3x3 támogatással és 0.5-ös erõsséggel.
+4: Kísérleti életlenítõ maszkot használ 3x3 támogatással és az alapértelmezett 0.5-ös erõsséggel
+(lásd filter-strength).
 .br
-5: Kísérleti életlenítõ maszkot használ 5x5 támogatással és 0.5-ös erõsséggel.
+5: Kísérleti életlenítõ maszkot használ 5x5 támogatással és az alapértelmezett 0.5-ös erõsséggel
+(lásd filter-strength).
 .RE
 .IPs cscale=<n>
 Kiválasztja a használandó méretezõ függvényt a színességhez.
 A részletekért lásd a lscale-t.
+.IPs filter-strength=<érték>
+Beállítja a lscale/cscale szûrõk erõsségét, ahol ez támogatott.
 .IPs customprog=<fájlnév>
 Saját fragmentum programot tölt be a <fájlnév>-bõl.
 Lásd a TOOLS/edgedect.fp fájl példáért.
@@ -4243,6 +4272,10 @@ Megadja a tömörítési szintet.
 0-val nincs tömörítés, 9 a maximális tömörítés.
 .IPs outdir=<könyvtárnév>
 Megadja a könyvtárat, ahova a PNG fájlokat menteni kell (alapértelmezett: ./).
+.IPs alpha (alapértelmezett: noalpha)
+Alfa csatornás PNG fájlok létrehozása.
+Ne feledd, hogy az MPlayer általában nem támogatja az alfát, ezért ez csak
+néhány ritka esetben hasznos.
 .RE
 .PD 1
 .

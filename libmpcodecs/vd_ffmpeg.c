@@ -26,7 +26,7 @@ LIBVD_EXTERN(ffmpeg)
 
 #include "libavcodec/avcodec.h"
 
-#ifdef HAVE_XVMC
+#ifdef CONFIG_XVMC
 #include "xvmc_render.h"
 #endif
 
@@ -59,7 +59,7 @@ typedef struct {
 static int get_buffer(AVCodecContext *avctx, AVFrame *pic);
 static void release_buffer(AVCodecContext *avctx, AVFrame *pic);
 
-#ifdef HAVE_XVMC
+#ifdef CONFIG_XVMC
 static enum PixelFormat get_format(struct AVCodecContext * avctx,
                                    const enum PixelFormat * pix_fmt);
 static int mc_get_buffer(AVCodecContext *avctx, AVFrame *pic);
@@ -143,7 +143,7 @@ static int control(sh_video_t *sh,int cmd,void* arg,...){
 	    if(avctx->pix_fmt==PIX_FMT_YUV420P) return CONTROL_TRUE;// u/v swap
 	    if(avctx->pix_fmt==PIX_FMT_YUV422P && !ctx->do_dr1) return CONTROL_TRUE;// half stride
 	    break;
-#ifdef HAVE_XVMC
+#ifdef CONFIG_XVMC
         case IMGFMT_XVMC_IDCT_MPEG2:
         case IMGFMT_XVMC_MOCO_MPEG2:
             if(avctx->pix_fmt==PIX_FMT_XVMC_MPEG2_IDCT) return CONTROL_TRUE;
@@ -250,7 +250,7 @@ static int init(sh_video_t *sh){
     ctx->avctx = avcodec_alloc_context();
     avctx = ctx->avctx;
 
-#ifdef HAVE_XVMC
+#ifdef CONFIG_XVMC
 
 #ifdef CODEC_CAP_HWACCEL
     if(lavc_codec->capabilities & CODEC_CAP_HWACCEL){
@@ -267,7 +267,7 @@ static int init(sh_video_t *sh){
         avctx->draw_horiz_band = mc_render_slice;
         avctx->slice_flags=SLICE_FLAG_CODED_ORDER|SLICE_FLAG_ALLOW_FIELD;
     }else
-#endif /* HAVE_XVMC */
+#endif /* CONFIG_XVMC */
     if(ctx->do_dr1){
         avctx->flags|= CODEC_FLAG_EMU_EDGE; 
         avctx->get_buffer= get_buffer;
@@ -533,7 +533,7 @@ static int init_vo(sh_video_t *sh, enum PixelFormat pix_fmt){
 	case PIX_FMT_RGB565:  ctx->best_csp=IMGFMT_BGR16;break; //4xm
 	case PIX_FMT_GRAY8:   ctx->best_csp=IMGFMT_Y800;break; // gray jpeg
 	case PIX_FMT_PAL8:    ctx->best_csp=IMGFMT_BGR8;break; //8bps,mrle,cram
-#ifdef HAVE_XVMC
+#ifdef CONFIG_XVMC
         case PIX_FMT_XVMC_MPEG2_MC:ctx->best_csp=IMGFMT_XVMC_MOCO_MPEG2;break;
         case PIX_FMT_XVMC_MPEG2_IDCT:ctx->best_csp=IMGFMT_XVMC_IDCT_MPEG2;break;
 #endif
@@ -910,7 +910,7 @@ static mp_image_t* decode(sh_video_t *sh,void* data,int len,int flags){
     return mpi;
 }
 
-#ifdef HAVE_XVMC
+#ifdef CONFIG_XVMC
 static enum PixelFormat get_format(struct AVCodecContext * avctx, 
                                     const enum PixelFormat * fmt){
 sh_video_t * sh = avctx->opaque;
@@ -939,7 +939,7 @@ static int mc_get_buffer(AVCodecContext *avctx, AVFrame *pic){
     sh_video_t * sh = avctx->opaque;
     vd_ffmpeg_ctx *ctx = sh->context;
     mp_image_t* mpi=NULL;
-    xvmc_render_state_t * render;
+    struct xvmc_render_state * render;
     int flags= MP_IMGFLAG_ACCEPT_STRIDE | MP_IMGFLAG_PREFER_ALIGNED_STRIDE| 
                MP_IMGFLAG_DRAW_CALLBACK;
     
@@ -1018,7 +1018,7 @@ static int mc_get_buffer(AVCodecContext *avctx, AVFrame *pic){
 
     pic->type= FF_BUFFER_TYPE_USER;
 
-    render=(xvmc_render_state_t*)mpi->priv;//same as data[2]
+    render=(struct xvmc_render_state*)mpi->priv;//same as data[2]
     if( mp_msg_test(MSGT_DECVIDEO,MSGL_DBG5) )
         mp_msg(MSGT_DECVIDEO, MSGL_DBG5, "vd_ffmpeg::mc_get_buffer (render=%p)\n",render);
     assert(render != 0);
@@ -1032,7 +1032,7 @@ static void mc_release_buffer(AVCodecContext *avctx, AVFrame *pic){
     mp_image_t* mpi= pic->opaque;
     sh_video_t * sh = avctx->opaque;
     vd_ffmpeg_ctx *ctx = sh->context;
-    xvmc_render_state_t * render;
+    struct xvmc_render_state * render;
     int i;
 
 
@@ -1045,7 +1045,7 @@ static void mc_release_buffer(AVCodecContext *avctx, AVFrame *pic){
 
 //printf("R%X %X\n", pic->linesize[0], pic->data[0]);
 //mark the surface as not requared for prediction
-    render=(xvmc_render_state_t*)pic->data[2];//same as mpi->priv
+    render=(struct xvmc_render_state*)pic->data[2];//same as mpi->priv
     if( mp_msg_test(MSGT_DECVIDEO,MSGL_DBG5) )
         mp_msg(MSGT_DECVIDEO, MSGL_DBG5, "vd_ffmpeg::mc_release_buffer (render=%p)\n",render);
     assert(render!=NULL);
@@ -1070,4 +1070,4 @@ uint8_t *source[3]= {src->data[0], src->data[1], src->data[2]};
 
 }
 
-#endif // HAVE_XVMC
+#endif /* CONFIG_XVMC */

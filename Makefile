@@ -236,15 +236,15 @@ SRCS_COMMON-$(DVBIN)                 += stream/dvb_tune.c \
 SRCS_COMMON-$(DVDNAV)                += stream/stream_dvdnav.c
 SRCS_COMMON-$(DVDREAD)               += stream/stream_dvd.c \
                                         stream/stream_dvd_common.c
-SRCS_COMMON-$(DVDREAD_INTERNAL)      += libdvdread/cmd_print.c \
-                                        libdvdread/dvd_input.c \
-                                        libdvdread/dvd_reader.c \
-                                        libdvdread/dvd_udf.c \
-                                        libdvdread/ifo_print.c \
-                                        libdvdread/ifo_read.c \
-                                        libdvdread/md5.c \
-                                        libdvdread/nav_print.c \
-                                        libdvdread/nav_read.c \
+SRCS_COMMON-$(DVDREAD_INTERNAL)      += libdvdread4/bitreader.c \
+                                        libdvdread4/dvd_input.c \
+                                        libdvdread4/dvd_reader.c \
+                                        libdvdread4/dvd_udf.c \
+                                        libdvdread4/ifo_print.c \
+                                        libdvdread4/ifo_read.c \
+                                        libdvdread4/md5.c \
+                                        libdvdread4/nav_print.c \
+                                        libdvdread4/nav_read.c \
 
 SRCS_COMMON-$(FAAD)                  += libmpcodecs/ad_faad.c
 SRCS_COMMON-$(FAAD_INTERNAL)         += libfaad2/bits.c \
@@ -354,7 +354,7 @@ SRCS_COMMON-$(LIBMPEG2)              += libmpcodecs/vd_libmpeg2.c \
                                         libmpeg2/slice.c
 SRCS_COMMON-$(LIBMPEG2)-$(ARCH_ALPHA)   += libmpeg2/idct_alpha.c \
                                            libmpeg2/motion_comp_alpha.c
-SRCS_COMMON-$(LIBMPEG2)-$(ARCH_ARMV4L)  += libmpeg2/motion_comp_arm.c \
+SRCS_COMMON-$(LIBMPEG2)-$(ARCH_ARM)     += libmpeg2/motion_comp_arm.c \
                                            libmpeg2/motion_comp_arm_s.S
 SRCS_COMMON-$(LIBMPEG2)-$(HAVE_ALTIVEC) += libmpeg2/idct_altivec.c \
                                            libmpeg2/motion_comp_altivec.c
@@ -723,17 +723,17 @@ DIRS =  . \
         libass \
         libavcodec \
         libavcodec/alpha \
-        libavcodec/armv4l \
+        libavcodec/arm \
         libavcodec/bfin \
-        libavcodec/i386 \
         libavcodec/mlib \
         libavcodec/ppc \
         libavcodec/sh4 \
         libavcodec/sparc \
+        libavcodec/x86 \
         libavformat \
         libavutil \
         libdvdcss \
-        libdvdread \
+        libdvdread4 \
         libfaad2 \
         libmenu \
         libmpcodecs \
@@ -839,7 +839,7 @@ mencoder.d mplayer.d vobsub.d gui/win32/gui.d libmpdemux/muxer_avi.d osdep/mplay
 $(DEPS): help_mp.h
 
 libdvdcss/%.o libdvdcss/%.d: CFLAGS += -D__USE_UNIX98 -D_GNU_SOURCE -DVERSION=\"1.2.9\" $(CFLAGS_LIBDVDCSS)
-libdvdread/%.o libdvdread/%.d: CFLAGS += -D__USE_UNIX98 -D_GNU_SOURCE -DHAVE_CONFIG_H $(CFLAGS_LIBDVDCSS_DVDREAD)
+libdvdread4/%.o libdvdread4/%.d: CFLAGS += -D__USE_UNIX98 -D_GNU_SOURCE -DHAVE_CONFIG_H $(CFLAGS_LIBDVDCSS_DVDREAD)
 libfaad2/%.o libfaad2/%.d: CFLAGS += -Ilibfaad2 -D_GNU_SOURCE -DHAVE_CONFIG_H $(CFLAGS_FAAD_FIXED)
 
 loader/% loader/%: CFLAGS += -Iloader -fno-omit-frame-pointer $(CFLAGS_NO_OMIT_LEAF_FRAME_POINTER)
