@@ -22,8 +22,8 @@ mp3lib/dct64_sse.o: CFLAGS += -O
 h264.o: CFLAGS += -O -fomit-frame-pointer
 h264_parser.o: CFLAGS += -O
 cabac.o: CFLAGS += -O
-i386/cavsdsp_mmx.o: CFLAGS += -O -fomit-frame-pointer
-i386/dsputil_mmx.o: CFLAGS += -O
-i386/snowdsp_mmx.o: CFLAGS += -O -fomit-frame-pointer
+x86/cavsdsp_mmx.o: CFLAGS += -O -fomit-frame-pointer
+x86/dsputil_mmx.o: CFLAGS += -O
+x86/snowdsp_mmx.o: CFLAGS += -O -fomit-frame-pointer
 # libpostproc
 postprocess.o: CFLAGS += -O
