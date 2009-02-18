@@ -56,11 +56,16 @@ Known Issues:
 #include "mp_msg.h"
 #include "cpudetect.h"
 
+#include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/dsputil.h"
 
-#ifdef HAVE_MALLOC_H
+#undef fprintf
+#undef free
+#undef malloc
+
+#if HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 

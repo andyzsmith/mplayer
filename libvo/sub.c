@@ -1,23 +1,36 @@
+/*
+ * This file is part of MPlayer.
+ *
+ * MPlayer is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MPlayer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with MPlayer; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "config.h"
-#ifdef HAVE_MALLOC_H
+#if HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 
-#ifdef CONFIG_DVDNAV
 #include "stream/stream.h"
 #include "stream/stream_dvdnav.h"
 #define OSD_NAV_BOX_ALPHA 0x7f
-#endif
 
-#ifdef CONFIG_TV_TELETEXT
 #include "stream/tv.h"
 #include "osdep/timer.h"
-#endif
 
 #include "mplayer.h"
 #include "mp_msg.h"
@@ -1217,7 +1230,7 @@ void vo_init_osd(void){
 #ifdef CONFIG_DVDNAV
     new_osd_obj(OSDTYPE_DVDNAV);
 #endif
-#if CONFIG_TV_TELETEXT
+#ifdef CONFIG_TV_TELETEXT
     new_osd_obj(OSDTYPE_TELETEXT);
 #endif
 #ifdef CONFIG_FREETYPE

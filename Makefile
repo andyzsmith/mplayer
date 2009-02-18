@@ -38,6 +38,7 @@ SRCS_COMMON = asxparser.c \
               cpudetect.c \
               edl.c \
               find_sub.c \
+              fmt-conversion.c \
               get_path.c \
               m_config.c \
               m_option.c \
@@ -211,7 +212,6 @@ SRCS_COMMON = asxparser.c \
               libmpdemux/video.c \
               libmpdemux/yuv4mpeg.c \
               libmpdemux/yuv4mpeg_ratio.c \
-              libvo/aclib.c \
               libvo/osd.c \
               libvo/sub.c \
               osdep/$(GETCH) \
@@ -297,6 +297,7 @@ SRCS_COMMON-$(FAAD_INTERNAL)         += libfaad2/bits.c \
                                         libfaad2/syntax.c \
                                         libfaad2/tns.c \
 
+SRCS_COMMON-$(FASTMEMCPY)            += libvo/aclib.c
 SRCS_COMMON-$(FREETYPE)              += libvo/font_load_ft.c
 SRCS_COMMON-$(FTP)                   += stream/stream_ftp.c
 SRCS_COMMON-$(GIF)                   += libmpdemux/demux_gif.c
@@ -387,10 +388,10 @@ SRCS_COMMON-$(MACOSX_FINDER)         += osdep/macosx_finder_args.c
 SRCS_COMMON-$(MNG)                   += libmpdemux/demux_mng.c
 SRCS_COMMON-$(MP3LIB)                += libmpcodecs/ad_mp3lib.c mp3lib/sr1.c
 SRCS_COMMON-$(MP3LIB)-$(ARCH_X86_32) += mp3lib/decode_i586.c
-SRCS_COMMON-$(MP3LIB)-$(ARCH_X86_32)-$(HAVE_3DNOW)    += mp3lib/dct36_3dnow.c \
-                                                         mp3lib/dct64_3dnow.c
-SRCS_COMMON-$(MP3LIB)-$(ARCH_X86_32)-$(HAVE_3DNOWEX)  += mp3lib/dct36_k7.c \
-                                                         mp3lib/dct64_k7.c
+SRCS_COMMON-$(MP3LIB)-$(ARCH_X86_32)-$(HAVE_AMD3DNOW)    += mp3lib/dct36_3dnow.c \
+                                                            mp3lib/dct64_3dnow.c
+SRCS_COMMON-$(MP3LIB)-$(ARCH_X86_32)-$(HAVE_AMD3DNOWEXT) += mp3lib/dct36_k7.c \
+                                                            mp3lib/dct64_k7.c
 SRCS_COMMON-$(MP3LIB)-$(ARCH_X86_32)-$(HAVE_MMX)      += mp3lib/dct64_mmx.c
 SRCS_COMMON-$(MP3LIB)-$(HAVE_ALTIVEC) += mp3lib/dct64_altivec.c
 SRCS_COMMON-$(MP3LIB)-$(HAVE_MMX)    += mp3lib/decode_mmx.c
@@ -433,6 +434,7 @@ SRCS_COMMON-$(NETWORK)               += stream/stream_netstream.c \
                                         stream/realrtsp/xbuffer.c \
 
 SRCS_COMMON-$(PNG)                   += libmpcodecs/vd_mpng.c
+SRCS_COMMON-$(PRIORITY)              += osdep/priority.c
 SRCS_COMMON-$(PVR)                   += stream/stream_pvr.c
 SRCS_COMMON-$(QTX_CODECS)            += libmpcodecs/ad_qtaudio.c \
                                         libmpcodecs/vd_qtvideo.c
@@ -628,6 +630,7 @@ SRCS_MPLAYER-$(TDFXVID)       += libvo/vo_tdfx_vid.c
 SRCS_MPLAYER-$(TGA)           += libvo/vo_tga.c
 SRCS_MPLAYER-$(V4L2)          += libvo/vo_v4l2.c
 SRCS_MPLAYER-$(V4L2)          += libao2/ao_v4l2.c
+SRCS_MPLAYER-$(VDPAU)         += libvo/vo_vdpau.c
 SRCS_MPLAYER-$(VESA)          += libvo/gtf.c libvo/vo_vesa.c libvo/vesa_lvo.c
 SRCS_MPLAYER-$(VIDIX)         += libvo/vo_cvidix.c \
                                  libvo/vosub_vidix.c \
@@ -838,8 +841,8 @@ help_mp.h: help/help_mp-en.h $(HELP_FILE)
 ifeq ($(wildcard .svn/entries),.svn/entries)
 version.h: .svn/entries
 endif
-version.h:
-	./version.sh `$(CC) -dumpversion`
+version.h: version.sh
+	./$< `$(CC) -dumpversion`
 
 %(EXESUF): %.c
 
@@ -848,10 +851,10 @@ version.h:
 ###### dependency declarations / specific CFLAGS ######
 
 codec-cfg.d: codecs.conf.h
-mencoder.d mplayer.d vobsub.d gui/win32/gui.d libmpdemux/muxer_avi.d osdep/mplayer-rc.o stream/network.d stream/stream_cddb.d: version.h
+mpcommon.d vobsub.d gui/win32/gui.d libmpdemux/muxer_avi.d osdep/mplayer-rc.o stream/network.d stream/stream_cddb.d: version.h
 $(DEPS): help_mp.h
 
-libdvdcss/%.o libdvdcss/%.d: CFLAGS += -D__USE_UNIX98 -D_GNU_SOURCE -DVERSION=\"1.2.9\" $(CFLAGS_LIBDVDCSS)
+libdvdcss/%.o libdvdcss/%.d: CFLAGS += -D__USE_UNIX98 -D_GNU_SOURCE -DVERSION=\"1.2.10\" $(CFLAGS_LIBDVDCSS)
 libdvdnav/%.o libdvdnav/%.d: CFLAGS += -D__USE_UNIX98 -D_GNU_SOURCE -DHAVE_CONFIG_H -DVERSION=\"MPlayer-custom\"
 libdvdread4/%.o libdvdread4/%.d: CFLAGS += -D__USE_UNIX98 -D_GNU_SOURCE -DHAVE_CONFIG_H $(CFLAGS_LIBDVDCSS_DVDREAD)
 libfaad2/%.o libfaad2/%.d: CFLAGS += -Ilibfaad2 -D_GNU_SOURCE -DHAVE_CONFIG_H $(CFLAGS_FAAD_FIXED)
@@ -869,8 +872,8 @@ vidix/%: CFLAGS += $(CFLAGS_DHAHELPER) $(CFLAGS_SVGALIB_HELPER)
 VIDIX_PCI_FILES = vidix/pci_dev_ids.c vidix/pci_ids.h vidix/pci_names.c \
                   vidix/pci_names.h vidix/pci_vendors.h
 
-$(VIDIX_PCI_FILES): vidix/pci.db vidix/pci_db2c.awk
-	awk -f vidix/pci_db2c.awk $< $(VIDIX_PCIDB)
+$(VIDIX_PCI_FILES): vidix/pci_db2c.awk vidix/pci.db
+	awk -f $^ $(VIDIX_PCIDB)
 
 VIDIX_DEPS = $(filter vidix/%,$(SRCS_MPLAYER:.c=.d))
 VIDIX_OBJS = $(filter vidix/%,$(SRCS_MPLAYER:.c=.o))
@@ -903,7 +906,7 @@ install-mencoder-man-en: install-mplayer-man-en
 
 install-mplayer-man-en:
 	$(INSTALL) -d $(MANDIR)/man1
-	$(INSTALL) -c -m 644 DOCS/man/en/mplayer.1 $(MANDIR)/man1/
+	$(INSTALL) -m 644 DOCS/man/en/mplayer.1 $(MANDIR)/man1/
 
 define MENCODER_MAN_RULE
 install-mencoder-man-$(lang): install-mplayer-man-$(lang)
@@ -913,7 +916,7 @@ endef
 define MPLAYER_MAN_RULE
 install-mplayer-man-$(lang):
 	$(INSTALL) -d $(MANDIR)/$(lang)/man1
-	$(INSTALL) -c -m 644 DOCS/man/$(lang)/mplayer.1 $(MANDIR)/$(lang)/man1/
+	$(INSTALL) -m 644 DOCS/man/$(lang)/mplayer.1 $(MANDIR)/$(lang)/man1/
 endef
 
 $(foreach lang,$(filter-out en,$(MAN_LANG_ALL)),$(eval $(MENCODER_MAN_RULE)))
@@ -928,16 +931,18 @@ uninstall:
 	rm -f $(MANDIR)/man1/mplayer.1 $(MANDIR)/man1/mencoder.1
 	rm -f $(foreach lang,$(MAN_LANGS),$(foreach man,mplayer.1 mencoder.1,$(MANDIR)/$(lang)/man1/$(man)))
 
+ADD_ALL_EXESUFS = $(foreach exesuf,$(EXESUFS_ALL),$(1) $(1)$(exesuf))
+
 clean:
-	rm -f $(foreach dir,$(DIRS),$(foreach suffix,/*.o /*.a /*.ho /*~, $(addsuffix $(suffix),$(dir))))
-	rm -f mplayer$(EXESUF) mencoder$(EXESUF)
+	-rm -f $(foreach dir,$(DIRS),$(foreach suffix,/*.o /*.a /*.ho /*~, $(addsuffix $(suffix),$(dir))))
+	-rm -f $(foreach file,mplayer mencoder,$(call ADD_ALL_EXESUFS,$(file)))
 
 distclean: clean testsclean toolsclean driversclean dhahelperclean dhahelperwinclean
-	rm -rf DOCS/tech/doxygen
-	rm -f $(foreach dir,$(DIRS),$(foreach suffix,/*.d, $(addsuffix $(suffix),$(dir))))
-	rm -f configure.log config.mak config.h	codecs.conf.h help_mp.h \
-           version.h $(VIDIX_PCI_FILES) \
-           codec-cfg$(EXESUF) cpuinfo$(EXESUF) TAGS tags
+	-rm -rf DOCS/tech/doxygen
+	-rm -f $(foreach dir,$(DIRS),$(foreach suffix,/*.d, $(addsuffix $(suffix),$(dir))))
+	-rm -f configure.log config.mak config.h codecs.conf.h help_mp.h \
+           version.h $(VIDIX_PCI_FILES) TAGS tags
+	-rm -f $(foreach file,codec-cfg cpuinfo,$(call ADD_ALL_EXESUFS,$(file)))
 
 doxygen:
 	doxygen DOCS/tech/Doxyfile
@@ -971,43 +976,32 @@ loader/qtx/list$(EXESUF) loader/qtx/qtxload$(EXESUF): $(LOADER_TEST_OBJS)
 
 mp3lib/test$(EXESUF) mp3lib/test2$(EXESUF): $(filter mp3lib/%,$(SRCS_COMMON:.c=.o)) libvo/aclib.o cpudetect.o $(TEST_OBJS)
 
-TESTS = codecs2html$(EXESUF) codec-cfg-test$(EXESUF) \
-        liba52/test$(EXESUF) libvo/aspecttest$(EXESUF) \
-        mp3lib/test$(EXESUF) mp3lib/test2$(EXESUF)
+TESTS = codecs2html codec-cfg-test liba52/test libvo/aspecttest \
+        mp3lib/test mp3lib/test2
 
 ifdef ARCH_X86
-TESTS += loader/qtx/list$(EXESUF) loader/qtx/qtxload$(EXESUF)
+TESTS += loader/qtx/list loader/qtx/qtxload
 endif
 
-tests: $(TESTS)
+tests: $(addsuffix $(EXESUF),$(TESTS))
 
 testsclean:
-	rm -f $(TESTS)
+	-rm -f $(foreach file,$(TESTS),$(call ADD_ALL_EXESUFS,$(file)))
 
-TOOLS = TOOLS/alaw-gen$(EXESUF) \
-        TOOLS/asfinfo$(EXESUF) \
-        TOOLS/avi-fix$(EXESUF) \
-        TOOLS/avisubdump$(EXESUF) \
-        TOOLS/compare$(EXESUF) \
-        TOOLS/dump_mp4$(EXESUF) \
-        TOOLS/movinfo$(EXESUF) \
-        TOOLS/netstream$(EXESUF) \
-        TOOLS/subrip$(EXESUF) \
-        TOOLS/vivodump$(EXESUF) \
+TOOLS = $(addprefix TOOLS/,alaw-gen asfinfo avi-fix avisubdump compare dump_mp4 movinfo netstream subrip vivodump)
 
 ifdef ARCH_X86
-TOOLS += TOOLS/modify_reg$(EXESUF)
+TOOLS += TOOLS/modify_reg
 endif
 
-ALLTOOLS = $(TOOLS) \
-           TOOLS/bmovl-test$(EXESUF) \
-           TOOLS/vfw2menc$(EXESUF) \
+ALLTOOLS = $(TOOLS) TOOLS/bmovl-test TOOLS/vfw2menc
 
-tools: $(TOOLS)
-alltools: $(ALLTOOLS)
+tools: $(addsuffix $(EXESUF),$(TOOLS))
+alltools: $(addsuffix $(EXESUF),$(ALLTOOLS))
 
 toolsclean:
-	rm -f $(ALLTOOLS) TOOLS/fastmem*-* TOOLS/realcodecs/*.so.6.0
+	-rm -f $(foreach file,$(ALLTOOLS),$(call ADD_ALL_EXESUFSx,$(file)))
+	-rm -f TOOLS/fastmem*-* TOOLS/realcodecs/*.so.6.0
 
 TOOLS/bmovl-test$(EXESUF): -lSDL_image
 
@@ -1026,13 +1020,13 @@ TOOLS/netstream$(EXESUF) TOOLS/vivodump$(EXESUF): $(subst mplayer.o,mplayer-noma
 
 fastmemcpybench: TOOLS/fastmemcpybench.c
 	$(CC) $(CFLAGS) $< -o TOOLS/fastmem-mmx$(EXESUF)  -DNAME=\"mmx\"      -DHAVE_MMX
-	$(CC) $(CFLAGS) $< -o TOOLS/fastmem-k6$(EXESUF)   -DNAME=\"k6\ \"     -DHAVE_MMX -DHAVE_3DNOW
-	$(CC) $(CFLAGS) $< -o TOOLS/fastmem-k7$(EXESUF)   -DNAME=\"k7\ \"     -DHAVE_MMX -DHAVE_3DNOW -DHAVE_MMX2
-	$(CC) $(CFLAGS) $< -o TOOLS/fastmem-sse$(EXESUF)  -DNAME=\"sse\"      -DHAVE_MMX -DHAVE_SSE   -DHAVE_MMX2
+	$(CC) $(CFLAGS) $< -o TOOLS/fastmem-k6$(EXESUF)   -DNAME=\"k6\ \"     -DHAVE_MMX -DHAVE_AMD3DNOW
+	$(CC) $(CFLAGS) $< -o TOOLS/fastmem-k7$(EXESUF)   -DNAME=\"k7\ \"     -DHAVE_MMX -DHAVE_AMD3DNOW -DHAVE_MMX2
+	$(CC) $(CFLAGS) $< -o TOOLS/fastmem-sse$(EXESUF)  -DNAME=\"sse\"      -DHAVE_MMX -DHAVE_SSE      -DHAVE_MMX2
 	$(CC) $(CFLAGS) $< -o TOOLS/fastmem2-mmx$(EXESUF) -DNAME=\"mga-mmx\"  -DCONFIG_MGA -DHAVE_MMX
-	$(CC) $(CFLAGS) $< -o TOOLS/fastmem2-k6$(EXESUF)  -DNAME=\"mga-k6\ \" -DCONFIG_MGA -DHAVE_MMX -DHAVE_3DNOW
-	$(CC) $(CFLAGS) $< -o TOOLS/fastmem2-k7$(EXESUF)  -DNAME=\"mga-k7\ \" -DCONFIG_MGA -DHAVE_MMX -DHAVE_3DNOW -DHAVE_MMX2
-	$(CC) $(CFLAGS) $< -o TOOLS/fastmem2-sse$(EXESUF) -DNAME=\"mga-sse\"  -DCONFIG_MGA -DHAVE_MMX -DHAVE_SSE   -DHAVE_MMX2
+	$(CC) $(CFLAGS) $< -o TOOLS/fastmem2-k6$(EXESUF)  -DNAME=\"mga-k6\ \" -DCONFIG_MGA -DHAVE_MMX -DHAVE_AMD3DNOW
+	$(CC) $(CFLAGS) $< -o TOOLS/fastmem2-k7$(EXESUF)  -DNAME=\"mga-k7\ \" -DCONFIG_MGA -DHAVE_MMX -DHAVE_AMD3DNOW -DHAVE_MMX2
+	$(CC) $(CFLAGS) $< -o TOOLS/fastmem2-sse$(EXESUF) -DNAME=\"mga-sse\"  -DCONFIG_MGA -DHAVE_MMX -DHAVE_SSE      -DHAVE_MMX2
 
 REAL_SRCS    = $(wildcard TOOLS/realcodecs/*.c)
 REAL_TARGETS = $(REAL_SRCS:.c=.so.6.0)
@@ -1075,7 +1069,7 @@ install-drivers: $(DRIVER_OBJS)
 	-ln -s /dev/radeon_vid /dev/rage128_vid
 
 driversclean:
-	rm -f $(DRIVER_OBJS) drivers/*~
+	-rm -f $(DRIVER_OBJS) drivers/*~
 
 dhahelper: vidix/dhahelper/dhahelper.o vidix/dhahelper/test
 
@@ -1089,7 +1083,7 @@ install-dhahelper: vidix/dhahelper/dhahelper.o
 	-mknod /dev/dhahelper c 180 0
 
 dhahelperclean:
-	rm -f vidix/dhahelper/*.o vidix/dhahelper/*~ vidix/dhahelper/test
+	-rm -f vidix/dhahelper/*.o vidix/dhahelper/*~ vidix/dhahelper/test
 
 dhahelperwin: vidix/dhahelperwin/dhasetup.exe vidix/dhahelperwin/dhahelper.sys
 
@@ -1121,7 +1115,7 @@ install-dhahelperwin:
 	vidix/dhahelperwin/dhasetup.exe install
 
 dhahelperwinclean:
-	rm -f $(addprefix vidix/dhahelperwin/,*.o *~ dhahelper.sys dhasetup.exe base.tmp temp.exp)
+	-rm -f $(addprefix vidix/dhahelperwin/,*.o *~ dhahelper.sys dhasetup.exe base.tmp temp.exp)
 
 
 

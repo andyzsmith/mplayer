@@ -322,7 +322,7 @@ static void ts_add_stream(demuxer_t * demuxer, ES_stream_t *es)
 		sh_video_t *sh = new_sh_video_vid(demuxer, priv->last_vid, es->pid);
 		if(sh)
 		{
-			sh->format = IS_VIDEO(es->type) ? es->type : es->subtype;;
+			sh->format = IS_VIDEO(es->type) ? es->type : es->subtype;
 			sh->ds = demuxer->video;
 
 			priv->ts.streams[es->pid].id = priv->last_vid;
@@ -1762,6 +1762,7 @@ static int parse_pat(ts_priv_t * priv, int is_start, unsigned char *buff, int si
 		priv->pat.progs[idx].id = progid;
 		priv->pat.progs[idx].pmt_pid = ((base[2]  & 0x1F) << 8) | base[3];
 		mp_msg(MSGT_DEMUX, MSGL_V, "PROG: %d (%d-th of %d), PMT: %d\n", priv->pat.progs[idx].id, i+1, entries, priv->pat.progs[idx].pmt_pid);
+		mp_msg(MSGT_IDENTIFY, MSGL_V, "PROGRAM_ID=%d (0x%02X), PMT_PID: %d(0x%02X)\n", progid, priv->pat.progs[idx].pmt_pid );
 	}
 
 	return 1;

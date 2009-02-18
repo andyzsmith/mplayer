@@ -1,13 +1,30 @@
-// Generic alpha renderers for all YUV modes and RGB depths.
-// Optimized by Nick and Michael
-// Code from Michael Niedermayer (michaelni@gmx.at) is under GPL
+/*
+ * generic alpha renderers for all YUV modes and RGB depths
+ * Optimized by Nick and Michael.
+ *
+ * This file is part of MPlayer.
+ *
+ * MPlayer is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MPlayer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with MPlayer; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 #undef PREFETCH
 #undef EMMS
 #undef PREFETCHW
 #undef PAVGB
 
-#if HAVE_3DNOW
+#if HAVE_AMD3DNOW
 #define PREFETCH  "prefetch"
 #define PREFETCHW "prefetchw"
 #define PAVGB	  "pavgusb"
@@ -20,7 +37,7 @@
 #define PREFETCHW " # nop"
 #endif
 
-#if HAVE_3DNOW
+#if HAVE_AMD3DNOW
 /* On K6 femms is faster of emms. On K7 femms is directly mapped on emms. */
 #define EMMS     "femms"
 #else
@@ -307,12 +324,12 @@ static inline void RENAME(vo_draw_alpha_rgb32)(int w,int h, unsigned char* src, 
     dstbase++;
 #endif
 #if HAVE_MMX
-#if HAVE_3DNOW
+#if HAVE_AMD3DNOW
     __asm__ volatile(
         "pxor %%mm7, %%mm7\n\t"
         "pcmpeqb %%mm6, %%mm6\n\t" // F..F
         ::);
-#else /* HAVE_3DNOW */
+#else /* HAVE_AMD3DNOW */
     __asm__ volatile(
         "pxor %%mm7, %%mm7\n\t"
         "pcmpeqb %%mm5, %%mm5\n\t" // F..F
@@ -320,13 +337,13 @@ static inline void RENAME(vo_draw_alpha_rgb32)(int w,int h, unsigned char* src, 
         "psllw $8, %%mm5\n\t" //FF00FF00FF00
         "psrlw $8, %%mm4\n\t" //00FF00FF00FF
         ::);
-#endif /* HAVE_3DNOW */
+#endif /* HAVE_AMD3DNOW */
 #endif /* HAVE_MMX */
     for(y=0;y<h;y++){
         register int x;
 #if ARCH_X86 && (!ARCH_X86_64 || HAVE_MMX)
 #if HAVE_MMX
-#if HAVE_3DNOW
+#if HAVE_AMD3DNOW
     __asm__ volatile(
 	PREFETCHW" %0\n\t"
 	PREFETCH" %1\n\t"

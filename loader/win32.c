@@ -53,7 +53,7 @@ for DLL to know too much about its environment.
 #include <ctype.h>
 #include <pthread.h>
 #include <errno.h>
-#ifdef HAVE_MALLOC_H
+#if HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #include <time.h>
@@ -63,7 +63,6 @@ for DLL to know too much about its environment.
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/time.h>
-#include <sys/timeb.h>
 #ifdef	HAVE_KSTAT
 #include <kstat.h>
 #endif

@@ -36,12 +36,8 @@
 
 #include <sys/time.h>
 
-
-#include "version.h"
 #include "mp_msg.h"
 #include "help_mp.h"
-
-#include "cpudetect.h"
 
 #include "codec-cfg.h"
 #include "m_option.h"
@@ -143,9 +139,7 @@ double cur_video_time_usage=0;
 double cur_vout_time_usage=0;
 int benchmark=0;
 
-#if defined(__MINGW32__) || defined(__CYGWIN__)
-char * proc_priority=NULL;
-#endif
+#include "osdep/priority.h"
 
 // A-V sync:
 int delay_corrected=1;
@@ -422,40 +416,7 @@ user_correct_pts = 0;
   // Preparse the command line
   m_config_preparse_command_line(mconfig,argc,argv);
 
-  mp_msg(MSGT_CPLAYER,MSGL_INFO, "MEncoder " VERSION " (C) 2000-2009 MPlayer Team\n");
-
-  /* Test for cpu capabilities (and corresponding OS support) for optimizing */
-  GetCpuCaps(&gCpuCaps);
-#if ARCH_X86
-  mp_msg(MSGT_CPLAYER,MSGL_INFO,"CPUflags: Type: %d MMX: %d MMX2: %d 3DNow: %d 3DNow2: %d SSE: %d SSE2: %d\n",
-      gCpuCaps.cpuType,gCpuCaps.hasMMX,gCpuCaps.hasMMX2,
-      gCpuCaps.has3DNow, gCpuCaps.has3DNowExt,
-      gCpuCaps.hasSSE, gCpuCaps.hasSSE2);
-#ifdef RUNTIME_CPUDETECT
-  mp_msg(MSGT_CPLAYER,MSGL_INFO, MSGTR_CompiledWithRuntimeDetection);
-#else
-  mp_msg(MSGT_CPLAYER,MSGL_INFO, MSGTR_CompiledWithCPUExtensions);
-#if HAVE_MMX
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," MMX");
-#endif
-#if HAVE_MMX2
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," MMX2");
-#endif
-#if HAVE_3DNOW
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," 3DNow");
-#endif
-#if HAVE_3DNOWEX
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," 3DNowEx");
-#endif
-#if HAVE_SSE
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," SSE");
-#endif
-#if HAVE_SSE2
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," SSE2");
-#endif
-  mp_msg(MSGT_CPLAYER,MSGL_INFO,"\n\n");
-#endif
-#endif
+  print_version("MEncoder");
 
 #if (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_WIN32DLL)
   set_path_env();
@@ -517,17 +478,8 @@ if (frameno_filename) {
   }
 }
 
-#if defined(__MINGW32__) || defined(__CYGWIN__)
-  if(proc_priority){
-    int i;
-    for(i=0; priority_presets_defs[i].name; i++){
-      if(strcasecmp(priority_presets_defs[i].name, proc_priority) == 0)
-        break;
-    }
-    mp_msg(MSGT_CPLAYER,MSGL_STATUS,MSGTR_SettingProcessPriority,
-					priority_presets_defs[i].name);
-    SetPriorityClass(GetCurrentProcess(), priority_presets_defs[i].prio);
-  }
+#ifdef CONFIG_PRIORITY
+  set_priority();
 #endif	
 
 // check font

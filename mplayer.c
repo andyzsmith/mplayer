@@ -36,8 +36,6 @@
 
 #include <errno.h>
 
-#include "version.h"
-
 #include "mp_msg.h"
 
 #define HELP_MP_DEFINE_STATIC
@@ -74,8 +72,6 @@
 #include "osdep/getch2.h"
 #include "osdep/timer.h"
 
-#include "cpudetect.h"
-
 #ifdef CONFIG_GUI
 #include "gui/interface.h"
 #endif
@@ -88,9 +84,7 @@ int quiet=0;
 int enable_mouse_movements=0;
 float start_volume = -1;
 
-#if defined(__MINGW32__) || defined(__CYGWIN__)
-char * proc_priority=NULL;
-#endif
+#include "osdep/priority.h"
 
 char *heartbeat_cmd;
 
@@ -1329,7 +1323,7 @@ struct mp_osd_msg {
     /// Previous message on the stack.
     mp_osd_msg_t* prev;
     /// Message text.
-    char msg[64];
+    char msg[128];
     int  id,level,started;
     /// Display duration in ms.
     unsigned  time;
@@ -1366,9 +1360,9 @@ void set_osd_msg(int id, int level, int time, const char* fmt, ...) {
     }
     // write the msg
     va_start(va,fmt);
-    r = vsnprintf(msg->msg, 64, fmt, va);
+    r = vsnprintf(msg->msg, 128, fmt, va);
     va_end(va);
-    if(r >= 64) msg->msg[63] = 0;
+    if(r >= 128) msg->msg[127] = 0;
     // set id and time
     msg->id = id;
     msg->level = level;
@@ -1509,8 +1503,8 @@ void set_osd_bar(int type,const char* name,double min,double max,double val) {
 
 static void update_osd_msg(void) {
     mp_osd_msg_t *msg;
-    static char osd_text[64] = "";
-    static char osd_text_timer[64];
+    static char osd_text[128] = "";
+    static char osd_text_timer[128];
     
     // we need some mem for vo_osd_text
     vo_osd_text = (unsigned char*)osd_text;
@@ -1518,7 +1512,7 @@ static void update_osd_msg(void) {
     // Look if we have a msg
     if((msg = get_osd_msg())) {
         if(strcmp(osd_text,msg->msg)) {
-            strncpy((char*)osd_text, msg->msg, 63);
+            strncpy((char*)osd_text, msg->msg, 127);
             if(mpctx->sh_video) vo_osd_changed(OSDTYPE_OSD); else 
             if(term_osd) mp_msg(MSGT_CPLAYER,MSGL_STATUS,"%s%s\n",term_osd_esc,msg->msg);
         }
@@ -2311,9 +2305,9 @@ static double update_video(int *blit_frame)
 	}
 	if (sh_video->last_pts == MP_NOPTS_VALUE)
 	    sh_video->last_pts= sh_video->pts;
-	else if (sh_video->last_pts >= sh_video->pts) {
+	else if (sh_video->last_pts > sh_video->pts) {
 	    sh_video->last_pts = sh_video->pts;
-	    mp_msg(MSGT_CPLAYER, MSGL_INFO, "pts value <= previous\n");
+	    mp_msg(MSGT_CPLAYER, MSGL_INFO, "pts value < previous\n");
 	}
 	frame_time = sh_video->pts - sh_video->last_pts;
 	sh_video->last_pts = sh_video->pts;
@@ -2394,43 +2388,6 @@ static void pause_loop(void)
 	    guiGetEvent(guiCEvent, (char *)guiSetPlay);
     }
 #endif
-}
-
-void print_version(void){
-  mp_msg(MSGT_CPLAYER, MSGL_INFO, "%s\n", MP_TITLE);
-
-/* Test for CPU capabilities (and corresponding OS support) for optimizing */
-  GetCpuCaps(&gCpuCaps);
-#if ARCH_X86
-  mp_msg(MSGT_CPLAYER,MSGL_INFO,"CPUflags:  MMX: %d MMX2: %d 3DNow: %d 3DNow2: %d SSE: %d SSE2: %d\n",
-      gCpuCaps.hasMMX,gCpuCaps.hasMMX2,
-      gCpuCaps.has3DNow, gCpuCaps.has3DNowExt,
-      gCpuCaps.hasSSE, gCpuCaps.hasSSE2);
-#ifdef RUNTIME_CPUDETECT
-  mp_msg(MSGT_CPLAYER,MSGL_INFO, MSGTR_CompiledWithRuntimeDetection);
-#else
-  mp_msg(MSGT_CPLAYER,MSGL_INFO, MSGTR_CompiledWithCPUExtensions);
-#if HAVE_MMX
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," MMX");
-#endif
-#if HAVE_MMX2
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," MMX2");
-#endif
-#if HAVE_3DNOW
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," 3DNow");
-#endif
-#if HAVE_3DNOWEX
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," 3DNowEx");
-#endif
-#if HAVE_SSE
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," SSE");
-#endif
-#if HAVE_SSE2
-  mp_msg(MSGT_CPLAYER,MSGL_INFO," SSE2");
-#endif
-  mp_msg(MSGT_CPLAYER,MSGL_INFO,"\n");
-#endif /* RUNTIME_CPUDETECT */
-#endif /* ARCH_X86 */
 }
 
 
@@ -2570,7 +2527,7 @@ int gui_no_filename=0;
   // Preparse the command line
   m_config_preparse_command_line(mconfig,argc,argv);
 
-  print_version();
+  print_version("MPlayer");
 #if (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_WIN32DLL)
   set_path_env();
 #endif
@@ -2633,19 +2590,16 @@ int gui_no_filename=0;
 #endif
 
 #if defined(__MINGW32__) || defined(__CYGWIN__)
+	// stop Windows from showing all kinds of annoying error dialogs
+	SetErrorMode(0x8003);
 	// request 1ms timer resolution
 	timeBeginPeriod(1);
-	if(proc_priority){
-		int i;
-        	for(i=0; priority_presets_defs[i].name; i++){
-        		if(strcasecmp(priority_presets_defs[i].name, proc_priority) == 0)
-				break;
-		}
-		mp_msg(MSGT_CPLAYER,MSGL_STATUS,MSGTR_SettingProcessPriority,
-				priority_presets_defs[i].name);
-		SetPriorityClass(GetCurrentProcess(), priority_presets_defs[i].prio);
-	}
 #endif	
+
+#ifdef CONFIG_PRIORITY
+    set_priority();
+#endif
+
 #ifndef CONFIG_GUI
     if(use_gui){
       mp_msg(MSGT_CPLAYER,MSGL_WARN,MSGTR_NoGui);

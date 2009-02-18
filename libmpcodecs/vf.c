@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "config.h"
-#ifdef HAVE_MALLOC_H
+#if HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 
@@ -253,6 +253,7 @@ void vf_mpi_clear(mp_image_t* mpi,int x0,int y0,int w,int h){
 mp_image_t* vf_get_image(vf_instance_t* vf, unsigned int outfmt, int mp_imgtype, int mp_imgflag, int w, int h){
   mp_image_t* mpi=NULL;
   int w2;
+  int number = mp_imgtype >> 16;
 
 #ifdef MP_DEBUG
   assert(w == -1 || w >= vf->w);
@@ -275,7 +276,7 @@ mp_image_t* vf_get_image(vf_instance_t* vf, unsigned int outfmt, int mp_imgtype,
   
   // Note: we should call libvo first to check if it supports direct rendering
   // and if not, then fallback to software buffers:
-  switch(mp_imgtype){
+  switch(mp_imgtype & 0xff){
   case MP_IMGTYPE_EXPORT:
     if(!vf->imgctx.export_images[0]) vf->imgctx.export_images[0]=new_mp_image(w2,h);
     mpi=vf->imgctx.export_images[0];
@@ -298,6 +299,19 @@ mp_image_t* vf_get_image(vf_instance_t* vf, unsigned int outfmt, int mp_imgtype,
     if(!vf->imgctx.static_images[vf->imgctx.static_idx]) vf->imgctx.static_images[vf->imgctx.static_idx]=new_mp_image(w2,h);
     mpi=vf->imgctx.static_images[vf->imgctx.static_idx];
     vf->imgctx.static_idx^=1;
+    break;
+  case MP_IMGTYPE_NUMBERED:
+    if (number == -1) {
+      int i;
+      for (i = 0; i < NUM_NUMBERED_MPI; i++)
+        if (!vf->imgctx.numbered_images[i] || !(vf->imgctx.numbered_images[i]->flags & MP_IMGFLAG_IN_USE))
+          break;
+      number = i;
+    }
+    if (number < 0 || number >= NUM_NUMBERED_MPI) return NULL;
+    if (!vf->imgctx.numbered_images[number]) vf->imgctx.numbered_images[number] = new_mp_image(w2,h);
+    mpi = vf->imgctx.numbered_images[number];
+    mpi->number = number;
     break;
   }
   if(mpi){
@@ -332,6 +346,11 @@ mp_image_t* vf_get_image(vf_instance_t* vf, unsigned int outfmt, int mp_imgtype,
 	
         if(!(mpi->flags&MP_IMGFLAG_DIRECT)){
           // non-direct and not yet allocated image. allocate it!
+          if (!mpi->bpp) { // no way we can allocate this
+              mp_msg(MSGT_DECVIDEO, MSGL_FATAL,
+                     "vf_get_image: Tried to allocate a format that can not be allocated!\n");
+              return NULL;
+          }
 	  
 	  // check if codec prefer aligned stride:  
 	  if(mp_imgflag&MP_IMGFLAG_PREFER_ALIGNED_STRIDE){
@@ -412,6 +431,7 @@ mp_image_t* vf_get_image(vf_instance_t* vf, unsigned int outfmt, int mp_imgtype,
 
   mpi->qscale = NULL;
   }
+  mpi->flags |= MP_IMGFLAG_IN_USE;
 //    printf("\rVF_MPI: %p %p %p %d %d %d    \n",
 //	mpi->planes[0],mpi->planes[1],mpi->planes[2],
 //	mpi->stride[0],mpi->stride[1],mpi->stride[2]);

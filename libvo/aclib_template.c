@@ -1,7 +1,23 @@
 /*
-  aclib - advanced C library ;)
-  This file contains functions which improve and expand standard C-library
-*/
+ * aclib - advanced C library ;)
+ * functions which improve and expand the standard C library
+ *
+ * This file is part of MPlayer.
+ *
+ * MPlayer is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * MPlayer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with MPlayer; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 #if !HAVE_SSE2
 /*
@@ -66,7 +82,7 @@ If you have questions please contact with me: Nick Kurshev: nickols_k@mail.ru.
 
 
 #undef HAVE_ONLY_MMX1
-#if HAVE_MMX && !HAVE_MMX2 && !HAVE_3DNOW && !HAVE_SSE
+#if HAVE_MMX && !HAVE_MMX2 && !HAVE_AMD3DNOW && !HAVE_SSE
 /*  means: mmx v.1. Note: Since we added alignment of destinition it speedups
     of memory copying on PentMMX, Celeron-1 and P2 upto 12% versus
     standard (non MMX-optimized) version.
@@ -77,7 +93,7 @@ If you have questions please contact with me: Nick Kurshev: nickols_k@mail.ru.
 
 
 #undef HAVE_K6_2PLUS
-#if !HAVE_MMX2 && HAVE_3DNOW
+#if !HAVE_MMX2 && HAVE_AMD3DNOW
 #define HAVE_K6_2PLUS
 #endif
 
@@ -107,14 +123,14 @@ __asm__ volatile(\
 
 #if HAVE_MMX2
 #define PREFETCH "prefetchnta"
-#elif HAVE_3DNOW
+#elif HAVE_AMD3DNOW
 #define PREFETCH  "prefetch"
 #else
 #define PREFETCH " # nop"
 #endif
 
 /* On K6 femms is faster of emms. On K7 femms is directly mapped on emms. */
-#if HAVE_3DNOW
+#if HAVE_AMD3DNOW
 #define EMMS     "femms"
 #else
 #define EMMS     "emms"

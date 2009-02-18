@@ -4,7 +4,7 @@
 
 CpuCaps gCpuCaps;
 
-#ifdef HAVE_MALLOC_H
+#if HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #include <stdlib.h>
@@ -18,27 +18,17 @@ CpuCaps gCpuCaps;
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <machine/cpu.h>
-#endif
-
-#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__DragonFly__) || defined(__APPLE__)
+#elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__DragonFly__) || defined(__APPLE__)
 #include <sys/types.h>
 #include <sys/sysctl.h>
-#endif
-
-#ifdef __linux__
+#elif defined(__linux__)
 #include <signal.h>
-#endif
-
-#if defined(__MINGW32__) || defined(__CYGWIN__)
+#elif defined(__MINGW32__) || defined(__CYGWIN__)
 #include <windows.h>
-#endif
-
-#ifdef __OS2__
+#elif defined(__OS2__)
 #define INCL_DOS
 #include <os2.h>
-#endif
-
-#ifdef __AMIGAOS4__
+#elif defined(__AMIGAOS4__)
 #include <proto/exec.h>
 #endif
 
@@ -161,9 +151,9 @@ void GetCpuCaps( CpuCaps *caps)
 		ptmpstr=tmpstr=GetCpuFriendlyName(regs, regs2);
 		while(*ptmpstr == ' ')        // strip leading spaces
 		    ptmpstr++;
-		mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: %s ", ptmpstr);
+		mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: %s ", ptmpstr);
 		free(tmpstr);
-		mp_msg(MSGT_CPUDETECT,MSGL_INFO,"(Family: %d, Model: %d, Stepping: %d)\n",
+		mp_msg(MSGT_CPUDETECT,MSGL_V,"(Family: %d, Model: %d, Stepping: %d)\n",
 		    caps->cpuType, caps->cpuModel, caps->cpuStepping);
 
 	}
@@ -228,11 +218,11 @@ void GetCpuCaps( CpuCaps *caps)
 	if(caps->hasSSE2) mp_msg(MSGT_CPUDETECT,MSGL_WARN,"SSE2 supported but disabled\n");
 	caps->hasSSE2=0;
 #endif
-#if !HAVE_3DNOW
+#if !HAVE_AMD3DNOW
 	if(caps->has3DNow) mp_msg(MSGT_CPUDETECT,MSGL_WARN,"3DNow supported but disabled\n");
 	caps->has3DNow=0;
 #endif
-#if !HAVE_3DNOWEX
+#if !HAVE_AMD3DNOWEXT
 	if(caps->has3DNowExt) mp_msg(MSGT_CPUDETECT,MSGL_WARN,"3DNowExt supported but disabled\n");
 	caps->has3DNowExt=0;
 #endif
@@ -475,7 +465,7 @@ static void check_os_katmai_support( void )
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
-#elif __AMIGAOS4__
+#elif defined(__AMIGAOS4__)
 /* nothing */
 #else
 #include <signal.h>
@@ -529,7 +519,7 @@ void GetCpuCaps( CpuCaps *caps)
                         if (has_vu != 0)
                                 caps->hasAltiVec = 1;
         }
-#elif __AMIGAOS4__
+#elif defined(__AMIGAOS4__)
         ULONG result = 0;
 
         GetCPUInfoTags(GCIT_VectorUnit, &result, TAG_DONE);
@@ -555,51 +545,40 @@ void GetCpuCaps( CpuCaps *caps)
           }
         }
 #endif /* __APPLE__ */
-        mp_msg(MSGT_CPUDETECT,MSGL_INFO,"AltiVec %sfound\n", (caps->hasAltiVec ? "" : "not "));
+        mp_msg(MSGT_CPUDETECT,MSGL_V,"AltiVec %sfound\n", (caps->hasAltiVec ? "" : "not "));
 #endif /* HAVE_ALTIVEC */
 
-#if ARCH_IA64
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: Intel Itanium\n");
-#endif
+if (ARCH_IA64)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: Intel Itanium\n");
 
-#if ARCH_SPARC
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: Sun Sparc\n");
-#endif
+if (ARCH_SPARC)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: Sun Sparc\n");
 
-#if ARCH_ARM
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: ARM\n");
-#endif
+if (ARCH_ARM)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: ARM\n");
 
-#if ARCH_PPC
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: PowerPC\n");
-#endif
+if (ARCH_PPC)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: PowerPC\n");
 
-#if ARCH_ALPHA
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: Digital Alpha\n");
-#endif
+if (ARCH_ALPHA)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: Digital Alpha\n");
 
-#if ARCH_SGI_MIPS
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: SGI MIPS\n");
-#endif
+if (ARCH_SGI_MIPS)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: SGI MIPS\n");
 
-#if ARCH_PA_RISC
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: Hewlett-Packard PA-RISC\n");
-#endif
+if (ARCH_PA_RISC)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: Hewlett-Packard PA-RISC\n");
 
-#if ARCH_S390
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: IBM S/390\n");
-#endif
+if (ARCH_S390)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: IBM S/390\n");
 
-#if ARCH_S390X
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO,"CPU: IBM S/390X\n");
-#endif
+if (ARCH_S390X)
+	mp_msg(MSGT_CPUDETECT,MSGL_V,"CPU: IBM S/390X\n");
 
-#if ARCH_VAX
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO, "CPU: Digital VAX\n" );
-#endif
+if (ARCH_VAX)
+	mp_msg(MSGT_CPUDETECT,MSGL_V, "CPU: Digital VAX\n" );
 
-#if ARCH_XTENSA
-	mp_msg(MSGT_CPUDETECT,MSGL_INFO, "CPU: Tensilica Xtensa\n" );
-#endif
+if (ARCH_XTENSA)
+	mp_msg(MSGT_CPUDETECT,MSGL_V, "CPU: Tensilica Xtensa\n" );
 }
 #endif /* !ARCH_X86 */

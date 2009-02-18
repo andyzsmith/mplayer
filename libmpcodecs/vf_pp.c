@@ -8,19 +8,22 @@
 #include "mp_msg.h"
 #include "cpudetect.h"
 
-#ifdef HAVE_MALLOC_H
+#if HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 
 #include "img_format.h"
 #include "mp_image.h"
 #include "vf.h"
+#include "libavutil/internal.h"
 #include "libpostproc/postprocess.h"
 
 #ifdef CONFIG_LIBPOSTPROC_A
 #define EMU_OLD
 #include "libpostproc/postprocess_internal.h"
 #endif
+
+#undef malloc
 
 struct vf_priv_s {
     int pp;
