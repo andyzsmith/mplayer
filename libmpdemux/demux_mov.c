@@ -2137,7 +2137,7 @@ if(trak->samplesize){
 } else {
     int frame=trak->pos;
     // editlist support:
-    if(trak->editlist_size >= 1){
+    if(trak->type == MOV_TRAK_VIDEO && trak->editlist_size>=1){
 	// find the right editlist entry:
 	if(frame<trak->editlist[trak->editlist_pos].start_frame)
 	    trak->editlist_pos=0;
@@ -2149,48 +2149,6 @@ if(trak->samplesize){
 	// calc real frame index:
 	frame-=trak->editlist[trak->editlist_pos].start_frame;
 	frame+=trak->editlist[trak->editlist_pos].start_sample;
-
-	//if the edl adjustment is after a keyframe, add frames between
-	//  previous keyframe and adjusted start for proper decoding
-	if (trak->type == MOV_TRAK_VIDEO &&
-	    trak->pos == trak->editlist[trak->editlist_pos].start_frame &&
-	    trak->keyframes_size) {
-	  //choose the nearest (earlier) keyframe
-	  int kfi;
-	  int curframe = trak->keyframes[trak->keyframes_size-1];
-	  for(kfi=0;kfi<trak->keyframes_size-1;kfi++) {
-	    if(trak->samples[trak->keyframes[kfi+1]].pts
-	        > trak->editlist[trak->editlist_pos].pos) {
-	      curframe = trak->keyframes[kfi];
-	      break;
-	    }
-	  }
-	  //while curframe is less than the actual display frame
-	  for(; curframe < frame; curframe++) {
-	    //seek and read packets up to the edl start frame
-	    pts = (float)(trak->samples[frame].pts +
-	        trak->editlist[trak->editlist_pos].pts_offset) /
-	        (float)trak->timescale;
-	    stream_seek(demuxer->stream,trak->samples[curframe].pos);
-	    x=trak->samples[curframe].size;
-	    pos=trak->samples[curframe].pos;
-	    if(curframe==0 && trak->stream_header_len>0) {
-	      // we have to append the stream header...
-	      demux_packet_t* dp=new_demux_packet(x+trak->stream_header_len);
-	      memcpy(dp->buffer,trak->stream_header,trak->stream_header_len);
-	      stream_read(demuxer->stream,dp->buffer+trak->stream_header_len,x);
-	      free(trak->stream_header);
-	      trak->stream_header = NULL;
-	      trak->stream_header_len = 0;
-	      dp->pts=pts;
-	      dp->flags=0;
-	      dp->pos=pos; // FIXME?
-	      ds_add_packet(ds,dp);
-	    }
-	    else
-	      ds_read_packet(ds,demuxer->stream,x,pts,pos,0);
-	  }
-	}
 	// calc pts:
 	pts=(float)(trak->samples[frame].pts+
 	    trak->editlist[trak->editlist_pos].pts_offset)/(float)trak->timescale;
