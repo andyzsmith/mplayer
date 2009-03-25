@@ -1,6 +1,8 @@
 #ifndef MPLAYER_CPUDETECT_H
 #define MPLAYER_CPUDETECT_H
 
+#include "config.h"
+
 #define CPUTYPE_I386	3
 #define CPUTYPE_I486	4
 #define CPUTYPE_I586	5
@@ -44,6 +46,7 @@ typedef struct cpucaps_s {
 	int has3DNowExt;
 	int hasSSE;
 	int hasSSE2;
+	int hasSSE3;
 	int hasSSSE3;
 	int hasSSE4a;
 	int isX86;

@@ -285,7 +285,7 @@ Start/stop taking screenshots.
 Show filename on the OSD.
 .IPs "! and @"
 Seek to the beginning of the previous/next chapter.
-.IPs "D (\-vo xvmc, \-vf yadif, \-vf kerndeint only)"
+.IPs "D (\-vo xvmc, \-vo vdpau, \-vf yadif, \-vf kerndeint only)"
 Activate/deactivate deinterlacer.
 .IPs "A"
 Cycle through the available DVD angles.
@@ -904,6 +904,7 @@ i.e.\& using the shell.
 MPlayer uses this command without any checking, it is your responsibility
 to ensure it does not cause security problems (e.g.\& make sure to use full
 paths if "." is in your path like on Windows).
+It also only works when playing video (i.e.\& not with \-novideo but works with \-vo null).
 .sp 1
 This can be "misused" to disable screensavers that do not support the proper
 X API (also see \-stop\-xscreensaver).
@@ -959,6 +960,8 @@ Device to be used for Apple IR Remote (default is autodetected, Linux only).
 Delay in milliseconds before we start to autorepeat a key (0 to disable).
 .IPs ar-rate
 Number of key presses to generate per second on autorepeat.
+.IPs (no)default-binds
+Use the key bindings that MPlayer ships with by default.
 .IPs keylist
 Prints all keys that can be bound to commands.
 .IPs cmdlist
@@ -1130,6 +1133,8 @@ by a newline (\\n) from stdin.
 .I NOTE:
 See \-input cmdlist for a list of slave commands and DOCS/tech/slave.txt
 for their description.
+Also, this is not intended to disable other inputs, e.g.\& via the video window,
+use some other method like \-input nodefault\-binds:conf=/dev/null for that.
 .
 .TP
 .B \-softsleep
@@ -2248,14 +2253,14 @@ Use this if commas in subtitles are shown at the start of a sentence
 instead of at the end.
 .
 .TP
-.B \-font <path to font.desc file>
+.B \-font <path to font.desc file, path to font (FreeType), font pattern (Fontconfig)>
 Search for the OSD/\:SUB fonts in an alternative directory (default for normal
 fonts: ~/\:.mplayer/\:font/\:font.desc, default for FreeType fonts:
 ~/.mplayer/\:subfont.ttf).
 .br
 .I NOTE:
 With FreeType, this option determines the path to the text font file.
-With fontconfig, this option determines the fontconfig font name.
+With Fontconfig, this option determines the Fontconfig font pattern.
 .sp 1
 .I EXAMPLE:
 .PD 0
@@ -2265,6 +2270,8 @@ With fontconfig, this option determines the fontconfig font name.
 \-font ~/\:.mplayer/\:arialuni.ttf
 .br
 \-font 'Bitstream Vera Sans'
+.br
+\-font 'Bitstream Vera Sans:style=Bold'
 .RE
 .PD 1
 .
@@ -2503,8 +2510,8 @@ Currently useless.
 Same as \-audiofile, but for subtitle streams (OggDS?).
 .
 .TP
-.B \-subfont <filename> (FreeType only)
-Sets the subtitle font.
+.B \-subfont <path to font (FreeType), font pattern (Fontconfig)> (FreeType only)
+Sets the subtitle font (see \-font).
 If no \-subfont is given, \-font is used.
 .
 .TP
@@ -2832,6 +2839,18 @@ DirectX DirectSound audio output driver
 .IPs device=<devicenum>
 Sets the device number to use.
 Playing a file with \-v will show a list of available devices.
+.RE
+.PD 1
+.
+.TP
+.B dart (OS/2 only)
+OS/2 DART audio output driver
+.PD 0
+.RSs
+.IPs (no)share
+Open DART in shareable or exclusive mode.
+.IPs bufsize=<size>
+Set buffer size to <size> in samples (default: 2048).
 .RE
 .PD 1
 .
@@ -3206,7 +3225,7 @@ Use at your own risk!
 Change the range of the pan-and-scan functionality (default: 1).
 Positive values mean multiples of the default range.
 Negative numbers mean you can zoom in up to a factor of \-panscanrange+1.
-E.g. \-panscanrange \-3 allows a zoom factor of up to 4.
+E.g.\& \-panscanrange \-3 allows a zoom factor of up to 4.
 This feature is experimental.
 Do not report bugs unless you are using \-vo gl.
 .
@@ -3426,6 +3445,39 @@ Select the driver to use as source to overlay on top of X11.
 .B vdpau (with \-vc ffmpeg12vdpau, ffwmv3vdpau, ffvc1vdpau or ffh264vdpau)
 Video output that uses VDPAU to decode video via hardware.
 Also supports displaying of software-decoded video.
+.PD 0
+.RSs
+.IPs sharpen=<\-1\-1>
+For positive values, apply a sharpening algorithm to the video,
+for negative values a blurring algorithm (default: 0).
+.IPs denoise=<0\-1>
+Apply a noise reduction algorithm to the video (default: 0, no noise reduction).
+.IPs deint=<0\-4>
+Chooses the deinterlacer (default: 0).
+All modes > 0 respect \-field\-dominance.
+.RSss
+.IPs 0
+No deinterlacing.
+.IPs 1
+Show only first field, similar to \-vf field.
+.IPs 2
+Bob deinterlacing, similar to \-vf tfields=1.
+.IPs 3
+Motion adaptive temporal deinterlacing.
+May lead to A/V desync with slow video hardware and/or high resolution.
+This is the default if "D" is used to enable deinterlacing.
+.IPs 4
+Motion adaptive temporal deinterlacing with edge-guided spatial interpolation.
+Needs fast video hardware.
+.RE
+.IPs chroma\-deint
+Makes temporal deinterlacers operate both on luma and chroma (default).
+Use nochroma\-deint to solely use luma and speed up advanced deinterlacing.
+Useful with slow video memory.
+.IPs pullup
+Try to apply inverse telecine, needs motion adaptive temporal deinterlacing.
+.RE
+.PD 1 
 .
 .TP
 .B xvmc (X11 with \-vc ffmpeg12mc only)
@@ -3542,6 +3594,23 @@ Video output driver that uses the DirectX interface.
 .IPs noaccel
 Turns off hardware acceleration.
 Try this option if you have display problems.
+.RE
+.PD 1
+.
+.TP
+.B kva (OS/2 only)
+Video output driver that uses the libkva interface.
+.PD 0
+.RSs
+.IPs snap
+Force SNAP mode.
+.IPs wo
+Force WarpOverlay! mode.
+.IPs dive
+Force DIVE mode.
+.IPs (no)t23
+Enable/disable workaround for T23 laptop (default: \-not23).
+Try to enable this option if your video card supports upscaling only.
 .RE
 .PD 1
 .
@@ -4384,7 +4453,7 @@ Disable automatic movie aspect ratio compensation.
 .B "\-field\-dominance <\-1\-1>"
 Set first field for interlaced content.
 Useful for deinterlacers that double the framerate: \-vf tfields=1,
-\-vf yadif=1 and \-vo xvmc:bobdeint.
+\-vf yadif=1, \-vo vdpau:deint and \-vo xvmc:bobdeint.
 .PD 0
 .RSs
 .IPs \-1
@@ -5485,6 +5554,13 @@ Would playback audio file at 1.2x normal speed, with audio at normal pitch.
 Changing playback speed, would change pitch, leaving audio tempo at 1.2x.
 .RE
 .PD 1
+.
+.TP
+.B "stats\ \ "
+Collects and prints statistics about the audio stream, especially the volume.
+These statistics are especially intended to help adjusting the volume while
+avoiding clipping.
+The volumes are printed in dB and compatible with the volume audio filter.
 .
 .
 .
@@ -9978,7 +10054,7 @@ Lower values allow the quantizer value to jump around more,
 higher values force it to vary more smoothly.
 cplx_blur ensures that each I-frame has quality comparable to the following
 P-frames, and ensures that alternating high and low complexity frames
-(e.g. low fps animation) do not waste bits on fluctuating quantizer.
+(e.g.\& low fps animation) do not waste bits on fluctuating quantizer.
 .
 .TP
 .B qblur=<0\-99> (two pass only)
@@ -11170,7 +11246,7 @@ explains how to create useful bug reports.
 MPlayer was initially written by Arpad Gereoffy.
 See the AUTHORS file for a list of some of the many other contributors.
 .PP
-MPlayer is (C) 2000\-2008 The MPlayer Team
+MPlayer is (C) 2000\-2009 The MPlayer Team
 .PP
 This man page was written mainly by Gabucino, Jonas Jermann and Diego Biurrun.
 It is maintained by Diego Biurrun.

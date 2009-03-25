@@ -2346,8 +2346,7 @@ static void pause_loop(void)
     if (mpctx->audio_out && mpctx->sh_audio)
 	mpctx->audio_out->pause();	// pause audio, keep data if possible
 
-    while ( (cmd = mp_input_get_cmd(20, 1, 1)) == NULL
-            || cmd->id == MP_CMD_SET_MOUSE_POS || cmd->pausing == 4) {
+    while ( (cmd = mp_input_get_cmd(20, 1, 1)) == NULL || cmd->pausing == 4) {
 	if (cmd) {
 	  cmd = mp_input_get_cmd(0,1,0);
 	  run_command(mpctx, cmd);
@@ -2527,7 +2526,6 @@ int gui_no_filename=0;
   // Preparse the command line
   m_config_preparse_command_line(mconfig,argc,argv);
 
-  print_version("MPlayer");
 #if (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_WIN32DLL)
   set_path_env();
 #endif
@@ -2574,6 +2572,8 @@ int gui_no_filename=0;
     }
     }
 	
+  print_version("MPlayer");
+
 #if (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_GUI)
     void *runningmplayer = FindWindow("MPlayer GUI for Windows", "MPlayer for Windows");
     if(runningmplayer && filename && use_gui){

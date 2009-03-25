@@ -245,6 +245,7 @@ rtcp_connect (int client_port, int server_port, const char* server_hostname)
     return -1;
   }
 
+  memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons (client_port);
@@ -293,6 +294,7 @@ rtp_connect (char *hostname, int port)
   if (s == -1)
     return -1;
 
+  memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
   if (!hostname || !strcmp (hostname, "0.0.0.0"))
     sin.sin_addr.s_addr = htonl (INADDR_ANY);
@@ -505,7 +507,8 @@ rtp_setup_and_play (rtsp_t *rtsp_session)
   }
 
   /* only MPEG-TS is supported at the moment */
-  if (!strstr (fsdp_get_media_format (med_dsc, 0),
+  if (!fsdp_get_media_format (med_dsc, 0) ||
+      !strstr (fsdp_get_media_format (med_dsc, 0),
                RTSP_MEDIA_CONTAINER_MPEG_TS))
   {
     fsdp_description_delete (dsc);

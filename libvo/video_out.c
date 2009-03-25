@@ -68,7 +68,7 @@ int vo_refresh_rate=0;
 int vo_keepaspect=1;
 int vo_rootwin=0;
 int vo_border=1;
-int WinID = -1;
+int64_t WinID = -1;
 
 int vo_pts=0; // for hw decoding
 float vo_fps=0;
@@ -112,6 +112,7 @@ extern vo_functions_t video_out_mpegpes;
 extern vo_functions_t video_out_yuv4mpeg;
 extern vo_functions_t video_out_direct3d;
 extern vo_functions_t video_out_directx;
+extern vo_functions_t video_out_kva;
 extern vo_functions_t video_out_dxr2;
 extern vo_functions_t video_out_dxr3;
 extern vo_functions_t video_out_ivtv;
@@ -146,6 +147,9 @@ const vo_functions_t* const video_out_drivers[] =
 #ifdef CONFIG_DIRECT3D
         &video_out_direct3d,
 #endif
+#ifdef CONFIG_KVA
+        &video_out_kva,
+#endif
 #ifdef CONFIG_COREVIDEO
         &video_out_macosx,
 #endif
@@ -170,11 +174,11 @@ const vo_functions_t* const video_out_drivers[] =
 #ifdef CONFIG_3DFX
         &video_out_3dfx,
 #endif
-#if CONFIG_VDPAU
-        &video_out_vdpau,
-#endif
 #ifdef CONFIG_XV
         &video_out_xv,
+#endif
+#if CONFIG_VDPAU
+        &video_out_vdpau,
 #endif
 #ifdef CONFIG_X11
         &video_out_x11,

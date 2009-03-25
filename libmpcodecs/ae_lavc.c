@@ -206,6 +206,8 @@ int mpae_init_lavc(audio_encoder_t *encoder)
 	// put sample parameters
 	lavc_actx->channels = encoder->params.channels;
 	lavc_actx->sample_rate = encoder->params.sample_rate;
+	lavc_actx->time_base.num = 1;
+	lavc_actx->time_base.den = encoder->params.sample_rate;
         if(lavc_param_abitrate<1000)
                 lavc_actx->bit_rate = encoder->params.bitrate = lavc_param_abitrate * 1000;
         else
@@ -246,6 +248,7 @@ int mpae_init_lavc(audio_encoder_t *encoder)
 	}
 
 	encoder->decode_buffer_size = lavc_actx->frame_size * 2 * encoder->params.channels;
+	while (encoder->decode_buffer_size < 1024) encoder->decode_buffer_size *= 2;
 	encoder->bind = bind_lavc;
 	encoder->get_frame_size = get_frame_size;
 	encoder->encode = encode_lavc;

@@ -143,6 +143,7 @@ void GetCpuCaps( CpuCaps *caps)
 		caps->hasMMX  = (regs2[3] & (1 << 23 )) >> 23; // 0x0800000
 		caps->hasSSE  = (regs2[3] & (1 << 25 )) >> 25; // 0x2000000
 		caps->hasSSE2 = (regs2[3] & (1 << 26 )) >> 26; // 0x4000000
+		caps->hasSSE3 = (regs2[2] & 1);                // 0x0000001
 		caps->hasSSSE3 = (regs2[2] & (1 << 9 )) >>  9; // 0x0000200
 		caps->hasMMX2 = caps->hasSSE; // SSE cpus supports mmxext too
 		cl_size = ((regs2[1] >> 8) & 0xFF)*8;
@@ -229,16 +230,7 @@ void GetCpuCaps( CpuCaps *caps)
 #endif  // RUNTIME_CPUDETECT
 }
 
-
-#define CPUID_EXTFAMILY	((regs2[0] >> 20)&0xFF) /* 27..20 */
-#define CPUID_EXTMODEL	((regs2[0] >> 16)&0x0F) /* 19..16 */
-#define CPUID_TYPE		((regs2[0] >> 12)&0x04) /* 13..12 */
-#define CPUID_FAMILY	((regs2[0] >>  8)&0x0F) /* 11..08 */
-#define CPUID_MODEL		((regs2[0] >>  4)&0x0F) /* 07..04 */
-#define CPUID_STEPPING	((regs2[0] >>  0)&0x0F) /* 03..00 */
-
 char *GetCpuFriendlyName(unsigned int regs[], unsigned int regs2[]){
-#include "cputable.h" /* get cpuname and cpuvendors */
 	char vendor[13];
 	char *retname;
 	int i;
@@ -247,6 +239,7 @@ char *GetCpuFriendlyName(unsigned int regs[], unsigned int regs2[]){
 		mp_msg(MSGT_CPUDETECT,MSGL_FATAL,"Error: GetCpuFriendlyName() not enough memory\n");
 		exit(1);
 	}
+	retname[0] = '\0';
 
 	sprintf(vendor,"%.4s%.4s%.4s",(char*)(regs+1),(char*)(regs+3),(char*)(regs+2));
 
@@ -254,45 +247,14 @@ char *GetCpuFriendlyName(unsigned int regs[], unsigned int regs2[]){
 	if (regs[0] >= 0x80000004)
 	{
 		// CPU has built-in namestring
-		retname[0] = '\0';
 		for (i = 0x80000002; i <= 0x80000004; i++)
 		{
 			do_cpuid(i, regs);
 			strncat(retname, (char*)regs, 16);
 		}
-		return retname;
 	}
-
-	for(i=0; i<MAX_VENDORS; i++){
-		if(!strcmp(cpuvendors[i].string,vendor)){
-			if(cpuname[i][CPUID_FAMILY][CPUID_MODEL]){
-				snprintf(retname,255,"%s %s",cpuvendors[i].name,cpuname[i][CPUID_FAMILY][CPUID_MODEL]);
-			} else {
-				snprintf(retname,255,"unknown %s %d. Generation CPU",cpuvendors[i].name,CPUID_FAMILY); 
-				mp_msg(MSGT_CPUDETECT,MSGL_WARN,"unknown %s CPU:\n",cpuvendors[i].name);
-				mp_msg(MSGT_CPUDETECT,MSGL_WARN,"Vendor:   %s\n",cpuvendors[i].string);
-				mp_msg(MSGT_CPUDETECT,MSGL_WARN,"Type:     %d\n",CPUID_TYPE);
-				mp_msg(MSGT_CPUDETECT,MSGL_WARN,"Family:   %d (ext: %d)\n",CPUID_FAMILY,CPUID_EXTFAMILY);
-				mp_msg(MSGT_CPUDETECT,MSGL_WARN,"Model:    %d (ext: %d)\n",CPUID_MODEL,CPUID_EXTMODEL);
-				mp_msg(MSGT_CPUDETECT,MSGL_WARN,"Stepping: %d\n",CPUID_STEPPING);
-				mp_msg(MSGT_CPUDETECT,MSGL_WARN,"Please send the above info along with the exact CPU name"
-				       "to the MPlayer-Developers, so we can add it to the list!\n");
-			}
-		}
-	}
-	retname[255] = 0;
-
-	//printf("Detected CPU: %s\n", retname);
 	return retname;
 }
-
-#undef CPUID_EXTFAMILY
-#undef CPUID_EXTMODEL
-#undef CPUID_TYPE
-#undef CPUID_FAMILY
-#undef CPUID_MODEL
-#undef CPUID_STEPPING
-
 
 #if defined(__linux__) && defined(_POSIX_SOURCE) && !ARCH_X86_64
 static void sigill_handler_sse( int signal, struct sigcontext sc )
@@ -497,6 +459,7 @@ void GetCpuCaps( CpuCaps *caps)
 	caps->has3DNowExt=0;
 	caps->hasSSE=0;
 	caps->hasSSE2=0;
+	caps->hasSSE3=0;
 	caps->hasSSSE3=0;
 	caps->hasSSE4a=0;
 	caps->isX86=0;

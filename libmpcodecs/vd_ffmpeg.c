@@ -200,6 +200,24 @@ void mp_msp_av_log_callback(void *ptr, int level, const char *fmt, va_list vl)
     mp_msg(type, mp_level, buf);
 }
 
+static void set_format_params(struct AVCodecContext *avctx, enum PixelFormat fmt){
+    int imgfmt;
+    imgfmt = pixfmt2imgfmt(fmt);
+    if (IMGFMT_IS_XVMC(imgfmt) || IMGFMT_IS_VDPAU(imgfmt)) {
+        sh_video_t *sh     = avctx->opaque;
+        vd_ffmpeg_ctx *ctx = sh->context;
+        ctx->do_dr1    = 1;
+        ctx->do_slices = 1;
+        avctx->thread_count    = 1;
+        avctx->get_buffer      = get_buffer;
+        avctx->release_buffer  = release_buffer;
+        avctx->reget_buffer    = get_buffer;
+        avctx->draw_horiz_band = draw_slice;
+        mp_msg(MSGT_DECVIDEO, MSGL_INFO, MSGTR_MPCODECS_XVMCAcceleratedMPEG2);
+        avctx->slice_flags = SLICE_FLAG_CODED_ORDER|SLICE_FLAG_ALLOW_FIELD;
+    }
+}
+
 // init driver
 static int init(sh_video_t *sh){
     AVCodecContext *avctx;
@@ -232,8 +250,6 @@ static int init(sh_video_t *sh){
 
     if(lavc_codec->capabilities&CODEC_CAP_DR1 && !do_vis_debug && lavc_codec->id != CODEC_ID_H264 && lavc_codec->id != CODEC_ID_INTERPLAY_VIDEO && lavc_codec->id != CODEC_ID_ROQ)
         ctx->do_dr1=1;
-    if (lavc_codec->capabilities & CODEC_CAP_HWACCEL_VDPAU)
-        ctx->do_dr1=1;
     ctx->b_age= ctx->ip_age[0]= ctx->ip_age[1]= 256*256*256*64;
     ctx->ip_count= ctx->b_count= 0;
 
@@ -245,18 +261,14 @@ static int init(sh_video_t *sh){
 #if CONFIG_VDPAU
     if(lavc_codec->capabilities & CODEC_CAP_HWACCEL_VDPAU){
         avctx->get_format = get_format;
-        avctx->draw_horiz_band = draw_slice;
-        avctx->slice_flags = SLICE_FLAG_CODED_ORDER|SLICE_FLAG_ALLOW_FIELD;
     }
 #endif /* CONFIG_VDPAU */
 #if CONFIG_XVMC
     if(lavc_codec->capabilities & CODEC_CAP_HWACCEL){
         mp_msg(MSGT_DECVIDEO, MSGL_INFO, MSGTR_MPCODECS_XVMCAcceleratedCodec);
-        assert(ctx->do_dr1);//these are must to!
-        assert(ctx->do_slices); //it is (vo_)ffmpeg bug if this fails
         avctx->get_format= get_format;//for now only this decoder will use it
-        avctx->draw_horiz_band = draw_slice;
-        avctx->slice_flags=SLICE_FLAG_CODED_ORDER|SLICE_FLAG_ALLOW_FIELD;
+        // HACK around badly placed checks in mpeg_mc_decode_init
+        set_format_params(avctx, PIX_FMT_XVMC_MPEG2_IDCT);
     }
 #endif /* CONFIG_XVMC */
     if(ctx->do_dr1){
@@ -397,6 +409,9 @@ static int init(sh_video_t *sh){
         uninit(sh);
         return 0;
     }
+    // this is necessary in case get_format was never called and init_vo is
+    // too late e.g. for H.264 VDPAU
+    set_format_params(avctx, avctx->pix_fmt);
     mp_msg(MSGT_DECVIDEO, MSGL_V, "INFO: libavcodec init OK!\n");
     return 1; //mpcodecs_config_vo(sh, sh->disp_w, sh->disp_h, IMGFMT_YV12);
 }
@@ -490,6 +505,9 @@ static int init_vo(sh_video_t *sh, enum PixelFormat pix_fmt){
         pix_fmt != ctx->pix_fmt ||
         !ctx->vo_initialized)
     {
+        // this is a special-case HACK for MPEG-1/2 VDPAU that uses neither get_format nor
+        // sets the value correctly in avcodec_open.
+        set_format_params(avctx, avctx->pix_fmt);
         mp_msg(MSGT_DECVIDEO, MSGL_V, "[ffmpeg] aspect_ratio: %f\n", aspect);
         if (sh->aspect == 0 ||
             av_cmp_q(avctx->sample_aspect_ratio,
@@ -701,7 +719,7 @@ static void release_buffer(struct AVCodecContext *avctx, AVFrame *pic){
         }
 #endif
         // release mpi (in case MPI_IMGTYPE_NUMBERED is used, e.g. for VDPAU)
-        mpi->flags &= ~MP_IMGFLAG_IN_USE;
+        mpi->usage_count--;
     }
 
     if(pic->type!=FF_BUFFER_TYPE_USER){
@@ -894,7 +912,7 @@ static mp_image_t *decode(sh_video_t *sh, void *data, int len, int flags){
 #if CONFIG_XVMC || CONFIG_VDPAU
 static enum PixelFormat get_format(struct AVCodecContext *avctx,
                                     const enum PixelFormat *fmt){
-    enum PixelFormat selected_format = fmt[0];
+    enum PixelFormat selected_format;
     int imgfmt;
     sh_video_t *sh = avctx->opaque;
     int i;
@@ -904,21 +922,11 @@ static enum PixelFormat get_format(struct AVCodecContext *avctx,
         if(!IMGFMT_IS_XVMC(imgfmt) && !IMGFMT_IS_VDPAU(imgfmt)) continue;
         mp_msg(MSGT_DECVIDEO, MSGL_INFO, MSGTR_MPCODECS_TryingPixfmt, i);
         if(init_vo(sh, fmt[i]) >= 0) {
-            selected_format = fmt[i];
             break;
         }
     }
-    imgfmt = pixfmt2imgfmt(selected_format);
-    if(IMGFMT_IS_XVMC(imgfmt) || IMGFMT_IS_VDPAU(imgfmt)) {
-        vd_ffmpeg_ctx *ctx = sh->context;
-        avctx->get_buffer= get_buffer;
-        avctx->release_buffer= release_buffer;
-        avctx->draw_horiz_band = draw_slice;
-        mp_msg(MSGT_DECVIDEO, MSGL_INFO, MSGTR_MPCODECS_XVMCAcceleratedMPEG2);
-        assert(ctx->do_dr1);//these are must to!
-        assert(ctx->do_slices); //it is (vo_)ffmpeg bug if this fails
-        avctx->slice_flags=SLICE_FLAG_CODED_ORDER|SLICE_FLAG_ALLOW_FIELD;
-    }
+    selected_format = fmt[i];
+    set_format_params(avctx, selected_format);
     return selected_format;
 }
 #endif /* CONFIG_XVMC || CONFIG_VDPAU */

@@ -116,7 +116,6 @@ demuxers:
     * demux_rtp* - Ross Finlayson
     * demux_mpg and demux_ts - Nico Sabbi
     * demux_mpc.c - Reimar Döffinger
-    * demux_nuv.c - Reimar Döffinger
 
 muxers:
     * muxer_lavf.c - Michael Niedermayer
@@ -220,7 +219,7 @@ libao2 drivers:
     * ao_oss.c - None
     * ao_pcm.c - None
     * ao_plugin.c - None
-    * ao_pulse.c - Reimar Döffinger
+    * ao_pulse.c - None
     * ao_sdl.c - None
     * ao_sgi.c - None
     * ao_sun.c - None

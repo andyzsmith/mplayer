@@ -347,6 +347,8 @@ void process_force_style(ass_track_t* track) {
 			track->Timer = atof(token);
 		else if(!strcasecmp(*fs, "WrapStyle"))
 			track->WrapStyle = atoi(token);
+		else if(!strcasecmp(*fs, "ScaledBorderAndShadow"))
+			track->ScaledBorderAndShadow = parse_bool(token);
 
 		dt = strrchr(*fs, '.');
 		if (dt) {
@@ -520,6 +522,8 @@ static int process_info_line(ass_track_t* track, char *str)
 		track->Timer = atof(str + 6);
 	} else if (!strncmp(str,"WrapStyle:", 10)) {
 		track->WrapStyle = atoi(str + 10);
+	} else if (!strncmp(str, "ScaledBorderAndShadow:", 22)) {
+		track->ScaledBorderAndShadow = parse_bool(str + 22);
 	}
 	return 0;
 }
@@ -1124,6 +1128,7 @@ long long ass_step_sub(ass_track_t* track, long long now, int movement) {
 ass_track_t* ass_new_track(ass_library_t* library) {
 	ass_track_t* track = calloc(1, sizeof(ass_track_t));
 	track->library = library;
+	track->ScaledBorderAndShadow = 1;
 	track->parser_priv = calloc(1, sizeof(parser_priv_t));
 	return track;
 }
