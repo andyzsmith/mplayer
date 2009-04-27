@@ -4,9 +4,6 @@
 
 CpuCaps gCpuCaps;
 
-#if HAVE_MALLOC_H
-#include <malloc.h>
-#endif
 #include <stdlib.h>
 
 #if ARCH_X86
@@ -44,20 +41,15 @@ static void check_os_katmai_support( void );
 // return TRUE if cpuid supported
 static int has_cpuid(void)
 {
-	long a, c;
-
 // code from libavcodec:
 #if ARCH_X86_64
-#define PUSHF "pushfq\n\t"
-#define POPF "popfq\n\t"
+   return 1;
 #else
-#define PUSHF "pushfl\n\t"
-#define POPF "popfl\n\t"
-#endif
+	long a, c;
     __asm__ volatile (
                           /* See if CPUID instruction is supported ... */
                           /* ... Get copies of EFLAGS into eax and ecx */
-                          PUSHF
+                          "pushfl\n\t"
                           "pop %0\n\t"
                           "mov %0, %1\n\t"
                           
@@ -65,19 +57,18 @@ static int has_cpuid(void)
                           /*     to the EFLAGS reg */
                           "xor $0x200000, %0\n\t"
                           "push %0\n\t"
-                          POPF
+                          "popfl\n\t"
                           
                           /* ... Get the (hopefully modified) EFLAGS */
-                          PUSHF
+                          "pushfl\n\t"
                           "pop %0\n\t"
                           : "=a" (a), "=c" (c)
                           :
                           : "cc" 
                           );
-#undef PUSHF
-#undef POPF
 
 	return a != c;
+#endif
 }
 
 static void
@@ -202,7 +193,7 @@ void GetCpuCaps( CpuCaps *caps)
 //		caps->hasMMX2 = 0;
 //		caps->hasMMX = 0;
 
-#ifndef RUNTIME_CPUDETECT
+#if !CONFIG_RUNTIME_CPUDETECT
 #if !HAVE_MMX
 	if(caps->hasMMX) mp_msg(MSGT_CPUDETECT,MSGL_WARN,"MMX supported but disabled\n");
 	caps->hasMMX=0;
@@ -227,7 +218,7 @@ void GetCpuCaps( CpuCaps *caps)
 	if(caps->has3DNowExt) mp_msg(MSGT_CPUDETECT,MSGL_WARN,"3DNowExt supported but disabled\n");
 	caps->has3DNowExt=0;
 #endif
-#endif  // RUNTIME_CPUDETECT
+#endif  // CONFIG_RUNTIME_CPUDETECT
 }
 
 char *GetCpuFriendlyName(unsigned int regs[], unsigned int regs2[]){
@@ -277,7 +268,7 @@ static void sigill_handler_sse( int signal, struct sigcontext sc )
 }
 #endif /* __linux__ && _POSIX_SOURCE */
 
-#if defined(__MINGW32__) || defined(__CYGWIN__)
+#if (defined(__MINGW32__) || defined(__CYGWIN__)) && !ARCH_X86_64
 LONG CALLBACK win32_sig_handler_sse(EXCEPTION_POINTERS* ep)
 {
    if(ep->ExceptionRecord->ExceptionCode==EXCEPTION_ILLEGAL_INSTRUCTION){

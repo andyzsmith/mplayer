@@ -791,7 +791,7 @@ static void exit_sighandler(int x){
       async_quit_request = 1;
       return;  // killed from keyboard (^C) or killed [-9]
   case SIGILL:
-#ifdef RUNTIME_CPUDETECT
+#if CONFIG_RUNTIME_CPUDETECT
       mp_msg(MSGT_CPLAYER,MSGL_FATAL,MSGTR_Exit_SIGILL_RTCpuSel);
 #else
       mp_msg(MSGT_CPLAYER,MSGL_FATAL,MSGTR_Exit_SIGILL);
@@ -1125,8 +1125,10 @@ void init_vo_spudec(void) {
     spudec_set_font_factor(vo_spudec,font_factor);
   }
 
-  if (vo_spudec!=NULL)
+  if (vo_spudec!=NULL) {
     initialized_flags|=INITIALIZED_SPUDEC;
+    mp_property_do("sub_forced_only", M_PROPERTY_SET, &forced_subs_only, mpctx);
+  }
 }
 
 /*
@@ -3066,6 +3068,7 @@ if (edl_output_filename) {
     if(vo_vobsub){
       initialized_flags|=INITIALIZED_VOBSUB;
       vobsub_set_from_lang(vo_vobsub, dvdsub_lang);
+      mp_property_do("sub_forced_only", M_PROPERTY_SET, &forced_subs_only, mpctx);
 
       // setup global sub numbering
       mpctx->global_sub_indices[SUB_SOURCE_VOBSUB] = mpctx->global_sub_size; // the global # of the first vobsub.

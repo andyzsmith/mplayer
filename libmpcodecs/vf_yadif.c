@@ -28,11 +28,6 @@
 #include "cpudetect.h"
 
 #include "mp_msg.h"
-
-#if HAVE_MALLOC_H
-#include <malloc.h>
-#endif
-
 #include "img_format.h"
 #include "mp_image.h"
 #include "vf.h"
@@ -247,8 +242,8 @@ static void filter_line_mmx2(struct vf_priv_s *p, uint8_t *dst, uint8_t *prev, u
             :[prev] "r"(prev),\
              [cur]  "r"(cur),\
              [next] "r"(next),\
-             [prefs]"r"((long)refs),\
-             [mrefs]"r"((long)-refs),\
+             [prefs]"r"((x86_reg)refs),\
+             [mrefs]"r"((x86_reg)-refs),\
              [pw1]  "m"(pw_1),\
              [pb1]  "m"(pb_1),\
              [mode] "g"(mode)\
