@@ -108,6 +108,8 @@ unsigned swscale_version(void)
         || (x)==PIX_FMT_YUVA420P    \
         || (x)==PIX_FMT_YUYV422     \
         || (x)==PIX_FMT_UYVY422     \
+        || (x)==PIX_FMT_RGB48BE     \
+        || (x)==PIX_FMT_RGB48LE     \
         || (x)==PIX_FMT_RGB32       \
         || (x)==PIX_FMT_RGB32_1     \
         || (x)==PIX_FMT_BGR24       \
@@ -463,6 +465,10 @@ const char *sws_format_name(enum PixelFormat format)
             return "rgb4";
         case PIX_FMT_RGB4_BYTE:
             return "rgb4 byte";
+        case PIX_FMT_RGB48BE:
+            return "rgb48be";
+        case PIX_FMT_RGB48LE:
+            return "rgb48le";
         case PIX_FMT_NV12:
             return "nv12";
         case PIX_FMT_NV21:
@@ -847,6 +853,24 @@ static inline void yuv2nv12XinC(const int16_t *lumFilter, const int16_t **lumSrc
 #define YSCALE_YUV_2_ANYRGB_C(func, func2, func_g16, func_monoblack)\
     switch(c->dstFormat)\
     {\
+    case PIX_FMT_RGB48BE:\
+    case PIX_FMT_RGB48LE:\
+        func(uint8_t,0)\
+            ((uint8_t*)dest)[ 0]= r[Y1];\
+            ((uint8_t*)dest)[ 1]= r[Y1];\
+            ((uint8_t*)dest)[ 2]= g[Y1];\
+            ((uint8_t*)dest)[ 3]= g[Y1];\
+            ((uint8_t*)dest)[ 4]= b[Y1];\
+            ((uint8_t*)dest)[ 5]= b[Y1];\
+            ((uint8_t*)dest)[ 6]= r[Y2];\
+            ((uint8_t*)dest)[ 7]= r[Y2];\
+            ((uint8_t*)dest)[ 8]= g[Y2];\
+            ((uint8_t*)dest)[ 9]= g[Y2];\
+            ((uint8_t*)dest)[10]= b[Y2];\
+            ((uint8_t*)dest)[11]= b[Y2];\
+            dest+=12;\
+        }\
+        break;\
     case PIX_FMT_RGBA:\
     case PIX_FMT_BGRA:\
         if (CONFIG_SMALL){\
@@ -1117,6 +1141,163 @@ static void fillPlane(uint8_t* plane, int stride, int width, int height, int y, 
         ptr += stride;
     }
 }
+
+static inline void rgb48ToY(uint8_t *dst, const uint8_t *src, int width)
+{
+    int i;
+    for (i = 0; i < width; i++) {
+        int r = src[i*6+0];
+        int g = src[i*6+2];
+        int b = src[i*6+4];
+
+        dst[i] = (RY*r + GY*g + BY*b + (33<<(RGB2YUV_SHIFT-1))) >> RGB2YUV_SHIFT;
+    }
+}
+
+static inline void rgb48ToUV(uint8_t *dstU, uint8_t *dstV,
+                             uint8_t *src1, uint8_t *src2, int width)
+{
+    int i;
+    assert(src1==src2);
+    for (i = 0; i < width; i++) {
+        int r = src1[6*i + 0];
+        int g = src1[6*i + 2];
+        int b = src1[6*i + 4];
+
+        dstU[i] = (RU*r + GU*g + BU*b + (257<<(RGB2YUV_SHIFT-1))) >> RGB2YUV_SHIFT;
+        dstV[i] = (RV*r + GV*g + BV*b + (257<<(RGB2YUV_SHIFT-1))) >> RGB2YUV_SHIFT;
+    }
+}
+
+static inline void rgb48ToUV_half(uint8_t *dstU, uint8_t *dstV,
+                                  uint8_t *src1, uint8_t *src2, int width)
+{
+    int i;
+    assert(src1==src2);
+    for (i = 0; i < width; i++) {
+        int r= src1[12*i + 0] + src1[12*i + 6];
+        int g= src1[12*i + 2] + src1[12*i + 8];
+        int b= src1[12*i + 4] + src1[12*i + 10];
+
+        dstU[i]= (RU*r + GU*g + BU*b + (257<<RGB2YUV_SHIFT)) >> (RGB2YUV_SHIFT+1);
+        dstV[i]= (RV*r + GV*g + BV*b + (257<<RGB2YUV_SHIFT)) >> (RGB2YUV_SHIFT+1);
+    }
+}
+
+#define BGR2Y(type, name, shr, shg, shb, maskr, maskg, maskb, RY, GY, BY, S)\
+static inline void name(uint8_t *dst, const uint8_t *src, long width, uint32_t *unused)\
+{\
+    int i;\
+    for (i=0; i<width; i++)\
+    {\
+        int b= (((const type*)src)[i]>>shb)&maskb;\
+        int g= (((const type*)src)[i]>>shg)&maskg;\
+        int r= (((const type*)src)[i]>>shr)&maskr;\
+\
+        dst[i]= (((RY)*r + (GY)*g + (BY)*b + (33<<((S)-1)))>>(S));\
+    }\
+}
+
+BGR2Y(uint32_t, bgr32ToY,16, 0, 0, 0x00FF, 0xFF00, 0x00FF, RY<< 8, GY   , BY<< 8, RGB2YUV_SHIFT+8)
+BGR2Y(uint32_t, rgb32ToY, 0, 0,16, 0x00FF, 0xFF00, 0x00FF, RY<< 8, GY   , BY<< 8, RGB2YUV_SHIFT+8)
+BGR2Y(uint16_t, bgr16ToY, 0, 0, 0, 0x001F, 0x07E0, 0xF800, RY<<11, GY<<5, BY    , RGB2YUV_SHIFT+8)
+BGR2Y(uint16_t, bgr15ToY, 0, 0, 0, 0x001F, 0x03E0, 0x7C00, RY<<10, GY<<5, BY    , RGB2YUV_SHIFT+7)
+BGR2Y(uint16_t, rgb16ToY, 0, 0, 0, 0xF800, 0x07E0, 0x001F, RY    , GY<<5, BY<<11, RGB2YUV_SHIFT+8)
+BGR2Y(uint16_t, rgb15ToY, 0, 0, 0, 0x7C00, 0x03E0, 0x001F, RY    , GY<<5, BY<<10, RGB2YUV_SHIFT+7)
+
+static inline void abgrToA(uint8_t *dst, const uint8_t *src, long width, uint32_t *unused){
+    int i;
+    for (i=0; i<width; i++){
+        dst[i]= src[4*i];
+    }
+}
+
+#define BGR2UV(type, name, shr, shg, shb, maska, maskr, maskg, maskb, RU, GU, BU, RV, GV, BV, S)\
+static inline void name(uint8_t *dstU, uint8_t *dstV, const uint8_t *src, const uint8_t *dummy, long width, uint32_t *unused)\
+{\
+    int i;\
+    for (i=0; i<width; i++)\
+    {\
+        int b= (((const type*)src)[i]&maskb)>>shb;\
+        int g= (((const type*)src)[i]&maskg)>>shg;\
+        int r= (((const type*)src)[i]&maskr)>>shr;\
+\
+        dstU[i]= ((RU)*r + (GU)*g + (BU)*b + (257<<((S)-1)))>>(S);\
+        dstV[i]= ((RV)*r + (GV)*g + (BV)*b + (257<<((S)-1)))>>(S);\
+    }\
+}\
+static inline void name ## _half(uint8_t *dstU, uint8_t *dstV, const uint8_t *src, const uint8_t *dummy, long width, uint32_t *unused)\
+{\
+    int i;\
+    for (i=0; i<width; i++)\
+    {\
+        int pix0= ((const type*)src)[2*i+0];\
+        int pix1= ((const type*)src)[2*i+1];\
+        int g= (pix0&~(maskr|maskb))+(pix1&~(maskr|maskb));\
+        int b= ((pix0+pix1-g)&(maskb|(2*maskb)))>>shb;\
+        int r= ((pix0+pix1-g)&(maskr|(2*maskr)))>>shr;\
+        g&= maskg|(2*maskg);\
+\
+        g>>=shg;\
+\
+        dstU[i]= ((RU)*r + (GU)*g + (BU)*b + (257<<(S)))>>((S)+1);\
+        dstV[i]= ((RV)*r + (GV)*g + (BV)*b + (257<<(S)))>>((S)+1);\
+    }\
+}
+
+BGR2UV(uint32_t, bgr32ToUV,16, 0, 0, 0xFF000000, 0xFF0000, 0xFF00,   0x00FF, RU<< 8, GU   , BU<< 8, RV<< 8, GV   , BV<< 8, RGB2YUV_SHIFT+8)
+BGR2UV(uint32_t, rgb32ToUV, 0, 0,16, 0xFF000000,   0x00FF, 0xFF00, 0xFF0000, RU<< 8, GU   , BU<< 8, RV<< 8, GV   , BV<< 8, RGB2YUV_SHIFT+8)
+BGR2UV(uint16_t, bgr16ToUV, 0, 0, 0,          0,   0x001F, 0x07E0,   0xF800, RU<<11, GU<<5, BU    , RV<<11, GV<<5, BV    , RGB2YUV_SHIFT+8)
+BGR2UV(uint16_t, bgr15ToUV, 0, 0, 0,          0,   0x001F, 0x03E0,   0x7C00, RU<<10, GU<<5, BU    , RV<<10, GV<<5, BV    , RGB2YUV_SHIFT+7)
+BGR2UV(uint16_t, rgb16ToUV, 0, 0, 0,          0,   0xF800, 0x07E0,   0x001F, RU    , GU<<5, BU<<11, RV    , GV<<5, BV<<11, RGB2YUV_SHIFT+8)
+BGR2UV(uint16_t, rgb15ToUV, 0, 0, 0,          0,   0x7C00, 0x03E0,   0x001F, RU    , GU<<5, BU<<10, RV    , GV<<5, BV<<10, RGB2YUV_SHIFT+7)
+
+static inline void palToY(uint8_t *dst, const uint8_t *src, long width, uint32_t *pal)
+{
+    int i;
+    for (i=0; i<width; i++)
+    {
+        int d= src[i];
+
+        dst[i]= pal[d] & 0xFF;
+    }
+}
+
+static inline void palToUV(uint8_t *dstU, uint8_t *dstV,
+                           const uint8_t *src1, const uint8_t *src2,
+                           long width, uint32_t *pal)
+{
+    int i;
+    assert(src1 == src2);
+    for (i=0; i<width; i++)
+    {
+        int p= pal[src1[i]];
+
+        dstU[i]= p>>8;
+        dstV[i]= p>>16;
+    }
+}
+
+static inline void monowhite2Y(uint8_t *dst, const uint8_t *src, long width, uint32_t *unused)
+{
+    int i, j;
+    for (i=0; i<width/8; i++){
+        int d= ~src[i];
+        for(j=0; j<8; j++)
+            dst[8*i+j]= ((d>>(7-j))&1)*255;
+    }
+}
+
+static inline void monoblack2Y(uint8_t *dst, const uint8_t *src, long width, uint32_t *unused)
+{
+    int i, j;
+    for (i=0; i<width/8; i++){
+        int d= src[i];
+        for(j=0; j<8; j++)
+            dst[8*i+j]= ((d>>(7-j))&1)*255;
+    }
+}
+
 
 //Note: we have C, MMX, MMX2, 3DNOW versions, there is no 3DNOW+MMX2 one
 //Plain C versions
@@ -1792,9 +1973,9 @@ static void globalInit(void){
 
 static SwsFunc getSwsFunc(SwsContext *c)
 {
+#if CONFIG_RUNTIME_CPUDETECT && CONFIG_GPL
     int flags = c->flags;
 
-#if CONFIG_RUNTIME_CPUDETECT && CONFIG_GPL
 #if ARCH_X86
     // ordered per speed fastest first
     if (flags & SWS_CPU_CAPS_MMX2) {
@@ -2108,11 +2289,15 @@ static int yvu9toyv12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int
     }
 
     if (c->dstFormat==PIX_FMT_YUV420P || c->dstFormat==PIX_FMT_YUVA420P){
-        planar2x(src[1], dst[1], c->chrSrcW, c->chrSrcH, srcStride[1], dstStride[1]);
-        planar2x(src[2], dst[2], c->chrSrcW, c->chrSrcH, srcStride[2], dstStride[2]);
+        planar2x(src[1], dst[1] + dstStride[1]*(srcSliceY >> 1), c->chrSrcW,
+                 srcSliceH >> 2, srcStride[1], dstStride[1]);
+        planar2x(src[2], dst[2] + dstStride[2]*(srcSliceY >> 1), c->chrSrcW,
+                 srcSliceH >> 2, srcStride[2], dstStride[2]);
     }else{
-        planar2x(src[1], dst[2], c->chrSrcW, c->chrSrcH, srcStride[1], dstStride[2]);
-        planar2x(src[2], dst[1], c->chrSrcW, c->chrSrcH, srcStride[2], dstStride[1]);
+        planar2x(src[1], dst[2] + dstStride[2]*(srcSliceY >> 1), c->chrSrcW,
+                 srcSliceH >> 2, srcStride[1], dstStride[2]);
+        planar2x(src[2], dst[1] + dstStride[1]*(srcSliceY >> 1), c->chrSrcW,
+                 srcSliceH >> 2, srcStride[2], dstStride[1]);
     }
     if (dst[3])
         fillPlane(dst[3], dstStride[3], c->srcW, srcSliceH, srcSliceY, 255);
@@ -2367,7 +2552,8 @@ static int handle_jpeg(enum PixelFormat *format)
 }
 
 SwsContext *sws_getContext(int srcW, int srcH, enum PixelFormat srcFormat, int dstW, int dstH, enum PixelFormat dstFormat, int flags,
-                           SwsFilter *srcFilter, SwsFilter *dstFilter, double *param){
+                           SwsFilter *srcFilter, SwsFilter *dstFilter, const double *param)
+{
 
     SwsContext *c;
     int i;
@@ -3396,7 +3582,7 @@ void sws_freeContext(SwsContext *c){
 struct SwsContext *sws_getCachedContext(struct SwsContext *context,
                                         int srcW, int srcH, enum PixelFormat srcFormat,
                                         int dstW, int dstH, enum PixelFormat dstFormat, int flags,
-                                        SwsFilter *srcFilter, SwsFilter *dstFilter, double *param)
+                                        SwsFilter *srcFilter, SwsFilter *dstFilter, const double *param)
 {
     static const double default_param[2] = {SWS_PARAM_DEFAULT, SWS_PARAM_DEFAULT};
 
