@@ -540,7 +540,7 @@ _libamr_wb=auto
 _libavdecoders_all=$(sed -n 's/^[^#]*DEC.*(.*, *\(.*\)).*/\1_decoder/p' libavcodec/allcodecs.c | tr '[a-z]' '[A-Z]')
 _libavdecoders=$(echo $_libavdecoders_all | sed -e 's/ LIB[A-Z0-9_]*_DECODER//g' -e s/MPEG4AAC_DECODER//)
 _libavencoders_all=$(sed -n 's/^[^#]*ENC.*(.*, *\(.*\)).*/\1_encoder/p' libavcodec/allcodecs.c | tr '[a-z]' '[A-Z]')
-_libavencoders=$(echo $_libavencoders_all | sed 's/ LIB[A-Z0-9_]*_ENCODER//g')
+_libavencoders=$(echo $_libavencoders_all | sed -e 's/ LIB[A-Z0-9_]*_ENCODER//g' -e s/AAC_ENCODER//)
 _libavparsers_all=$(sed -n 's/^[^#]*PARSER.*(.*, *\(.*\)).*/\1_parser/p' libavcodec/allcodecs.c | tr '[a-z]' '[A-Z]')
 _libavparsers=$_libavparsers_all
 _libavbsfs_all=$(sed -n 's/^[^#]*BSF.*(.*, *\(.*\)).*/\1_bsf/p' libavcodec/allcodecs.c | tr '[a-z]' '[A-Z]')
@@ -2930,7 +2930,7 @@ if test "$_posix4" = yes ; then
 fi
 echores "$_posix4"
 
-for func in llrint lrint lrintf round roundf truncf; do
+for func in llrint log2 lrint lrintf round roundf truncf; do
 echocheck $func
 cat > $TMPC << EOF
 #include <math.h>
@@ -5770,6 +5770,9 @@ elif openbsd ; then
   default_cdrom_device="/dev/rcd0a"
 elif sunos ; then
   default_cdrom_device="/vol/dev/aliases/cdrom0"
+  # Modern Solaris versions use HAL instead of the vold daemon, the volfs
+  # file system and the volfs service.
+  test -r "/cdrom/cdrom0" && default_cdrom_device="/cdrom/cdrom0"
 elif amigaos ; then
   default_cdrom_device="a1ide.device:2"
 else
@@ -8523,6 +8526,7 @@ $def_gettimeofday
 $def_glob
 $def_langinfo
 $def_llrint
+$def_log2
 $def_lrint
 $def_lrintf
 $def_map_memalign
