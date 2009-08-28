@@ -131,7 +131,6 @@ static int demux_rawvideo_fill_buffer(demuxer_t* demuxer, demux_stream_t *ds) {
   if(demuxer->stream->eof) return 0;
   if(ds!=demuxer->video) return 0;
   pos = stream_tell(demuxer->stream);
-  demuxer->filepos = pos;
   ds_read_packet(ds,demuxer->stream,imgsize,(pos/imgsize)*sh->frametime,pos,0x10);
   return 1;
 }
