@@ -216,7 +216,6 @@ static int demux_film_fill_buffer(demuxer_t *demuxer, demux_stream_t *ds)
         film_chunk.chunk_offset, (film_chunk.syncinfo1 & 0x80000000) ? 1 : 0);
     }
   }
-  demuxer->filepos = film_chunk.chunk_offset;
   film_data->current_chunk++;
 
   return 1;

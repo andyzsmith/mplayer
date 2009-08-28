@@ -89,7 +89,6 @@ static int demux_roq_fill_buffer(demuxer_t *demuxer, demux_stream_t *ds)
 
   // make sure we're at the right place in the stream and fetch the chunk
   stream_seek(demuxer->stream, roq_chunk.chunk_offset);
-  demuxer->filepos = roq_chunk.chunk_offset;
 
   if (roq_chunk.chunk_type == CHUNK_TYPE_AUDIO)
     ds_read_packet(demuxer->audio, demuxer->stream, roq_chunk.chunk_size,
