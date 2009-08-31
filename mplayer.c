@@ -72,9 +72,7 @@
 #include "osdep/getch2.h"
 #include "osdep/timer.h"
 
-#ifdef CONFIG_GUI
 #include "gui/interface.h"
-#endif
 
 #include "input/input.h"
 
@@ -100,17 +98,12 @@ char *heartbeat_cmd;
 #endif /* __linux__ */
 #endif /* HAVE_RTC */
 
-#ifdef CONFIG_TV
 #include "stream/tv.h"
-#endif
-#ifdef CONFIG_RADIO
 #include "stream/stream_radio.h"
-#endif
-
 #ifdef CONFIG_DVBIN
 #include "stream/dvbin.h"
-#include "stream/cache2.h"
 #endif
+#include "stream/cache2.h"
 
 //**************************************************************************//
 //             Playtree
@@ -161,10 +154,7 @@ static int max_framesize=0;
 #ifdef CONFIG_DVDREAD
 #include "stream/stream_dvd.h"
 #endif
-
-#ifdef CONFIG_DVDNAV
 #include "stream/stream_dvdnav.h"
-#endif
 
 #include "libmpcodecs/dec_audio.h"
 #include "libmpcodecs/dec_video.h"
@@ -320,10 +310,8 @@ char *vobsub_name=NULL;
 int   subcc_enabled=0;
 int suboverlap_enabled = 1;
 
-#ifdef CONFIG_ASS
 #include "libass/ass.h"
 #include "libass/ass_mp.h"
-#endif
 
 char* current_module=NULL; // for debugging
 
@@ -925,34 +913,48 @@ static void load_per_output_config (m_config_t* conf, char *cfg, char *out)
     }
 }
 
+/**
+ * Tries to load a config file
+ * @return 0 if file was not found, 1 otherwise
+ */
+static int try_load_config(m_config_t *conf, const char *file)
+{
+    struct stat st;
+    if (stat(file, &st))
+        return 0;
+    mp_msg(MSGT_CPLAYER,MSGL_INFO,MSGTR_LoadingConfig, file);
+    m_config_parse_config_file (conf, file);
+    return 1;
+}
+
 static void load_per_file_config (m_config_t* conf, const char *const file)
 {
     char *confpath;
     char cfg[strlen(file)+10];
-    struct stat st;
     char *name;
 
     sprintf (cfg, "%s.conf", file);
 
-    if (use_filedir_conf && !stat (cfg, &st))
-    {
-	mp_msg(MSGT_CPLAYER,MSGL_INFO,MSGTR_LoadingConfig, cfg);
-	m_config_parse_config_file (conf, cfg);
+    if (use_filedir_conf && try_load_config(conf, cfg))
 	return;
-    }
 
-    if ((name = strrchr (cfg, '/')) == NULL)
+    name = strrchr(cfg, '/');
+    if (HAVE_DOS_PATHS) {
+        char *tmp = strrchr(cfg, '\\');
+        if (!name || tmp > name)
+            name = tmp;
+        tmp = strrchr(cfg, ':');
+        if (!name || tmp > name)
+            name = tmp;
+    }
+    if (!name)
 	name = cfg;
     else
 	name++;
 
     if ((confpath = get_path (name)) != NULL)
     {
-	if (!stat (confpath, &st))
-	{
-	    mp_msg(MSGT_CPLAYER,MSGL_INFO,MSGTR_LoadingConfig, confpath);
-	    m_config_parse_config_file (conf, confpath);
-	}
+	try_load_config(conf, confpath);
 
 	free (confpath);
     }

@@ -1408,7 +1408,7 @@ if test -z "$_target" ; then
       sh3|sh4|sh4a) host_arch=sh ;;
       s390) host_arch=s390 ;;
       s390x) host_arch=s390x ;;
-      mips*) host_arch=mips ;;
+      *mips*) host_arch=mips ;;
       vax) host_arch=vax ;;
       xtensa*) host_arch=xtensa ;;
       *) host_arch=UNKNOWN ;;
@@ -2362,9 +2362,11 @@ fi
 if test "$_big_endian" = yes ; then
   _byte_order='big-endian'
   def_words_endian='#define WORDS_BIGENDIAN 1'
+  def_bigendian='#define HAVE_BIGENDIAN 1'
 else
   _byte_order='little-endian'
   def_words_endian='#undef WORDS_BIGENDIAN'
+  def_bigendian='#define HAVE_BIGENDIAN 0'
 fi
 echores "$_byte_order"
 
@@ -2836,8 +2838,9 @@ language_man=$tmp_language_man
 test -z "$language_man" && language_man=en
 
 for lang in $language_msg ; do
-  test -f "help/help_mp-${lang}.h" && language_msg=$lang && break
+  test -f "help/help_mp-${lang}.h" && tmp_language_msg=$lang && break
 done
+language_msg=$tmp_language_msg
 test -z "$language_msg" && language_msg=en
 _mp_help="help/help_mp-${language_msg}.h"
 echores "messages: $language_msg - man pages: $language_man - documentation: $language_doc"
@@ -4487,8 +4490,6 @@ def_vidix_drv_cyberblade='#undef CONFIG_VIDIX_DRV_CYBERBLADE'
 _vidix_drv_cyberblade=no
 def_vidix_drv_ivtv='#undef CONFIG_VIDIX_DRV_IVTV'
 _vidix_drv_ivtv=no
-def_vidix_drv_ivtv='#undef CONFIG_VIDIX_DRV_IVTV'
-_vidix_drv_ivtv=no
 def_vidix_drv_mach64='#undef CONFIG_VIDIX_DRV_MACH64'
 _vidix_drv_mach64=no
 def_vidix_drv_mga='#undef CONFIG_VIDIX_DRV_MGA'
@@ -4524,8 +4525,9 @@ echores "$_vidix"
 if test "$_vidix" = yes ; then
   def_vidix='#define CONFIG_VIDIX 1'
   _vomodules="cvidix $_vomodules"
-  test "$_vidix_drivers" || _vidix_drivers="cyberblade ivtv mach64 mga mga_crtc2 nvidia pm2 pm3 radeon rage128 s3 sh_veu sis unichrome"
-  test $_ivtv = "yes" || _vidix_drivers=$(echo $_vidix_drivers | sed s/ivtv//)
+  # FIXME: ivtv driver temporarily disabled until we have a proper test
+  #test "$_vidix_drivers" || _vidix_drivers="cyberblade ivtv mach64 mga mga_crtc2 nvidia pm2 pm3 radeon rage128 s3 sh_veu sis unichrome"
+  test "$_vidix_drivers" || _vidix_drivers="cyberblade mach64 mga mga_crtc2 nvidia pm2 pm3 radeon rage128 s3 sh_veu sis unichrome"
 
   # some vidix drivers are architecture and os specific, discard them elsewhere
   x86 || _vidix_drivers=$(echo $_vidix_drivers | sed -e s/cyberblade// -e s/sis// -e s/unichrome// -e s/s3//)
@@ -6851,7 +6853,8 @@ EOF
       _live=yes && break
   done
   if test "$_live" != yes ; then
-      if cxx_check -I/usr/include/liveMedia -I/usr/include/UsageEnvironment -I/usr/include/groupsock; then
+      ld_tmp="-lliveMedia -lgroupsock -lUsageEnvironment -lBasicUsageEnvironment -lstdc++"
+      if cxx_check -I/usr/include/liveMedia -I/usr/include/UsageEnvironment -I/usr/include/groupsock $ld_tmp; then
 	  _live_dist=yes
       fi
   fi
@@ -6864,7 +6867,7 @@ elif test "$_live_dist" = yes && test "$_network" = yes; then
   _res_comment="using distribution version"
   _live="yes"
   def_live='#define CONFIG_LIVE555 1'
-  extra_ldflags="$extra_ldflags -lliveMedia -lgroupsock -lUsageEnvironment -lBasicUsageEnvironment -lstdc++"
+  extra_ldflags="$extra_ldflags $ld_tmp"
   extra_cxxflags="-I/usr/include/liveMedia -I/usr/include/UsageEnvironment \
              -I/usr/include/BasicUsageEnvironment -I/usr/include/groupsock"
  _inputmodules="live555 $_inputmodules"
@@ -7690,7 +7693,7 @@ if test "$_pvr" = auto ; then
 #include <inttypes.h>
 #include <linux/types.h>
 #include <linux/videodev2.h>
-int main(void) { struct v4l2_ext_controls ext; return 0; }
+int main(void) { struct v4l2_ext_controls ext; return ext.controls->value; }
 EOF
   cc_check && _pvr=yes
  fi
@@ -8391,15 +8394,18 @@ CONFIG_RDFT=yes
 CONFIG_BZLIB=$bzlib
 CONFIG_ENCODERS=yes
 CONFIG_GPL=yes
-CONFIG_LIBDIRAC=$_libdirac_lavc
-CONFIG_LIBFAAC=$_faac_lavc
-CONFIG_LIBMP3LAME=$_mp3lame_lavc
-CONFIG_LIBOPENCORE_AMRNB=$_libopencore_amrnb
-CONFIG_LIBOPENCORE_AMRWB=$_libopencore_amrwb
-CONFIG_LIBSCHROEDINGER=$_libschroedinger_lavc
-CONFIG_LIBVORBIS=$_libvorbis
-CONFIG_LIBX264=$_x264_lavc
-CONFIG_LIBXVID=$_xvid_lavc
+CONFIG_LIBDIRAC_DECODER=$_libdirac_lavc
+CONFIG_LIBDIRAC_ENCODER=$_libdirac_lavc
+CONFIG_LIBFAAC_ENCODER=$_faac_lavc
+CONFIG_LIBMP3LAME_ENCODER=$_mp3lame_lavc
+CONFIG_LIBOPENCORE_AMRNB_DECODER=$_libopencore_amrnb
+CONFIG_LIBOPENCORE_AMRNB_ENCODER=$_libopencore_amrnb
+CONFIG_LIBOPENCORE_AMRWB_DECODER=$_libopencore_amrwb
+CONFIG_LIBSCHROEDINGER_DECODER=$_libschroedinger_lavc
+CONFIG_LIBSCHROEDINGER_ENCODER=$_libschroedinger_lavc
+CONFIG_LIBVORBIS_ENCODER=$_libvorbis
+CONFIG_LIBX264_ENCODER=$_x264_lavc
+CONFIG_LIBXVID_ENCODER=$_xvid_lavc
 CONFIG_MLIB = $_mlib
 CONFIG_MUXERS=$_mencoder
 CONFIG_POSTPROC = yes
@@ -8410,6 +8416,7 @@ CONFIG_XVMC=$_xvmc
 CONFIG_ZLIB=$_zlib
 
 HAVE_PTHREADS = $_pthreads
+HAVE_SHM = $_shm
 HAVE_W32THREADS = $_w32threads
 HAVE_YASM = $_have_yasm
 
@@ -8580,6 +8587,7 @@ $def_pthread_cache
 /* CPU stuff */
 #define __CPU__ $iproc
 $def_words_endian
+$def_bigendian
 $(ff_config_enable "$_arch_all" "$_arch" "ARCH")
 $(ff_config_enable "$_cpuexts_all" "$_cpuexts" "HAVE")
 

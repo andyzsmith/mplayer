@@ -322,7 +322,7 @@ static void start_slice(struct vf_instance_s* vf, mp_image_t *mpi){
 static void scale(struct SwsContext *sws1, struct SwsContext *sws2, uint8_t *src[MP_MAX_PLANES], int src_stride[MP_MAX_PLANES],
                   int y, int h,  uint8_t *dst[MP_MAX_PLANES], int dst_stride[MP_MAX_PLANES], int interlaced){
     uint8_t *src2[MP_MAX_PLANES]={src[0], src[1], src[2]};
-#ifdef WORDS_BIGENDIAN
+#if HAVE_BIGENDIAN
     uint32_t pal2[256];
     if (src[1] && !src[2]){
         int i;
@@ -474,6 +474,8 @@ static int query_format(struct vf_instance_s* vf, unsigned int fmt){
     case IMGFMT_RGB8:
     case IMGFMT_BG4B:
     case IMGFMT_RG4B:
+    case IMGFMT_RGB48LE:
+    case IMGFMT_RGB48BE:
     {
 	unsigned int best=find_best_out(vf);
 	int flags;
