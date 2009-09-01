@@ -71,6 +71,7 @@ extern const vf_info_t vf_info_tinterlace;
 extern const vf_info_t vf_info_tfields;
 extern const vf_info_t vf_info_ivtc;
 extern const vf_info_t vf_info_ilpack;
+extern const vf_info_t vf_info_dbounds;
 extern const vf_info_t vf_info_dsize;
 extern const vf_info_t vf_info_decimate;
 extern const vf_info_t vf_info_softpulldown;
@@ -162,6 +163,7 @@ static const vf_info_t* const filter_list[]={
     &vf_info_tfields,
     &vf_info_ivtc,
     &vf_info_ilpack,
+    &vf_info_dbounds,
     &vf_info_dsize,
     &vf_info_decimate,
     &vf_info_softpulldown,
