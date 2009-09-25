@@ -219,6 +219,12 @@ void mplayer_put_key(int code)
 char *current_module;
 #include "mpcommon.h"
 
+// Needed by mpcommon.c
+void set_osd_subtitle(subtitle *subs) {
+    vo_sub = subs;
+    vo_osd_changed(OSDTYPE_SUBTITLE);
+}
+
 //char *out_audio_codec=NULL; // override audio codec
 //char *out_video_codec=NULL; // override video codec
 
@@ -1461,7 +1467,7 @@ if(sh_audio && !demuxer2){
  }
  else
 #endif
-    update_subtitles(sh_video, d_dvdsub, 0);
+    update_subtitles(sh_video, sh_video->pts, d_dvdsub, 0);
 
  frame_data = (s_frame_data){ .start = NULL, .in_size = 0, .frame_time = 0., .already_read = 0 };
 

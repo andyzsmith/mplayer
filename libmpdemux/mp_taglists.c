@@ -46,17 +46,19 @@ static const AVCodecTag mp_wav_tags[] = {
     { CODEC_ID_SPEEX,             MKTAG('s', 'p', 'x', ' ')},
     { CODEC_ID_TRUEHD,            MKTAG('T', 'R', 'H', 'D')},
     { CODEC_ID_TTA,               MKTAG('T', 'T', 'A', '1')},
+    { CODEC_ID_TWINVQ,            MKTAG('T', 'W', 'I', '2')},
     { CODEC_ID_WAVPACK,           MKTAG('W', 'V', 'P', 'K')},
     { CODEC_ID_WESTWOOD_SND1,     MKTAG('S', 'N', 'D', '1')},
     { CODEC_ID_XAN_DPCM,          MKTAG('A', 'x', 'a', 'n')},
     { 0, 0 },
 };
 
-const struct AVCodecTag *mp_wav_taglists[] = {ff_codec_wav_tags, mp_wav_tags, 0};
+const struct AVCodecTag * const mp_wav_taglists[] = {ff_codec_wav_tags, mp_wav_tags, 0};
 
 static const AVCodecTag mp_codecid_override_tags[] = {
     { CODEC_ID_AAC,               MKTAG('M', 'P', '4', 'A')},
     { CODEC_ID_AC3,               0x2000},
+    { CODEC_ID_ADPCM_IMA_AMV,     MKTAG('A', 'M', 'V', 'A')},
     { CODEC_ID_DTS,               0x2001},
     { CODEC_ID_EAC3,              MKTAG('E', 'A', 'C', '3')},
     { CODEC_ID_H264,              MKTAG('H', '2', '6', '4')},
@@ -75,7 +77,7 @@ static const AVCodecTag mp_codecid_override_tags[] = {
     { 0, 0 },
 };
 
-const struct AVCodecTag *mp_codecid_override_taglists[] =
+const struct AVCodecTag * const mp_codecid_override_taglists[] =
                         {mp_codecid_override_tags, 0};
 
 static const AVCodecTag mp_bmp_tags[] = {
@@ -83,6 +85,7 @@ static const AVCodecTag mp_bmp_tags[] = {
     { CODEC_ID_BETHSOFTVID,       MKTAG('B', 'E', 'T', 'H')},
     { CODEC_ID_BFI,               MKTAG('B', 'F', 'I', 'V')},
     { CODEC_ID_C93,               MKTAG('C', '9', '3', 'V')},
+    { CODEC_ID_DNXHD,             MKTAG('A', 'V', 'd', 'n')},
     { CODEC_ID_DSICINVIDEO,       MKTAG('D', 'C', 'I', 'V')},
     { CODEC_ID_DXA,               MKTAG('D', 'X', 'A', '1')},
     { CODEC_ID_FLIC,              MKTAG('F', 'L', 'I', 'C')},
@@ -107,5 +110,5 @@ static const AVCodecTag mp_bmp_tags[] = {
     { 0, 0 },
 };
 
-const struct AVCodecTag *mp_bmp_taglists[] = {ff_codec_bmp_tags, mp_bmp_tags, 0};
+const struct AVCodecTag * const mp_bmp_taglists[] = {ff_codec_bmp_tags, mp_bmp_tags, 0};
 

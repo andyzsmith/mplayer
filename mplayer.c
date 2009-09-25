@@ -48,6 +48,7 @@
 #include "cfg-mplayer-def.h"
 
 #include "libavutil/intreadwrite.h"
+#include "libavutil/avstring.h"
 
 #include "subreader.h"
 
@@ -930,13 +931,14 @@ static int try_load_config(m_config_t *conf, const char *file)
 static void load_per_file_config (m_config_t* conf, const char *const file)
 {
     char *confpath;
-    char cfg[strlen(file)+10];
+    char cfg[PATH_MAX];
     char *name;
 
+    if (strlen(file) > PATH_MAX - 14) {
+        mp_msg(MSGT_CPLAYER, MSGL_WARN, "Filename is too long, can not load file or directory specific config files\n");
+        return;
+    }
     sprintf (cfg, "%s.conf", file);
-
-    if (use_filedir_conf && try_load_config(conf, cfg))
-	return;
 
     name = strrchr(cfg, '/');
     if (HAVE_DOS_PATHS) {
@@ -951,6 +953,16 @@ static void load_per_file_config (m_config_t* conf, const char *const file)
 	name = cfg;
     else
 	name++;
+
+    if (use_filedir_conf) {
+        char dircfg[PATH_MAX];
+        strcpy(dircfg, cfg);
+        strcpy(dircfg + (name - cfg), "mplayer.conf");
+        try_load_config(conf, dircfg);
+
+        if (try_load_config(conf, cfg))
+            return;
+    }
 
     if ((confpath = get_path (name)) != NULL)
     {
@@ -1495,6 +1507,26 @@ void set_osd_bar(int type,const char* name,double min,double max,double val) {
                 name,ROUND(100*(val-min)/(max-min)));
 }
 
+/**
+ * \brief Display text subtitles on the OSD
+ */
+void set_osd_subtitle(subtitle *subs) {
+    int i;
+    vo_sub = subs;
+    vo_osd_changed(OSDTYPE_SUBTITLE);
+    if (!mpctx->sh_video) {
+        // reverse order, since newest set_osd_msg is displayed first
+        for (i = SUB_MAX_TEXT - 1; i >= 0; i--) {
+            if (!subs || i >= subs->lines || !subs->text[i])
+                rm_osd_msg(OSD_MSG_SUB_BASE + i);
+            else {
+                // HACK: currently display time for each sub line except the last is set to 2 seconds.
+                int display_time = i == subs->lines - 1 ? 180000 : 2000;
+                set_osd_msg(OSD_MSG_SUB_BASE + i, 1, display_time, "%s", subs->text[i]);
+            }
+        }
+    }
+}
 
 /**
  * \brief Update the OSD message line.
@@ -1755,7 +1787,7 @@ static int generate_video_frame(sh_video_t *sh_video, demux_stream_t *d_video)
 	current_module = "decode video";
 	decoded_frame = decode_video(sh_video, start, in_size, drop_frame, pts);
 	if (decoded_frame) {
-	    update_subtitles(sh_video, mpctx->d_sub, 0);
+	    update_subtitles(sh_video, sh_video->pts, mpctx->d_sub, 0);
 	    update_teletext(sh_video, mpctx->demuxer, 0);
 	    update_osd_msg();
 	    current_module = "filter video";
@@ -2278,7 +2310,7 @@ static double update_video(int *blit_frame)
 	// video_read_frame can change fps (e.g. for ASF video)
 	vo_fps = sh_video->fps;
 	drop_frame = check_framedrop(frame_time);
-	update_subtitles(sh_video, mpctx->d_sub, 0);
+	update_subtitles(sh_video, sh_video->pts, mpctx->d_sub, 0);
 	update_teletext(sh_video, mpctx->demuxer, 0);
 	update_osd_msg();
 	current_module = "decode_video";
@@ -2471,7 +2503,7 @@ static int seek(MPContext *mpctx, double amount, int style)
 	// (which is used by at least vobsub and edl code below) may
 	// be completely wrong (probably 0).
 	mpctx->sh_video->pts = mpctx->d_video->pts;
-	update_subtitles(mpctx->sh_video, mpctx->d_sub, 1);
+	update_subtitles(mpctx->sh_video, mpctx->sh_video->pts, mpctx->d_sub, 1);
 	update_teletext(mpctx->sh_video, mpctx->demuxer, 1);
     }
 
@@ -2480,6 +2512,8 @@ static int seek(MPContext *mpctx, double amount, int style)
 	mpctx->audio_out->reset(); // stop audio, throwing away buffered data
 	mpctx->sh_audio->a_buffer_len = 0;
 	mpctx->sh_audio->a_out_buffer_len = 0;
+	if (!mpctx->sh_video)
+	    update_subtitles(NULL, mpctx->sh_audio->pts, mpctx->d_sub, 1);
     }
 
     if (vo_vobsub && mpctx->sh_video) {
@@ -2578,7 +2612,8 @@ int gui_no_filename=0;
 
   print_version("MPlayer");
 
-#if (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_GUI)
+#if defined(__MINGW32__) || defined(__CYGWIN__)
+#ifdef CONFIG_GUI
     void *runningmplayer = FindWindow("MPlayer GUI for Windows", "MPlayer for Windows");
     if(runningmplayer && filename && use_gui){
         COPYDATASTRUCT csData;
@@ -2593,7 +2628,13 @@ int gui_no_filename=0;
     }
 #endif
 
-#if defined(__MINGW32__) || defined(__CYGWIN__)
+	{
+		HMODULE kernel32 = GetModuleHandle("Kernel32.dll");
+		BOOL WINAPI (*setDEP)(DWORD) = NULL;
+		if (kernel32)
+			setDEP = GetProcAddress(kernel32, "SetProcessDEPPolicy");
+		if (setDEP) setDEP(3);
+	}
 	// stop Windows from showing all kinds of annoying error dialogs
 	SetErrorMode(0x8003);
 	// request 1ms timer resolution
@@ -3219,7 +3260,7 @@ if (mpctx->demuxer && mpctx->demuxer->type==DEMUXER_TYPE_PLAYLIST)
     if ((strlen(bname)>10) && !strncmp(bname,"qt",2) && !strncmp(bname+3,"gateQT",6))
         continue;
 
-    if (!strncmp(bname,mp_basename(filename),strlen(bname))) // ignoring self-reference
+    if (!strcmp(playlist_entry,filename)) // ignoring self-reference
         continue;
 
     entry = play_tree_new();
@@ -3232,6 +3273,10 @@ if (mpctx->demuxer && mpctx->demuxer->type==DEMUXER_TYPE_PLAYLIST)
 	strncpy(temp, filename, strlen(filename)-strlen(mp_basename(filename)));
 	temp[strlen(filename)-strlen(mp_basename(filename))]='\0';
 	strcat(temp, playlist_entry);
+	if (!strcmp(temp, filename)) {
+	  free(temp);
+	  continue;
+	}
 	play_tree_add_file(entry,temp);
 	mp_msg(MSGT_CPLAYER,MSGL_V,"Resolving reference to %s.\n",temp);
 	free(temp);
@@ -3681,6 +3726,7 @@ if(!mpctx->sh_video) {
 
   if(end_at.type == END_AT_TIME && end_at.pos < a_pos)
     mpctx->eof = PT_NEXT_ENTRY;
+  update_subtitles(NULL, mpctx->sh_audio->pts, mpctx->d_sub, 0);
   update_osd_msg();
 
 } else {

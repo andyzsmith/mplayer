@@ -945,6 +945,10 @@ static int mp_property_program(m_option_t * prop, int action, void *arg,
 	     &prog) == DEMUXER_CTRL_NOTIMPL)
 	    return M_PROPERTY_ERROR;
 
+	if (prog.aid < 0 && prog.vid < 0) {
+	    mp_msg(MSGT_CPLAYER, MSGL_ERR, "Selected program contains no audio or video streams!\n");
+	    return M_PROPERTY_ERROR;
+	}
 	mp_property_do("switch_audio", M_PROPERTY_SET, &prog.aid, mpctx);
 	mp_property_do("switch_video", M_PROPERTY_SET, &prog.vid, mpctx);
 	return M_PROPERTY_OK;
@@ -1310,6 +1314,7 @@ static int mp_property_sub(m_option_t * prop, int action, void *arg,
     demux_stream_t *const d_sub = mpctx->d_sub;
     const int global_sub_size = mpctx->global_sub_size;
     int source = -1, reset_spu = 0;
+    double pts = 0;
     char *sub_name;
 
     if (global_sub_size <= 0)
@@ -1496,7 +1501,11 @@ static int mp_property_sub(m_option_t * prop, int action, void *arg,
 	d_sub->id = dvdsub_id;
     }
 #endif
-    update_subtitles(mpctx->sh_video, d_sub, 1);
+    if (mpctx->sh_audio)
+        pts = mpctx->sh_audio->pts;
+    if (mpctx->sh_video)
+        pts = mpctx->sh_video->pts;
+    update_subtitles(mpctx->sh_video, pts, d_sub, 1);
 
     return M_PROPERTY_OK;
 }

@@ -468,6 +468,7 @@ Advanced options:
   --enable-armv6            enable ARMv6 (ARM) [autodetect]
   --enable-armv6t2          enable ARMv6t2 (ARM) [autodetect]
   --enable-armvfp           enable ARM VFP (ARM) [autodetect]
+  --enable-neon             enable NEON (ARM) [autodetect]
   --enable-iwmmxt           enable iWMMXt (ARM) [autodetect]
   --disable-fastmemcpy      disable 3DNow!/SSE/MMX optimized memcpy [enable]
   --enable-big-endian       force byte order to big-endian [autodetect]
@@ -517,6 +518,7 @@ _armv5te=auto
 _armv6=auto
 _armv6t2=auto
 _armvfp=auto
+neon=auto
 _iwmmxt=auto
 _mtrr=auto
 _altivec=auto
@@ -722,6 +724,7 @@ _maemo=auto
 _coreaudio=auto
 _corevideo=auto
 _quartz=auto
+quicktime=auto
 _macosx_finder=no
 _macosx_bundle=auto
 _sortsub=yes
@@ -1149,16 +1152,16 @@ for ac_option do
   --disable-libopencore_amrnb)	_libopencore_amrnb=no	;;
   --enable-libopencore_amrwb)	_libopencore_amrwb=yes	;;
   --disable-libopencore_amrwb)	_libopencore_amrwb=no	;;
-  --enable-decoder=*)	_libavdecoders="$_libavdecoders $(echo $ac_option | cut -d '=' -f 2)" ;;
-  --disable-decoder=*)	_libavdecoders=$(echo $_libavdecoders | sed "s/$(echo $ac_option | cut -d '=' -f 2)//g") ;;
-  --enable-encoder=*)	_libavencoders="$_libavencoders $(echo $ac_option | cut -d '=' -f 2)" ;;
-  --disable-encoder=*)	_libavencoders=$(echo $_libavencoders | sed "s/$(echo $ac_option | cut -d '=' -f 2)//g") ;;
-  --enable-parser=*)	_libavparsers="$_libavparsers $(echo $ac_option | cut -d '=' -f 2)" ;;
-  --disable-parser=*)	_libavparsers=$(echo $_libavparsers | sed "s/$(echo $ac_option | cut -d '=' -f 2)//g") ;;
-  --enable-demuxer=*)	_libavdemuxers="$_libavdemuxers $(echo $ac_option | cut -d '=' -f 2)" ;;
-  --disable-demuxer=*)	_libavdemuxers=$(echo $_libavdemuxers | sed "s/$(echo $ac_option | cut -d '=' -f 2)//g") ;;
-  --enable-muxer=*)	_libavmuxers="$_libavmuxers $(echo $ac_option | cut -d '=' -f 2)" ;;
-  --disable-muxer=*)	_libavmuxers=$(echo $_libavmuxers | sed "s/$(echo $ac_option | cut -d '=' -f 2)//g") ;;
+  --enable-decoder=*)  _libavdecoders="$_libavdecoders $(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')" ;;
+  --disable-decoder=*) _libavdecoders=$(echo $_libavdecoders | sed "s/$(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')//g") ;;
+  --enable-encoder=*)  _libavencoders="$_libavencoders $(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')" ;;
+  --disable-encoder=*) _libavencoders=$(echo $_libavencoders | sed "s/$(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')//g") ;;
+  --enable-parser=*)   _libavparsers="$_libavparsers $(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')" ;;
+  --disable-parser=*)  _libavparsers=$(echo $_libavparsers | sed "s/$(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')//g") ;;
+  --enable-demuxer=*)  _libavdemuxers="$_libavdemuxers $(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')" ;;
+  --disable-demuxer=*) _libavdemuxers=$(echo $_libavdemuxers | sed "s/$(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')//g") ;;
+  --enable-muxer=*)    _libavmuxers="$_libavmuxers $(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')" ;;
+  --disable-muxer=*)	_libavmuxers=$(echo $_libavmuxers | sed "s/$(echo $ac_option | cut -d '=' -f 2 | tr '[a-z]' '[A-Z]')//g") ;;
   --enable-libavformat_a)	_libavformat_a=yes	;;
   --disable-libavformat_a)	_libavformat_a=no	;;
   --enable-libavformat_so)	_libavformat_so=yes	;;
@@ -1320,6 +1323,8 @@ for ac_option do
   --disable-armv6t2) _armv6t2=no ;;
   --enable-armvfp) _armvfp=yes ;;
   --disable-armvfp) _armvfp=no ;;
+  --enable-neon) neon=yes ;;
+  --disable-neon) neon=no ;;
   --enable-iwmmxt) _iwmmxt=yes ;;
   --disable-iwmmxt) _iwmmxt=no ;;
   --enable-mmx)	_mmx=yes ;;
@@ -1347,6 +1352,9 @@ if test -z "$_target" ; then
   system_name=$(uname -s 2>&1)
   case "$system_name" in
   Linux|FreeBSD|NetBSD|OpenBSD|DragonFly|BSD/OS|Darwin|SunOS|QNX|GNU|BeOS|MorphOS|AIX|AmigaOS)
+    ;;
+  Haiku)
+    system_name=BeOS
     ;;
   IRIX*)
     system_name=IRIX
@@ -1388,16 +1396,8 @@ if test -z "$_target" ; then
 
       # x86/x86pc is used by QNX
       case "$(uname -m 2>&1)" in
-      i[3-9]86*|x86|x86pc|k5|k6|k6_2|k6_3|k6-2|k6-3|pentium*|athlon*|i586_i686|i586-i686|BePC) host_arch=i386 ;;
+      x86_64|amd64|i[3-9]86*|x86|x86pc|k5|k6|k6_2|k6_3|k6-2|k6-3|pentium*|athlon*|i586_i686|i586-i686|BePC) host_arch=i386 ;;
       ia64) host_arch=ia64 ;;
-      x86_64|amd64)
-        if [ -n "$($_cc -dumpmachine | sed -n '/^x86_64-/p;/^amd64-/p')" -a \
-             -z "$(echo $CFLAGS $_cc | grep -- -m32)" ]; then
-          host_arch=x86_64
-        else
-          host_arch=i386
-        fi
-      ;;
       macppc|ppc) host_arch=ppc ;;
       ppc64) host_arch=ppc64 ;;
       alpha) host_arch=alpha ;;
@@ -1437,14 +1437,6 @@ else # if test -z "$_target"
     host_arch=$(echo $host_arch | tr '_' '-')
   fi
 fi
-
-echo "Detected operating system: $system_name"
-echo "Detected host architecture: $host_arch"
-
-if test "$_runtime_cpudetection" = yes && ! x86 && ! ppc; then
-  die "Runtime CPU detection only works for x86, x86-64 and PPC!"
-fi
-
 
 extra_cflags="-I. $extra_cflags"
 _timer=timer-linux.c
@@ -1526,6 +1518,24 @@ TMPS="$I/mplayer-conf-$RANDOM-$$.S"
 rm -f "$TMPLOG"
 echo configuration: $_configuration > "$TMPLOG"
 echo >> "$TMPLOG"
+
+
+if x86 ; then
+  cat > $TMPC << EOF
+int main(void) {
+    int test[sizeof(char *)-7];
+    return 0;
+}
+EOF
+  cc_check && host_arch=x86_64 || host_arch=i386
+fi
+
+echo "Detected operating system: $system_name"
+echo "Detected host architecture: $host_arch"
+
+if test "$_runtime_cpudetection" = yes && ! x86 && ! ppc; then
+  die "Runtime CPU detection only works for x86, x86-64 and PPC!"
+fi
 
 
 # Checking CC version...
@@ -2549,6 +2559,24 @@ EOF
 cc_check && ten_operands=yes && def_ten_operands='#define HAVE_TEN_OPERANDS 1'
 echores $ten_operands
 
+echocheck "ebx availability"
+ebx_available=no
+def_ebx_available='#define HAVE_EBX_AVAILABLE 0'
+cat > $TMPC << EOF
+int main(void) {
+    int x;
+    __asm__ volatile(
+        "xor %0, %0"
+        :"=b"(x)
+        // just adding ebx to clobber list seems unreliable with some
+        // compilers, e.g. Haiku's gcc 2.95
+    );
+    return 0;
+}
+EOF
+cc_check && ebx_available=yes && def_ebx_available='#define HAVE_EBX_AVAILABLE 1'
+echores $ebx_available
+
 echocheck "yasm"
 if test -z "$YASMFLAGS" ; then
   if darwin ; then
@@ -2705,6 +2733,16 @@ EOF
   fi
   echores "$_armvfp"
 
+  echocheck "ARM NEON"
+  if test $neon = "auto" ; then
+    cat > $TMPC << EOF
+int main(void) { __asm__ volatile ("vadd.i16 q0, q0, q0"); return 0; }
+EOF
+    neon=no
+    cc_check && neon=yes
+  fi
+  echores "$neon"
+
   echocheck "iWMMXt (Intel XScale SIMD instructions)"
   if test $_iwmmxt = "auto" ; then
     cat > $TMPC << EOF
@@ -2716,7 +2754,7 @@ EOF
   echores "$_iwmmxt"
 fi
 
-_cpuexts_all='ALTIVEC MMX MMX2 AMD3DNOW AMD3DNOWEXT SSE SSE2 SSSE3 FAST_CMOV CMOV PLD ARMV5TE ARMV6 ARMV6T2 ARMVFP IWMMXT MMI VIS MVI'
+_cpuexts_all='ALTIVEC MMX MMX2 AMD3DNOW AMD3DNOWEXT SSE SSE2 SSSE3 FAST_CMOV CMOV PLD ARMV5TE ARMV6 ARMV6T2 ARMVFP NEON IWMMXT MMI VIS MVI'
 test "$_altivec"   = yes && _cpuexts="ALTIVEC $_cpuexts"
 test "$_mmx"       = yes && _cpuexts="MMX $_cpuexts"
 test "$_mmxext"    = yes && _cpuexts="MMX2 $_cpuexts"
@@ -2732,6 +2770,7 @@ test "$_armv5te"   = yes && _cpuexts="ARMV5TE $_cpuexts"
 test "$_armv6"     = yes && _cpuexts="ARMV6 $_cpuexts"
 test "$_armv6t2"   = yes && _cpuexts="ARMV6T2 $_cpuexts"
 test "$_armvfp"    = yes && _cpuexts="ARMVFP $_cpuexts"
+test "$neon"       = yes && _cpuexts="NEON $_cpuexts"
 test "$_iwmmxt"    = yes && _cpuexts="IWMMXT $_cpuexts"
 test "$_vis"       = yes && _cpuexts="VIS $_cpuexts"
 test "$_mvi"       = yes && _cpuexts="MVI $_cpuexts"
@@ -4431,59 +4470,6 @@ fi
 echores "$_3dfx"
 
 
-echocheck "OpenGL"
-#Note: this test is run even with --enable-gl since we autodetect linker flags
-if (test "$_x11" = yes || win32) && test "$_gl" != no ; then
-  cat > $TMPC << EOF
-#ifdef GL_WIN32
-#include <windows.h>
-#include <GL/gl.h>
-#else
-#include <GL/gl.h>
-#include <X11/Xlib.h>
-#include <GL/glx.h>
-#endif
-int main(void) {
-#ifdef GL_WIN32
-  HDC dc;
-  wglCreateContext(dc);
-#else
-  glXCreateContext(NULL, NULL, NULL, True);
-#endif
-  glFinish();
-  return 0;
-}
-EOF
-  _gl=no
-  if cc_check -lGL $_ld_lm ; then
-    _gl=yes
-    libs_mplayer="$libs_mplayer -lGL $_ld_dl"
-  elif cc_check -lGL $_ld_lm $_ld_pthread ; then
-    _gl=yes
-    libs_mplayer="$libs_mplayer -lGL $_ld_pthread $_ld_dl"
-  elif cc_check -DGL_WIN32 -lopengl32 ; then
-    _gl=yes
-    _gl_win32=yes
-    libs_mplayer="$libs_mplayer -lopengl32 -lgdi32"
-  fi
-else
-  _gl=no
-fi
-if test "$_gl" = yes ; then
-  def_gl='#define CONFIG_GL 1'
-  if test "$_gl_win32" = yes ; then
-    def_gl_win32='#define GL_WIN32 1'
-    _res_comment="win32 version"
-  fi
-  _vomodules="opengl $_vomodules"
-else
-  def_gl='#undef CONFIG_GL'
-  def_gl_win32='#undef GL_WIN32'
-  _novomodules="opengl $_novomodules"
-fi
-echores "$_gl"
-
-
 echocheck "VIDIX"
 def_vidix='#undef CONFIG_VIDIX'
 def_vidix_drv_cyberblade='#undef CONFIG_VIDIX_DRV_CYBERBLADE'
@@ -4817,23 +4803,43 @@ fi
 
 if darwin; then
 
+echocheck "QuickTime"
+if test "$quicktime" = auto ; then
+  cat > $TMPC <<EOF
+#include <QuickTime/QuickTime.h>
+int main(void) {
+    ImageDescription *desc;
+    EnterMovies();
+    ExitMovies();
+    return 0;
+}
+EOF
+  quicktime=no
+  cc_check -framework QuickTime && quicktime=yes
+fi
+if test "$quicktime" = yes ; then
+  extra_ldflags="$extra_ldflags -framework QuickTime"
+  def_quicktime='#define CONFIG_QUICKTIME 1'
+else
+  def_quicktime='#undef CONFIG_QUICKTIME'
+  _quartz=no
+fi
+echores $quicktime
+
 echocheck "Quartz"
 if test "$_quartz" = auto ; then
   cat > $TMPC <<EOF
 #include <Carbon/Carbon.h>
-#include <QuickTime/QuickTime.h>
 int main(void) {
-    EnterMovies();
-    ExitMovies();
     CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, false);
     return 0;
 }
 EOF
   _quartz=no
-  cc_check -framework Carbon -framework QuickTime && _quartz=yes
+  cc_check -framework Carbon && _quartz=yes
 fi
 if test "$_quartz" = yes ; then
-  libs_mplayer="$libs_mplayer -framework Carbon -framework QuickTime"
+  libs_mplayer="$libs_mplayer -framework Carbon"
   def_quartz='#define CONFIG_QUARTZ 1'
   _vomodules="quartz $_vomodules"
 else
@@ -4865,6 +4871,61 @@ fi
 echores "$_corevideo"
 
 fi #if darwin
+
+
+# make sure this stays below CoreVideo to avoid issues due to namespace
+# conflicts between -lGL and -framework OpenGL
+echocheck "OpenGL"
+#Note: this test is run even with --enable-gl since we autodetect linker flags
+if (test "$_x11" = yes || win32) && test "$_gl" != no ; then
+  cat > $TMPC << EOF
+#ifdef GL_WIN32
+#include <windows.h>
+#include <GL/gl.h>
+#else
+#include <GL/gl.h>
+#include <X11/Xlib.h>
+#include <GL/glx.h>
+#endif
+int main(void) {
+#ifdef GL_WIN32
+  HDC dc;
+  wglCreateContext(dc);
+#else
+  glXCreateContext(NULL, NULL, NULL, True);
+#endif
+  glFinish();
+  return 0;
+}
+EOF
+  _gl=no
+  if cc_check -lGL $_ld_lm ; then
+    _gl=yes
+    libs_mplayer="$libs_mplayer -lGL $_ld_dl"
+  elif cc_check -lGL $_ld_lm $_ld_pthread ; then
+    _gl=yes
+    libs_mplayer="$libs_mplayer -lGL $_ld_pthread $_ld_dl"
+  elif cc_check -DGL_WIN32 -lopengl32 ; then
+    _gl=yes
+    _gl_win32=yes
+    libs_mplayer="$libs_mplayer -lopengl32 -lgdi32"
+  fi
+else
+  _gl=no
+fi
+if test "$_gl" = yes ; then
+  def_gl='#define CONFIG_GL 1'
+  if test "$_gl_win32" = yes ; then
+    def_gl_win32='#define GL_WIN32 1'
+    _res_comment="win32 version"
+  fi
+  _vomodules="opengl $_vomodules"
+else
+  def_gl='#undef CONFIG_GL'
+  def_gl_win32='#undef GL_WIN32'
+  _novomodules="opengl $_novomodules"
+fi
+echores "$_gl"
 
 
 echocheck "PNG support"
@@ -6790,12 +6851,10 @@ echores "$_real"
 echocheck "QuickTime codecs"
 _qtx_emulation=no
 def_qtx_win32='#undef CONFIG_QTX_CODECS_WIN32'
-def_quicktime='#undef CONFIG_QUICKTIME'
 if test "$_qtx" = auto ; then
-  test "$_win32dll" = yes || darwin && _qtx=yes
+  test "$_win32dll" = yes || test "$quicktime" = yes && _qtx=yes
 fi
 if test "$_qtx" = yes ; then
-    darwin && extra_ldflags="$extra_ldflags -framework QuickTime" && def_quicktime='#define CONFIG_QUICKTIME 1'
     def_qtx='#define CONFIG_QTX_CODECS 1'
     win32 && _qtx_codecs_win32=yes && def_qtx_win32='#define CONFIG_QTX_CODECS_WIN32 1'
     _codecmodules="qtx $_codecmodules"
@@ -7082,7 +7141,7 @@ if test "$_libopencore_amrnb" = yes ; then
   extra_ldflags="$extra_ldflags -lopencore-amrnb"
   def_libopencore_amrnb='#define CONFIG_LIBOPENCORE_AMRNB 1'
   _libavdecoders="$_libavdecoders LIBOPENCORE_AMRNB_DECODER"
-  _libavencoders="$_libavencoders LIBOPENCORE_AMRNB_DECODER"
+  _libavencoders="$_libavencoders LIBOPENCORE_AMRNB_ENCODER"
   _codecmodules="libopencore_amrnb $_codecmodules"
 else
   def_libopencore_amrnb='#define CONFIG_LIBOPENCORE_AMRNB 0'
@@ -7181,8 +7240,8 @@ if test "$_x264" = auto ; then
   cat > $TMPC << EOF
 #include <inttypes.h>
 #include <x264.h>
-#if X264_BUILD < 65
-#error We do not support old versions of x264. Get the latest from SVN.
+#if X264_BUILD < 76
+#error We do not support old versions of x264. Get the latest from git.
 #endif
 int main(void) { x264_encoder_open((void*)0); return 0; }
 EOF
@@ -8376,7 +8435,9 @@ LIBSWSCALE = $_libswscale
 LIBSWSCALE_A = $_libswscale_a
 LIBSWSCALE_SO = $_libswscale_so
 
-BUILD_STATIC=yes
+CC_O=-o \$@
+LD=gcc
+CONFIG_STATIC=yes
 SRC_PATH=..
 BUILD_ROOT=..
 LIBPREF=lib
@@ -8878,7 +8939,7 @@ $def_yasm
 #define CONFIG_RDFT 1
 
 /* Use these registers in FFmpeg x86 inline asm. No proper detection yet. */
-#define HAVE_EBX_AVAILABLE 1
+$def_ebx_available
 #ifndef MP_DEBUG
 #define HAVE_EBP_AVAILABLE 1
 #else
