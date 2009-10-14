@@ -571,6 +571,10 @@ glconfig:
     uninitGl();
   if (setGlWindow(&gl_vinfo, &gl_context, vo_window) == SET_WINDOW_FAILED)
     return -1;
+  if (mesa_buffer && !AllocateMemoryMESA) {
+    mp_msg(MSGT_VO, MSGL_ERR, "Can not enable mesa-buffer because AllocateMemoryMESA was not found\n");
+    mesa_buffer = 0;
+  }
   initGl(vo_dwidth, vo_dheight);
 
   return 0;
@@ -781,7 +785,7 @@ static uint32_t get_image(mp_image_t *mpi) {
       mesa_bufferptr = NULL;
     }
     if (!mesa_bufferptr)
-      mesa_bufferptr = AllocateMemoryMESA(mDisplay, mScreen, needed_size, 0, 0, 0);
+      mesa_bufferptr = AllocateMemoryMESA(mDisplay, mScreen, needed_size, 0, 1.0, 1.0);
     mesa_buffersize = needed_size;
 #endif
     mpi->planes[0] = mesa_bufferptr;

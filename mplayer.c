@@ -253,7 +253,7 @@ extern char *sub_demuxer_name; // override sub demuxer
 // streaming:
 int audio_id=-1;
 int video_id=-1;
-int dvdsub_id=-2;
+int dvdsub_id=-1;
 int vobsub_id=-1;
 char* audio_lang=NULL;
 char* dvdsub_lang=NULL;
@@ -3204,7 +3204,6 @@ if(stream_dump_type==5){
 if(mpctx->stream->type==STREAMTYPE_DVD){
   current_module="dvd lang->id";
   if(audio_id==-1) audio_id=dvd_aid_from_lang(mpctx->stream,audio_lang);
-  if(dvdsub_lang && dvdsub_id==-2) dvdsub_id=-1;
   if(dvdsub_lang && dvdsub_id==-1) dvdsub_id=dvd_sid_from_lang(mpctx->stream,dvdsub_lang);
   // setup global sub numbering
   mpctx->global_sub_indices[SUB_SOURCE_DEMUX] = mpctx->global_sub_size; // the global # of the first demux-specific sub.
@@ -3217,7 +3216,6 @@ if(mpctx->stream->type==STREAMTYPE_DVD){
 if(mpctx->stream->type==STREAMTYPE_DVDNAV){
   current_module="dvdnav lang->id";
   if(audio_id==-1) audio_id=mp_dvdnav_aid_from_lang(mpctx->stream,audio_lang);
-  if(dvdsub_lang && dvdsub_id==-2) dvdsub_id=-1;
   if(dvdsub_lang && dvdsub_id==-1) dvdsub_id=mp_dvdnav_sid_from_lang(mpctx->stream,dvdsub_lang);
   // setup global sub numbering
   mpctx->global_sub_indices[SUB_SOURCE_DEMUX] = mpctx->global_sub_size; // the global # of the first demux-specific sub.
@@ -3450,14 +3448,15 @@ if(vo_spudec==NULL && mpctx->sh_video &&
   init_vo_spudec();
 }
 
-if(mpctx->sh_video) {
+if(1 || mpctx->sh_video) {
 // after reading video params we should load subtitles because
 // we know fps so now we can adjust subtitle time to ~6 seconds AST
 // check .sub
+  double fps = mpctx->sh_video ? mpctx->sh_video->fps : 25;
   current_module="read_subtitles_file";
   if(sub_name){
     for (i = 0; sub_name[i] != NULL; ++i)
-        add_subtitles (sub_name[i], mpctx->sh_video->fps, 0);
+        add_subtitles (sub_name[i], fps, 0);
   }
   if(sub_auto) { // auto load sub file ...
     char *psub = get_path( "sub/" );
@@ -3465,7 +3464,7 @@ if(mpctx->sh_video) {
     int i = 0;
     free(psub); // release the buffer created by get_path() above
     while (tmp[i]) {
-        add_subtitles (tmp[i], mpctx->sh_video->fps, 1);
+        add_subtitles (tmp[i], fps, 1);
         free(tmp[i++]);
     }
     free(tmp);
@@ -3490,11 +3489,11 @@ if (mpctx->global_sub_size) {
   } else if (mpctx->global_sub_indices[SUB_SOURCE_SUBS] >= 0) {
     // if there are text subs to use, use those.  (autosubs come last here)
     mpctx->global_sub_pos = mpctx->global_sub_indices[SUB_SOURCE_SUBS];
-  } else if (dvdsub_id < 0 && mpctx->global_sub_indices[SUB_SOURCE_DEMUX] >= 0) {
+  } else if (dvdsub_id == -1 && mpctx->global_sub_indices[SUB_SOURCE_DEMUX] >= 0) {
     // finally select subs by language and container hints
-    if (dvdsub_id < 0 && dvdsub_lang)
+    if (dvdsub_id == -1 && dvdsub_lang)
       dvdsub_id = demuxer_sub_track_by_lang(mpctx->demuxer, dvdsub_lang);
-    if (dvdsub_id < 0)
+    if (dvdsub_id == -1)
       dvdsub_id = demuxer_default_sub_track(mpctx->demuxer);
     if (dvdsub_id >= 0)
       mpctx->global_sub_pos = mpctx->global_sub_indices[SUB_SOURCE_DEMUX] + dvdsub_id;
@@ -3726,7 +3725,7 @@ if(!mpctx->sh_video) {
 
   if(end_at.type == END_AT_TIME && end_at.pos < a_pos)
     mpctx->eof = PT_NEXT_ENTRY;
-  update_subtitles(NULL, mpctx->sh_audio->pts, mpctx->d_sub, 0);
+  update_subtitles(NULL, a_pos, mpctx->d_sub, 0);
   update_osd_msg();
 
 } else {

@@ -492,7 +492,7 @@ Use these options if autodetection fails:
   --with-gtk-config=PATH      path to gtk*-config
   --with-sdl-config=PATH      path to sdl*-config
   --with-dvdnav-config=PATH   path to dvdnav-config
-  --with-dvdread-config=PATH   path to dvdread-config
+  --with-dvdread-config=PATH  path to dvdread-config
 
 This configure script is NOT autoconf-based, even though its output is similar.
 It will try to autodetect all configuration options. If you --enable an option
@@ -2388,6 +2388,7 @@ EOF
 cc_check -c || die "Symbol mangling check failed."
 sym=$($_nm -P -g $TMPEXE)
 extern_prefix=${sym%%ff_extern*}
+def_extern_asm="#define EXTERN_ASM $extern_prefix"
 def_extern_prefix="#define EXTERN_PREFIX \"$extern_prefix\""
 echores $extern_prefix
 
@@ -2571,6 +2572,8 @@ int main(void) {
         // just adding ebx to clobber list seems unreliable with some
         // compilers, e.g. Haiku's gcc 2.95
     );
+    // and the above check does not work for OSX 64 bit...
+    __asm__ volatile("":::"%ebx");
     return 0;
 }
 EOF
@@ -3939,7 +3942,7 @@ int main(void) {
   return 0;
 }
 EOF
-  cc_check && tmp_run && _apple_ir=yes
+  cc_check && _apple_ir=yes
 fi
 if test "$_apple_ir" = yes ; then
   def_apple_ir='#define CONFIG_APPLE_IR 1'
@@ -4945,13 +4948,7 @@ int main(void) {
   return strcmp(PNG_LIBPNG_VER_STRING, png_libpng_ver);
 }
 EOF
-    if cc_check -lpng -lz $_ld_lm ; then
-      if tmp_run ; then
-        _png=yes
-      else
-        _res_comment="mismatch of library and header versions"
-      fi
-    fi
+    cc_check -lpng -lz $_ld_lm && _png=yes
   fi
 fi
 echores "$_png"
@@ -4997,11 +4994,7 @@ cat > $TMPC << EOF
 #include <jpeglib.h>
 int main(void) { return 0; }
 EOF
-    if cc_check -ljpeg $_ld_lm ; then
-      if tmp_run ; then
-        _jpeg=yes
-      fi
-    fi
+  cc_check -ljpeg $_ld_lm && _jpeg=yes
 fi
 echores "$_jpeg"
 
@@ -5044,7 +5037,7 @@ cat > $TMPC << EOF
 int main(void) { return 0; }
 EOF
   for _ld_gif in "-lungif" "-lgif" ; do
-    cc_check $_ld_gif && tmp_run && _gif=yes && break
+    cc_check $_ld_gif && _gif=yes && break
   done
 fi
 
@@ -5081,7 +5074,7 @@ int main(void) {
   return 0;
 }
 EOF
-  if cc_check "$_ld_gif" && tmp_run ; then
+  if cc_check "$_ld_gif" ; then
     def_gif_4='#define CONFIG_GIF_4 1'
     _res_comment=""
   fi
@@ -5106,7 +5099,7 @@ int main(void) {
   return 0;
 }
 EOF
-  if cc_check "$_ld_gif" && tmp_run ; then
+  if cc_check "$_ld_gif" ; then
     def_gif_tvt_hack='#undef CONFIG_GIF_TVT_HACK'
     echores "disabled"
   else
@@ -5455,7 +5448,7 @@ cat > $TMPC << EOF
 #include <artsc.h>
 int main(void) { return 0; }
 EOF
-cc_check $(artsc-config --libs) $(artsc-config --cflags) && tmp_run && _arts=yes
+cc_check $(artsc-config --libs) $(artsc-config --cflags) && _arts=yes
 
   fi
 fi
@@ -5535,7 +5528,7 @@ cat > $TMPC << EOF
 #include <pulse/pulseaudio.h>
 int main(void) { return 0; }
 EOF
-cc_check $($_pkg_config --libs --cflags libpulse) && tmp_run && _pulse=yes
+cc_check $($_pkg_config --libs --cflags libpulse) && _pulse=yes
 
   fi
 fi
@@ -6070,23 +6063,11 @@ int main(void) {
     FT_Library library;
     FT_Int major=-1,minor=-1,patch=-1;
     int err=FT_Init_FreeType(&library);
-    if (err) {
-	printf("Couldn't initialize freetype2 lib, err code: %d\n",err);
-	exit(err);
-    }
-    FT_Library_Version(library,&major,&minor,&patch); // in v2.1.0+ only :(((
-    printf("freetype2  header version: %d.%d.%d  library version: %d.%d.%d\n",
-	FREETYPE_MAJOR,FREETYPE_MINOR,FREETYPE_PATCH,
-	(int)major,(int)minor,(int)patch );
-    if (major!=FREETYPE_MAJOR || minor!=FREETYPE_MINOR) {
-	printf("Library and header version mismatch! Fix it in your distribution!\n");
-	exit(1);
-    }
     return 0;
 }
 EOF
 	_freetype=no
-	cc_check $($_freetypeconfig --cflags) $($_freetypeconfig --libs) && tmp_run && _freetype=yes
+	cc_check $($_freetypeconfig --cflags) $($_freetypeconfig --libs) && _freetype=yes
     else
 	_freetype=no
     fi
@@ -6156,7 +6137,7 @@ if test "$_ass" = auto ; then
 int main(void) { return 0; }
 EOF
     _ass=no
-    cc_check $($_freetypeconfig --cflags) $($_freetypeconfig --libs) && tmp_run && _ass=yes
+    cc_check $($_freetypeconfig --cflags) $($_freetypeconfig --libs) && _ass=yes
     if test "$_ass" = no ; then
         _res_comment="FreeType >= 2.1.8 needed"
     fi
@@ -6186,7 +6167,7 @@ int main(void) {
 }
 EOF
 	_fribidi=no
-	cc_check $($_fribidiconfig --cflags) $($_fribidiconfig --libs) && tmp_run && _fribidi=yes
+	cc_check $($_fribidiconfig --cflags) $($_fribidiconfig --libs) && _fribidi=yes
     else
 	_fribidi=no
     fi
@@ -6237,8 +6218,8 @@ if test "$_zlib" = yes ; then
   extra_ldflags="$extra_ldflags -lz"
 else
   def_zlib='#define CONFIG_ZLIB 0'
-  _libavdecoders=$(echo $_libavdecoders | sed -e s/FLASHSV_DECODER// -e s/PNG_DECODER// -e s/ZMBV_DECODER// -e s/DXA_DECODER// -e s/TSCC_DECODER//)
-  _libavencoders=$(echo $_libavencoders | sed -e s/FLASHSV_ENCODER// -e s/PNG_ENCODER// -e s/ZMBV_ENCODER//)
+  _libavdecoders=$(echo $_libavdecoders | sed -e s/FLASHSV_DECODER// -e s/PNG_DECODER// -e s/ZMBV_DECODER// -e s/ZLIB_DECODER// -e s/DXA_DECODER// -e s/TSCC_DECODER//)
+  _libavencoders=$(echo $_libavencoders | sed -e s/FLASHSV_ENCODER// -e s/PNG_ENCODER// -e s/ZMBV_ENCODER// -e s/ZLIB_ENCODER//)
 fi
 echores "$_zlib"
 
@@ -6503,7 +6484,7 @@ echores "$_theora"
 
 echocheck "internal mp3lib support"
 if test "$_mp3lib" = auto ; then
-  test "$cc_vendor" = intel && _mp3lib=no || _mp3lib=yes
+  test "$cc_vendor" = intel && test "$_cc_major" -le 10 -o "$_cc_major" -eq 11 -a "$_cc_minor" -eq 0 && _mp3lib=no || _mp3lib=yes
 fi
 if test "$_mp3lib" = yes ; then
   def_mp3lib='#define CONFIG_MP3LIB 1'
@@ -6516,7 +6497,7 @@ echores "$_mp3lib"
 
 echocheck "liba52 support"
 if test "$_liba52_internal" = auto ; then
-  test "$cc_vendor" = intel && _liba52_internal=no || _liba52_internal=yes
+  test "$cc_vendor" = intel && test "$_cc_major" -le 10 -o "$_cc_major" -eq 11 -a "$_cc_minor" -eq 0 && _liba52_internal=no || _liba52_internal=yes
 fi
 def_liba52='#undef CONFIG_LIBA52'
 def_liba52_internal="#undef CONFIG_LIBA52_INTERNAL"
@@ -7405,7 +7386,7 @@ int main(void) { lame_version_t lv; (void) lame_init();
     get_lame_version_numerical(&lv);  printf("%d%d\n",lv.major,lv.minor);
     return 0; }
 EOF
-  cc_check -lmp3lame $_ld_lm && tmp_run && _mp3lame=yes
+  cc_check -lmp3lame $_ld_lm && _mp3lame=yes
 fi
 if test "$_mp3lame" = yes ; then
   def_mp3lame="#define CONFIG_MP3LAME"
@@ -8617,6 +8598,7 @@ $def_vsscanf
 $def_asmalign_pot
 $def_builtin_expect
 $def_dl
+$def_extern_asm
 $def_extern_prefix
 $def_iconv
 $def_kstat
