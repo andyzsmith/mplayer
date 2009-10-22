@@ -124,7 +124,12 @@ static int query_format(struct vf_instance_s *vf, unsigned int fmt) {
 
 static int put_image(struct vf_instance_s *vf, mp_image_t *mpi, double pts) {
     mux_v->buffer = mpi->planes[0];
-    muxer_write_chunk(mux_v, mpi->width*mpi->height*mux_v->bih->biBitCount/8, 0x10, pts, pts);
+    // pts can be negative due to handling of 'elst' in
+    // libavformat/mov.c:mov_build_index
+    // Use 0 pts with negative dts, this causes
+    // libavformat/movenc.c:mov_write_packet to set cts to pts-dts
+    // which results in an 'elst' in the encoded MOV.
+    muxer_write_chunk(mux_v, mpi->width*mpi->height*mux_v->bih->biBitCount/8, 0x10, pts, pts < 0 ? 0 : pts);
     return 1;
 }
 
