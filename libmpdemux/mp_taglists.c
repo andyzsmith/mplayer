@@ -18,6 +18,7 @@
 
 #include "config.h"
 
+#include "mp_taglists.h"
 #include "libavformat/avformat.h"
 #include "libavformat/riff.h"
 
@@ -100,6 +101,7 @@ static const AVCodecTag mp_bmp_tags[] = {
     { CODEC_ID_RV20,              MKTAG('R', 'V', '2', '0')},
     { CODEC_ID_RV30,              MKTAG('R', 'V', '3', '0')},
     { CODEC_ID_RV40,              MKTAG('R', 'V', '4', '0')},
+    { CODEC_ID_TGV,               MKTAG('f', 'V', 'G', 'T')},
     { CODEC_ID_THP,               MKTAG('T', 'H', 'P', 'V')},
     { CODEC_ID_TIERTEXSEQVIDEO,   MKTAG('T', 'S', 'E', 'Q')},
     { CODEC_ID_TXD,               MKTAG('T', 'X', 'D', 'V')},
