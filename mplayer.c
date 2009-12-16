@@ -649,7 +649,8 @@ void uninit_player(unsigned int mask){
     initialized_flags&=~INITIALIZED_AO;
     current_module="uninit_ao";
     if (mpctx->edl_muted) mixer_mute(&mpctx->mixer);
-    mpctx->audio_out->uninit(mpctx->eof?0:1); mpctx->audio_out=NULL;
+    if (mpctx->audio_out) mpctx->audio_out->uninit(mpctx->eof?0:1);
+    mpctx->audio_out=NULL;
   }
 
 #ifdef CONFIG_GUI
@@ -1923,6 +1924,7 @@ static void mp_dvdnav_reset_stream (MPContext *ctx) {
     }
 
     audio_delay = 0.0f;
+    mpctx->global_sub_size = mpctx->global_sub_indices[SUB_SOURCE_DEMUX] + mp_dvdnav_number_of_subs(mpctx->stream);
     if (dvdsub_lang && dvdsub_id == dvdsub_lang_id) {
         dvdsub_lang_id = mp_dvdnav_sid_from_lang(ctx->stream, dvdsub_lang);
         if (dvdsub_lang_id != dvdsub_id) {
@@ -2443,11 +2445,12 @@ static void pause_loop(void)
         mp_cmd_free(cmd);
     }
     mpctx->osd_function=OSD_PLAY;
-    if (mpctx->audio_out && mpctx->sh_audio)
+    if (mpctx->audio_out && mpctx->sh_audio) {
         if (mpctx->eof) // do not play remaining audio if we e.g.  switch to the next file
           mpctx->audio_out->reset();
         else
           mpctx->audio_out->resume(); // resume audio
+    }
     if (mpctx->video_out && mpctx->sh_video && vo_config_count)
         mpctx->video_out->control(VOCTRL_RESUME, NULL); // resume video
     (void)GetRelativeTime(); // ignore time that passed during pause
@@ -3201,10 +3204,6 @@ if(stream_dump_type==5){
   int len;
   FILE *f;
   current_module="dumpstream";
-  if(mpctx->stream->type==STREAMTYPE_STREAM && mpctx->stream->fd<0){
-    mp_msg(MSGT_CPLAYER,MSGL_FATAL,MSGTR_DumpstreamFdUnavailable);
-    exit_player(EXIT_ERROR);
-  }
   stream_reset(mpctx->stream);
   stream_seek(mpctx->stream,mpctx->stream->start_pos);
   f=fopen(stream_dump_name,"wb");

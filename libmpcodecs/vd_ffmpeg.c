@@ -55,7 +55,7 @@ typedef struct {
 
 static int get_buffer(AVCodecContext *avctx, AVFrame *pic);
 static void release_buffer(AVCodecContext *avctx, AVFrame *pic);
-static void draw_slice(struct AVCodecContext *s, AVFrame *src, int offset[4],
+static void draw_slice(struct AVCodecContext *s, const AVFrame *src, int offset[4],
                        int y, int type, int height);
 
 static enum PixelFormat get_format(struct AVCodecContext *avctx,
@@ -451,7 +451,7 @@ static void uninit(sh_video_t *sh){
 }
 
 static void draw_slice(struct AVCodecContext *s,
-                        AVFrame *src, int offset[4],
+                        const AVFrame *src, int offset[4],
                         int y, int type, int height){
     sh_video_t *sh = s->opaque;
     uint8_t *source[MP_MAX_PLANES]= {src->data[0] + offset[0], src->data[1] + offset[1], src->data[2] + offset[2]};
@@ -536,10 +536,8 @@ static int get_buffer(AVCodecContext *avctx, AVFrame *pic){
     int type= MP_IMGTYPE_IPB;
     int width= avctx->width;
     int height= avctx->height;
-    int align=15;
+    avcodec_align_dimensions(avctx, &width, &height);
 //printf("get_buffer %d %d %d\n", pic->reference, ctx->ip_count, ctx->b_count);
-    if(avctx->pix_fmt == PIX_FMT_YUV410P)
-        align=63; //yes seriously, its really needed (16x16 chroma blocks in SVQ1 -> 64x64)
 
     if (pic->buffer_hints) {
         mp_msg(MSGT_DECVIDEO, MSGL_DBG2, "Buffer hints: %u\n", pic->buffer_hints);
@@ -595,8 +593,7 @@ static int get_buffer(AVCodecContext *avctx, AVFrame *pic){
         mp_msg(MSGT_DECVIDEO, MSGL_DBG2, type== MP_IMGTYPE_IPB ? "using IPB\n" : "using IP\n");
     }
 
-    mpi= mpcodecs_get_image(sh, type, flags,
-                        (width+align)&(~align), (height+align)&(~align));
+    mpi= mpcodecs_get_image(sh, type, flags, width, height);
     if (!mpi) return -1;
 
     // ok, let's see what did we get:

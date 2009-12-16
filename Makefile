@@ -144,7 +144,9 @@ SRCS_COMMON-$(LIBAVCODEC_A)          += libaf/af_lavcac3enc.c \
                                         libmpcodecs/vf_spp.c \
                                         libmpcodecs/vf_uspp.c \
 
-SRCS_COMMON-$(LIBAVFORMAT)           += libmpdemux/demux_lavf.c
+SRCS_COMMON-$(LIBAVFORMAT)           += libmpdemux/demux_lavf.c \
+                                        stream/stream_ffmpeg.c \
+
 SRCS_COMMON-$(LIBBS2B)               += libaf/af_bs2b.c
 SRCS_COMMON-$(LIBDCA)                += libmpcodecs/ad_libdca.c
 SRCS_COMMON-$(LIBDV)                 += libmpcodecs/ad_libdv.c \
@@ -271,7 +273,10 @@ SRCS_COMMON-$(TREMOR_INTERNAL)       += tremor/bitwise.c \
 SRCS_COMMON-$(TV)                    += stream/stream_tv.c stream/tv.c \
                                         stream/frequencies.c stream/tvi_dummy.c
 SRCS_COMMON-$(TV_BSDBT848)           += stream/tvi_bsdbt848.c
-SRCS_COMMON-$(TV_DSHOW)              += stream/tvi_dshow.c
+SRCS_COMMON-$(TV_DSHOW)              += stream/tvi_dshow.c \
+                                        loader/dshow/guids.c \
+                                        loader/dshow/mediatype.c \
+
 SRCS_COMMON-$(TV_V4L1)               += stream/tvi_v4l.c  stream/audio_in.c
 SRCS_COMMON-$(TV_V4L2)               += stream/tvi_v4l2.c stream/audio_in.c
 SRCS_COMMON-$(UNRAR_EXEC)            += unrar_exec.c
