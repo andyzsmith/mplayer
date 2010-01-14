@@ -30,8 +30,8 @@
 #include "libavutil/avutil.h"
 
 #define LIBSWSCALE_VERSION_MAJOR 0
-#define LIBSWSCALE_VERSION_MINOR 7
-#define LIBSWSCALE_VERSION_MICRO 2
+#define LIBSWSCALE_VERSION_MINOR 8
+#define LIBSWSCALE_VERSION_MICRO 0
 
 #define LIBSWSCALE_VERSION_INT  AV_VERSION_INT(LIBSWSCALE_VERSION_MAJOR, \
                                                LIBSWSCALE_VERSION_MINOR, \
@@ -51,12 +51,12 @@ unsigned swscale_version(void);
 /**
  * Returns the libswscale build-time configuration.
  */
-const char * swscale_configuration(void);
+const char *swscale_configuration(void);
 
 /**
  * Returns the libswscale license.
  */
-const char * swscale_license(void);
+const char *swscale_license(void);
 
 /* values for the flags, the stuff on the command line is different */
 #define SWS_FAST_BILINEAR     1
@@ -121,6 +121,18 @@ typedef struct {
 } SwsFilter;
 
 struct SwsContext;
+
+/**
+ * Returns a positive value if pix_fmt is a supported input format, 0
+ * otherwise.
+ */
+int sws_isSupportedInput(enum PixelFormat pix_fmt);
+
+/**
+ * Returns a positive value if pix_fmt is a supported output format, 0
+ * otherwise.
+ */
+int sws_isSupportedOutput(enum PixelFormat pix_fmt);
 
 /**
  * Frees the swscaler context swsContext.
