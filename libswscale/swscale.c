@@ -298,9 +298,6 @@ DECLARE_ASM_CONST(8, uint64_t, ff_bgr24toUVOffset)= 0x0040400000404000ULL;
 
 #endif /* ARCH_X86 && CONFIG_GPL */
 
-// clipping helper table for C implementations:
-static unsigned char clip_table[768];
-
 static SwsVector *sws_getConvVec(SwsVector *a, SwsVector *b);
 
 DECLARE_ALIGNED(8, static const uint8_t, dither_2x2_4[2][8])={
@@ -1850,16 +1847,6 @@ static int initMMX2HScaler(int dstW, int xInc, uint8_t *filterCode, int16_t *fil
 }
 #endif /* COMPILE_MMX2 */
 
-static void globalInit(void)
-{
-    // generating tables:
-    int i;
-    for (i=0; i<768; i++) {
-        int c= av_clip_uint8(i-256);
-        clip_table[i]=c;
-    }
-}
-
 static SwsFunc getSwsFunc(SwsContext *c)
 {
 #if CONFIG_RUNTIME_CPUDETECT
@@ -1914,7 +1901,7 @@ static SwsFunc getSwsFunc(SwsContext *c)
 #endif //!CONFIG_RUNTIME_CPUDETECT
 }
 
-static int PlanarToNV12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int PlanarToNV12Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *dst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -1940,7 +1927,7 @@ static int PlanarToNV12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], i
     return srcSliceH;
 }
 
-static int PlanarToYuy2Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int PlanarToYuy2Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *dst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -1950,7 +1937,7 @@ static int PlanarToYuy2Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], i
     return srcSliceH;
 }
 
-static int PlanarToUyvyWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int PlanarToUyvyWrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *dst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -1960,7 +1947,7 @@ static int PlanarToUyvyWrapper(SwsContext *c, uint8_t* src[], int srcStride[], i
     return srcSliceH;
 }
 
-static int YUV422PToYuy2Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int YUV422PToYuy2Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                 int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *dst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -1970,7 +1957,7 @@ static int YUV422PToYuy2Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], 
     return srcSliceH;
 }
 
-static int YUV422PToUyvyWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int YUV422PToUyvyWrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                 int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *dst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -1980,7 +1967,7 @@ static int YUV422PToUyvyWrapper(SwsContext *c, uint8_t* src[], int srcStride[], 
     return srcSliceH;
 }
 
-static int YUYV2YUV420Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int YUYV2YUV420Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *ydst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -1995,7 +1982,7 @@ static int YUYV2YUV420Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], in
     return srcSliceH;
 }
 
-static int YUYV2YUV422Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int YUYV2YUV422Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *ydst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -2007,7 +1994,7 @@ static int YUYV2YUV422Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], in
     return srcSliceH;
 }
 
-static int UYVY2YUV420Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int UYVY2YUV420Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *ydst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -2022,7 +2009,7 @@ static int UYVY2YUV420Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], in
     return srcSliceH;
 }
 
-static int UYVY2YUV422Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int UYVY2YUV422Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                                int srcSliceH, uint8_t* dstParam[], int dstStride[])
 {
     uint8_t *ydst=dstParam[0] + dstStride[0]*srcSliceY;
@@ -2034,7 +2021,7 @@ static int UYVY2YUV422Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], in
     return srcSliceH;
 }
 
-static int pal2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int pal2rgbWrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                           int srcSliceH, uint8_t* dst[], int dstStride[])
 {
     const enum PixelFormat srcFormat= c->srcFormat;
@@ -2043,7 +2030,7 @@ static int pal2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int sr
                  const uint8_t *palette)=NULL;
     int i;
     uint8_t *dstPtr= dst[0] + dstStride[0]*srcSliceY;
-    uint8_t *srcPtr= src[0];
+    const uint8_t *srcPtr= src[0];
 
     if (!usePal(srcFormat))
         av_log(c, AV_LOG_ERROR, "internal error %s -> %s converter\n",
@@ -2071,7 +2058,7 @@ static int pal2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int sr
 }
 
 /* {RGB,BGR}{15,16,24,32,32_1} -> {RGB,BGR}{15,16,24,32} */
-static int rgb2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int rgb2rgbWrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                           int srcSliceH, uint8_t* dst[], int dstStride[])
 {
     const enum PixelFormat srcFormat= c->srcFormat;
@@ -2129,7 +2116,7 @@ static int rgb2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int sr
     }
 
     if(conv) {
-        uint8_t *srcPtr= src[0];
+        const uint8_t *srcPtr= src[0];
         if(srcFormat == PIX_FMT_RGB32_1 || srcFormat == PIX_FMT_BGR32_1)
             srcPtr += ALT32_CORR;
 
@@ -2149,7 +2136,7 @@ static int rgb2rgbWrapper(SwsContext *c, uint8_t* src[], int srcStride[], int sr
     return srcSliceH;
 }
 
-static int bgr24toyv12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int bgr24toyv12Wrapper(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                               int srcSliceH, uint8_t* dst[], int dstStride[])
 {
 
@@ -2165,7 +2152,7 @@ static int bgr24toyv12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], in
     return srcSliceH;
 }
 
-static int yvu9toyv12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int yvu9toyv12Wrapper(SwsContext *c, const const uint8_t* src[], int srcStride[], int srcSliceY,
                              int srcSliceH, uint8_t* dst[], int dstStride[])
 {
     int i;
@@ -2174,7 +2161,7 @@ static int yvu9toyv12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int
     if (srcStride[0]==dstStride[0] && srcStride[0] > 0)
         memcpy(dst[0]+ srcSliceY*dstStride[0], src[0], srcStride[0]*srcSliceH);
     else {
-        uint8_t *srcPtr= src[0];
+        const uint8_t *srcPtr= src[0];
         uint8_t *dstPtr= dst[0] + dstStride[0]*srcSliceY;
 
         for (i=0; i<srcSliceH; i++) {
@@ -2201,14 +2188,14 @@ static int yvu9toyv12Wrapper(SwsContext *c, uint8_t* src[], int srcStride[], int
 }
 
 /* unscaled copy like stuff (assumes nearly identical formats) */
-static int packedCopy(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int packedCopy(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                       int srcSliceH, uint8_t* dst[], int dstStride[])
 {
     if (dstStride[0]==srcStride[0] && srcStride[0] > 0)
         memcpy(dst[0] + dstStride[0]*srcSliceY, src[0], srcSliceH*dstStride[0]);
     else {
         int i;
-        uint8_t *srcPtr= src[0];
+        const uint8_t *srcPtr= src[0];
         uint8_t *dstPtr= dst[0] + dstStride[0]*srcSliceY;
         int length=0;
 
@@ -2226,7 +2213,7 @@ static int packedCopy(SwsContext *c, uint8_t* src[], int srcStride[], int srcSli
     return srcSliceH;
 }
 
-static int planarCopy(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+static int planarCopy(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                       int srcSliceH, uint8_t* dst[], int dstStride[])
 {
     int plane, i, j;
@@ -2234,7 +2221,7 @@ static int planarCopy(SwsContext *c, uint8_t* src[], int srcStride[], int srcSli
         int length= (plane==0 || plane==3) ? c->srcW  : -((-c->srcW  )>>c->chrDstHSubSample);
         int y=      (plane==0 || plane==3) ? srcSliceY: -((-srcSliceY)>>c->chrDstVSubSample);
         int height= (plane==0 || plane==3) ? srcSliceH: -((-srcSliceH)>>c->chrDstVSubSample);
-        uint8_t *srcPtr= src[plane];
+        const uint8_t *srcPtr= src[plane];
         uint8_t *dstPtr= dst[plane] + dstStride[plane]*y;
 
         if (!dst[plane]) continue;
@@ -2429,7 +2416,6 @@ SwsContext *sws_getContext(int srcW, int srcH, enum PixelFormat srcFormat, int d
     flags |= SWS_CPU_CAPS_BFIN;
 #endif
 #endif /* CONFIG_RUNTIME_CPUDETECT */
-    if (clip_table[512] != 255) globalInit();
     if (!rgb15to16) sws_rgb2rgb_init(flags);
 
     unscaled = (srcW == dstW && srcH == dstH);
@@ -2687,22 +2673,6 @@ SwsContext *sws_getContext(int srcW, int srcH, enum PixelFormat srcFormat, int d
 
     /* precalculate horizontal scaler filter coefficients */
     {
-        const int filterAlign=
-            (flags & SWS_CPU_CAPS_MMX) ? 4 :
-            (flags & SWS_CPU_CAPS_ALTIVEC) ? 8 :
-            1;
-
-        if (initFilter(&c->hLumFilter, &c->hLumFilterPos, &c->hLumFilterSize, c->lumXInc,
-                       srcW      ,       dstW, filterAlign, 1<<14,
-                       (flags&SWS_BICUBLIN) ? (flags|SWS_BICUBIC)  : flags,
-                       srcFilter->lumH, dstFilter->lumH, c->param) < 0)
-            goto fail;
-        if (initFilter(&c->hChrFilter, &c->hChrFilterPos, &c->hChrFilterSize, c->chrXInc,
-                       c->chrSrcW, c->chrDstW, filterAlign, 1<<14,
-                       (flags&SWS_BICUBLIN) ? (flags|SWS_BILINEAR) : flags,
-                       srcFilter->chrH, dstFilter->chrH, c->param) < 0)
-            goto fail;
-
 #if defined(COMPILE_MMX2)
 // can't downscale !!!
         if (c->canMMX2BeUsed && (flags & SWS_FAST_BILINEAR)) {
@@ -2732,8 +2702,25 @@ SwsContext *sws_getContext(int srcW, int srcH, enum PixelFormat srcFormat, int d
             mprotect(c->lumMmx2FilterCode, c->lumMmx2FilterCodeSize, PROT_EXEC | PROT_READ);
             mprotect(c->chrMmx2FilterCode, c->chrMmx2FilterCodeSize, PROT_EXEC | PROT_READ);
 #endif
-        }
+        } else
 #endif /* defined(COMPILE_MMX2) */
+        {
+            const int filterAlign=
+                (flags & SWS_CPU_CAPS_MMX) ? 4 :
+                (flags & SWS_CPU_CAPS_ALTIVEC) ? 8 :
+                1;
+
+            if (initFilter(&c->hLumFilter, &c->hLumFilterPos, &c->hLumFilterSize, c->lumXInc,
+                           srcW      ,       dstW, filterAlign, 1<<14,
+                           (flags&SWS_BICUBLIN) ? (flags|SWS_BICUBIC)  : flags,
+                           srcFilter->lumH, dstFilter->lumH, c->param) < 0)
+                goto fail;
+            if (initFilter(&c->hChrFilter, &c->hChrFilterPos, &c->hChrFilterSize, c->chrXInc,
+                           c->chrSrcW, c->chrDstW, filterAlign, 1<<14,
+                           (flags&SWS_BICUBLIN) ? (flags|SWS_BILINEAR) : flags,
+                           srcFilter->chrH, dstFilter->chrH, c->param) < 0)
+                goto fail;
+        }
     } // initialize horizontal stuff
 
 
@@ -2838,7 +2825,7 @@ SwsContext *sws_getContext(int srcW, int srcH, enum PixelFormat srcFormat, int d
         else if (flags&SWS_POINT)
             av_log(c, AV_LOG_INFO, "Nearest Neighbor / POINT scaler, ");
         else if (flags&SWS_AREA)
-            av_log(c, AV_LOG_INFO, "Area Averageing scaler, ");
+            av_log(c, AV_LOG_INFO, "Area Averaging scaler, ");
         else if (flags&SWS_BICUBLIN)
             av_log(c, AV_LOG_INFO, "luma BICUBIC / chroma BILINEAR scaler, ");
         else if (flags&SWS_GAUSS)
@@ -2942,7 +2929,7 @@ fail:
     return NULL;
 }
 
-static void reset_ptr(uint8_t* src[], int format)
+static void reset_ptr(const uint8_t* src[], int format)
 {
     if(!isALPHA(format))
         src[3]=NULL;
@@ -2962,11 +2949,11 @@ static void reset_ptr(uint8_t* src[], int format)
  * swscale wrapper, so we don't need to export the SwsContext.
  * Assumes planar YUV to be in YUV order instead of YVU.
  */
-int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+int sws_scale(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
               int srcSliceH, uint8_t* dst[], int dstStride[])
 {
     int i;
-    uint8_t* src2[4]= {src[0], src[1], src[2], src[3]};
+    const uint8_t* src2[4]= {src[0], src[1], src[2], src[3]};
     uint8_t* dst2[4]= {dst[0], dst[1], dst[2], dst[3]};
 
     // do not mess up sliceDir if we have a "trailing" 0-size slice
@@ -3049,7 +3036,7 @@ int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
         int dstStride2[4]= {dstStride[0], dstStride[1], dstStride[2], dstStride[3]};
 
         reset_ptr(src2, c->srcFormat);
-        reset_ptr(dst2, c->dstFormat);
+        reset_ptr((const uint8_t**)dst2, c->dstFormat);
 
         /* reset slice direction at end of frame */
         if (srcSliceY + srcSliceH == c->srcH)
@@ -3072,7 +3059,7 @@ int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
         dst2[3] += ( c->dstH                      -1)*dstStride[3];
 
         reset_ptr(src2, c->srcFormat);
-        reset_ptr(dst2, c->dstFormat);
+        reset_ptr((const uint8_t**)dst2, c->dstFormat);
 
         /* reset slice direction at end of frame */
         if (!srcSliceY)
@@ -3083,7 +3070,7 @@ int sws_scale(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
 }
 
 #if LIBSWSCALE_VERSION_MAJOR < 1
-int sws_scale_ordered(SwsContext *c, uint8_t* src[], int srcStride[], int srcSliceY,
+int sws_scale_ordered(SwsContext *c, const uint8_t* src[], int srcStride[], int srcSliceY,
                       int srcSliceH, uint8_t* dst[], int dstStride[])
 {
     return sws_scale(c, src, srcStride, srcSliceY, srcSliceH, dst, dstStride);
