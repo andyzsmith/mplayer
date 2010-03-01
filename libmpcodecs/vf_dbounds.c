@@ -14,7 +14,7 @@ struct vf_priv_s {
     int max_w, max_h;
 };
 
-static int config(struct vf_instance_s* vf,
+static int config(struct vf_instance *vf,
     int width, int height, int d_width, int d_height,
     unsigned int flags, unsigned int outfmt)
 {
@@ -38,7 +38,7 @@ static void uninit(vf_instance_t *vf) {
     vf->priv = NULL;
 }
 
-static int open(vf_instance_t *vf, char* args)
+static int vf_open(vf_instance_t *vf, char* args)
 {
     vf->config = config;
     vf->draw_slice = vf_next_draw_slice;
@@ -61,7 +61,7 @@ const vf_info_t vf_info_dbounds = {
     "dbounds",
     "Andrew Wason",
     "",
-    open,
+    vf_open,
     NULL
 };
 
