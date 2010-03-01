@@ -21,6 +21,7 @@
 
 include config.mak
 
+.SUFFIXES:
 
 ###### variable declarations #######
 
@@ -771,6 +772,7 @@ DIRS =  . \
         libavutil/bfin \
         libavutil/ppc \
         libavutil/sh4 \
+        libavutil/tomi \
         libavutil/x86 \
         libdvdcss \
         libdvdnav \
@@ -836,6 +838,15 @@ all: $(ALL_PRG-yes)
 
 %.ho: %.h
 	$(CC) $(CFLAGS) -Wno-unused -c -o $@ -x c $<
+
+%.o: %.S
+	$(CC) $(ASFLAGS) -c -o $@ $<
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.cpp
+	$(CC) $(CXXFLAGS) -c -o $@ $<
 
 %.o: %.m
 	$(CC) $(CFLAGS) -c -o $@ $<
