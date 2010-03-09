@@ -1225,8 +1225,7 @@ if(sh_audio){
 	    }
 	}
 	if(len<=0) break; // EOF?
-        double pts = vfr ? sh_audio->pts : MP_NOPTS_VALUE;
-	muxer_write_chunk(mux_a,len,AVIIF_KEYFRAME, pts, (pts != MP_NOPTS_VALUE && pts < 0) ? 0 : pts);
+	muxer_write_chunk(mux_a,len,AVIIF_KEYFRAME, MP_NOPTS_VALUE, MP_NOPTS_VALUE);
 	if(!mux_a->h.dwSampleSize && mux_a->timer>0)
 	    mux_a->wf->nAvgBytesPerSec=0.5f+(double)mux_a->size/mux_a->timer; // avg bps (VBR)
 	if(mux_a->buffer_len>=len){
