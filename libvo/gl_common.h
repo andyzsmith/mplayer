@@ -30,15 +30,14 @@
 
 #ifdef CONFIG_GL_WIN32
 #include <windows.h>
-#include <GL/gl.h>
 #include "w32_common.h"
 #endif
 #ifdef CONFIG_GL_X11
-#include <GL/gl.h>
 #include <X11/Xlib.h>
 #include <GL/glx.h>
 #include "x11_common.h"
 #endif
+#include <GL/gl.h>
 
 // workaround for some gl.h headers
 #ifndef GLAPIENTRY
@@ -146,6 +145,12 @@
 #ifndef GL_CON_1_ATI
 #define GL_CON_1_ATI 0x8942
 #endif
+#ifndef GL_CON_2_ATI
+#define GL_CON_2_ATI 0x8943
+#endif
+#ifndef GL_CON_3_ATI
+#define GL_CON_3_ATI 0x8944
+#endif
 #ifndef GL_ADD_ATI
 #define GL_ADD_ATI 0x8963
 #endif
@@ -160,6 +165,9 @@
 #endif
 #ifndef GL_4X_BIT_ATI
 #define GL_4X_BIT_ATI 2
+#endif
+#ifndef GL_8X_BIT_ATI
+#define GL_8X_BIT_ATI 4
 #endif
 #ifndef GL_BIAS_BIT_ATI
 #define GL_BIAS_BIT_ATI 8
@@ -361,8 +369,10 @@ void glDisableYUVConversion(GLenum target, int type);
 /** \} */
 
 enum MPGLType {
+  GLTYPE_AUTO,
   GLTYPE_W32,
   GLTYPE_X11,
+  GLTYPE_SDL,
 };
 
 typedef struct MPGLContext {
