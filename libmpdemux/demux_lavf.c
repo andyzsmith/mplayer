@@ -67,7 +67,7 @@ const m_option_t lavfdopts_conf[] = {
 
 #define BIO_BUFFER_SIZE 32768
 
-typedef struct lavf_priv_t{
+typedef struct lavf_priv {
     AVInputFormat *avif;
     AVFormatContext *avfc;
     ByteIOContext *pb;
@@ -83,19 +83,20 @@ typedef struct lavf_priv_t{
 }lavf_priv_t;
 
 static int mp_read(void *opaque, uint8_t *buf, int size) {
-    stream_t *stream = opaque;
+    demuxer_t *demuxer = opaque;
+    stream_t *stream = demuxer->stream;
     int ret;
 
-    if(stream_eof(stream)) //needed?
-        return -1;
     ret=stream_read(stream, buf, size);
 
-    mp_msg(MSGT_HEADER,MSGL_DBG2,"%d=mp_read(%p, %p, %d), eof:%d\n", ret, stream, buf, size, stream->eof);
+    mp_msg(MSGT_HEADER,MSGL_DBG2,"%d=mp_read(%p, %p, %d), pos: %"PRId64", eof:%d\n",
+           ret, stream, buf, size, stream_tell(stream), stream->eof);
     return ret;
 }
 
 static int64_t mp_seek(void *opaque, int64_t pos, int whence) {
-    stream_t *stream = opaque;
+    demuxer_t *demuxer = opaque;
+    stream_t *stream = demuxer->stream;
     int64_t current_pos;
     mp_msg(MSGT_HEADER,MSGL_DBG2,"mp_seek(%p, %"PRId64", %d)\n", stream, pos, whence);
     if(whence == SEEK_CUR)
@@ -111,8 +112,6 @@ static int64_t mp_seek(void *opaque, int64_t pos, int whence) {
 
     if(pos<0)
         return -1;
-    if(pos<stream->end_pos && stream->eof)
-        stream_reset(stream);
     current_pos = stream_tell(stream);
     if(stream_seek(stream, pos)==0) {
         stream_reset(stream);
@@ -121,6 +120,21 @@ static int64_t mp_seek(void *opaque, int64_t pos, int whence) {
     }
 
     return pos - stream->start_pos;
+}
+
+static int64_t mp_read_seek(void *opaque, int stream_idx, int64_t ts, int flags) {
+    demuxer_t *demuxer = opaque;
+    stream_t *stream = demuxer->stream;
+    lavf_priv_t *priv = demuxer->priv;
+    AVStream *st = priv->avfc->streams[stream_idx];
+    int ret;
+    double pts;
+
+    pts = (double)ts * st->time_base.num / st->time_base.den;
+    ret = stream_control(stream, STREAM_CTRL_SEEK_TO_TIME, &pts);
+    if (ret < 0)
+        ret = AVERROR(ENOSYS);
+    return ret;
 }
 
 static void list_formats(void) {
@@ -167,6 +181,10 @@ static int lavf_check_file(demuxer_t *demuxer){
         }
         probe_data_size += read_size;
         avpd.filename= demuxer->stream->url;
+        if (!avpd.filename) {
+            mp_msg(MSGT_DEMUX, MSGL_WARN, "Stream url is not set!\n");
+            avpd.filename = "";
+        }
         if (!strncmp(avpd.filename, "ffmpeg://", 9))
             avpd.filename += 9;
         avpd.buf_size= probe_data_size;
@@ -195,10 +213,12 @@ static const char * const preferred_list[] = {
     "gxf",
     "nut",
     "nuv",
+    "matroska",
     "mov,mp4,m4a,3gp,3g2,mj2",
     "mpc",
     "mpc8",
     "mxf",
+    "ogg",
     "swf",
     "vqf",
     "w64",
@@ -503,7 +523,8 @@ static demuxer_t* demux_open_lavf(demuxer_t *demuxer){
         av_strlcat(mp_filename, "foobar.dummy", sizeof(mp_filename));
 
     priv->pb = av_alloc_put_byte(priv->buffer, BIO_BUFFER_SIZE, 0,
-                                 demuxer->stream, mp_read, NULL, mp_seek);
+                                 demuxer, mp_read, NULL, mp_seek);
+    priv->pb->read_seek = mp_read_seek;
     priv->pb->is_streamed = !demuxer->stream->end_pos || (demuxer->stream->flags & MP_STREAM_SEEK) != MP_STREAM_SEEK;
 
     if(av_open_input_stream(&avfc, priv->pb, mp_filename, priv->avif, &ap)<0){
@@ -617,7 +638,7 @@ static int demux_lavf_fill_buffer(demuxer_t *demux, demux_stream_t *dsds){
     if(ts != AV_NOPTS_VALUE){
         dp->pts=ts * av_q2d(priv->avfc->streams[id]->time_base);
         priv->last_pts= dp->pts * AV_TIME_BASE;
-        if(pkt.convergence_duration)
+        if(pkt.flags & PKT_FLAG_KEY && pkt.convergence_duration > 0)
             dp->endpts = dp->pts + pkt.convergence_duration * av_q2d(priv->avfc->streams[id]->time_base);
     }
     dp->pos=demux->filepos;
@@ -656,9 +677,6 @@ static int demux_lavf_control(demuxer_t *demuxer, int cmd, void *arg)
 
     switch (cmd) {
         case DEMUXER_CTRL_CORRECT_PTS:
-            if (!strcmp("matroska", priv->avif->name) ||
-                !strcmp("mpegts",   priv->avif->name))
-                return DEMUXER_CTRL_NOTIMPL;
 	    return DEMUXER_CTRL_OK;
         case DEMUXER_CTRL_GET_TIME_LENGTH:
 	    if (priv->avfc->duration == 0 || priv->avfc->duration == AV_NOPTS_VALUE)

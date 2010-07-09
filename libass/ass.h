@@ -25,7 +25,7 @@
 #include <stdarg.h>
 #include "ass_types.h"
 
-#define LIBASS_VERSION 0x00908000
+#define LIBASS_VERSION 0x00910000
 
 /*
  * A linked list of images produced by an ass renderer.
@@ -315,6 +315,12 @@ void ass_process_codec_private(ASS_Track *track, char *data, int size);
  */
 void ass_process_chunk(ASS_Track *track, char *data, int size,
                        long long timecode, long long duration);
+
+/**
+ * \brief Flush buffered events.
+ * \param track track
+*/
+void ass_flush_events(ASS_Track *track);
 
 /**
  * \brief Read subtitles from file.

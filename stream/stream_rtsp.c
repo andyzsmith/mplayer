@@ -46,8 +46,6 @@
 
 #define RTSP_DEFAULT_PORT 554
 
-extern int network_bandwidth;
-
 static int
 rtsp_streaming_read (int fd, char *buffer,
                      int size, streaming_ctrl_t *stream_ctrl)
@@ -130,7 +128,7 @@ rtsp_streaming_start (stream_t *stream)
 }
 
 static void
-rtsp_streaming_close (struct stream_st *s)
+rtsp_streaming_close (struct stream *s)
 {
   rtsp_session_t *rtsp = NULL;
 

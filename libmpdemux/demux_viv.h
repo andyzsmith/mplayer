@@ -16,7 +16,17 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-/* Build an exact copy of the logging facilities without GUI dependencies. */
+#ifndef MPLAYER_DEMUX_VIV_H
+#define MPLAYER_DEMUX_VIV_H
 
-#define FOR_MENCODER 1
-#include "mp_msg.c"
+extern char *vivo_param_acodec;
+
+extern int vivo_param_abitrate;
+extern int vivo_param_bytesperblock;
+extern int vivo_param_height;
+extern int vivo_param_samplerate;
+extern int vivo_param_version;
+extern int vivo_param_vformat;
+extern int vivo_param_width;
+
+#endif /* MPLAYER_DEMUX_VIV_H */

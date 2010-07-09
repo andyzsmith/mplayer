@@ -59,7 +59,9 @@
 #include "libmpcodecs/img_format.h"
 #include "codec-cfg.h"
 
-#ifndef CODECS2HTML
+#ifdef CODECS2HTML
+#define CODEC_CFG_MIN 20100000
+#else
 #include "codecs.conf.h"
 #endif
 
@@ -75,6 +77,7 @@
 #define TYPE_VIDEO      0
 #define TYPE_AUDIO      1
 
+static int codecs_conf_release;
 char * codecs_file = NULL;
 
 static int add_to_fourcc(char *s, char *alias, unsigned int *fourcc,
@@ -154,75 +157,75 @@ static int add_to_format(char *s, char *alias,unsigned int *fourcc, unsigned int
     return 1;
 }
 
-    static const struct {
-        const char *name;
-        const unsigned int num;
-    } fmt_table[] = {
-        // note: due to parser deficiencies/simplicity, if one format
-        // name matches the beginning of another, the longer one _must_
-        // come first in this list.
-        {"YV12",  IMGFMT_YV12},
-        {"I420",  IMGFMT_I420},
-        {"IYUV",  IMGFMT_IYUV},
-        {"NV12",  IMGFMT_NV12},
-        {"NV21",  IMGFMT_NV21},
-        {"YVU9",  IMGFMT_YVU9},
-        {"IF09",  IMGFMT_IF09},
-        {"444P16LE", IMGFMT_444P16_LE},
-        {"444P16BE", IMGFMT_444P16_BE},
-        {"422P16LE", IMGFMT_422P16_LE},
-        {"422P16BE", IMGFMT_422P16_BE},
-        {"420P16LE", IMGFMT_420P16_LE},
-        {"420P16BE", IMGFMT_420P16_BE},
-        {"444P16", IMGFMT_444P16},
-        {"422P16", IMGFMT_422P16},
-        {"420P16", IMGFMT_420P16},
-        {"420A",  IMGFMT_420A},
-        {"444P",  IMGFMT_444P},
-        {"422P",  IMGFMT_422P},
-        {"411P",  IMGFMT_411P},
-        {"440P",  IMGFMT_440P},
-        {"Y800",  IMGFMT_Y800},
-        {"Y8",    IMGFMT_Y8},
+static const struct {
+    const char *name;
+    const unsigned int num;
+} fmt_table[] = {
+    // note: due to parser deficiencies/simplicity, if one format
+    // name matches the beginning of another, the longer one _must_
+    // come first in this list.
+    {"YV12",  IMGFMT_YV12},
+    {"I420",  IMGFMT_I420},
+    {"IYUV",  IMGFMT_IYUV},
+    {"NV12",  IMGFMT_NV12},
+    {"NV21",  IMGFMT_NV21},
+    {"YVU9",  IMGFMT_YVU9},
+    {"IF09",  IMGFMT_IF09},
+    {"444P16LE", IMGFMT_444P16_LE},
+    {"444P16BE", IMGFMT_444P16_BE},
+    {"422P16LE", IMGFMT_422P16_LE},
+    {"422P16BE", IMGFMT_422P16_BE},
+    {"420P16LE", IMGFMT_420P16_LE},
+    {"420P16BE", IMGFMT_420P16_BE},
+    {"444P16", IMGFMT_444P16},
+    {"422P16", IMGFMT_422P16},
+    {"420P16", IMGFMT_420P16},
+    {"420A",  IMGFMT_420A},
+    {"444P",  IMGFMT_444P},
+    {"422P",  IMGFMT_422P},
+    {"411P",  IMGFMT_411P},
+    {"440P",  IMGFMT_440P},
+    {"Y800",  IMGFMT_Y800},
+    {"Y8",    IMGFMT_Y8},
 
-        {"YUY2",  IMGFMT_YUY2},
-        {"UYVY",  IMGFMT_UYVY},
-        {"YVYU",  IMGFMT_YVYU},
+    {"YUY2",  IMGFMT_YUY2},
+    {"UYVY",  IMGFMT_UYVY},
+    {"YVYU",  IMGFMT_YVYU},
 
-        {"RGB48LE",  IMGFMT_RGB48LE},
-        {"RGB48BE",  IMGFMT_RGB48BE},
-        {"RGB4",  IMGFMT_RGB4},
-        {"RGB8",  IMGFMT_RGB8},
-        {"RGB15", IMGFMT_RGB15},
-        {"RGB16", IMGFMT_RGB16},
-        {"RGB24", IMGFMT_RGB24},
-        {"RGB32", IMGFMT_RGB32},
-        {"BGR4",  IMGFMT_BGR4},
-        {"BGR8",  IMGFMT_BGR8},
-        {"BGR15", IMGFMT_BGR15},
-        {"BGR16", IMGFMT_BGR16},
-        {"BGR24", IMGFMT_BGR24},
-        {"BGR32", IMGFMT_BGR32},
-        {"RGB1",  IMGFMT_RGB1},
-        {"BGR1",  IMGFMT_BGR1},
+    {"RGB48LE",  IMGFMT_RGB48LE},
+    {"RGB48BE",  IMGFMT_RGB48BE},
+    {"RGB4",  IMGFMT_RGB4},
+    {"RGB8",  IMGFMT_RGB8},
+    {"RGB15", IMGFMT_RGB15},
+    {"RGB16", IMGFMT_RGB16},
+    {"RGB24", IMGFMT_RGB24},
+    {"RGB32", IMGFMT_RGB32},
+    {"BGR4",  IMGFMT_BGR4},
+    {"BGR8",  IMGFMT_BGR8},
+    {"BGR15", IMGFMT_BGR15},
+    {"BGR16", IMGFMT_BGR16},
+    {"BGR24", IMGFMT_BGR24},
+    {"BGR32", IMGFMT_BGR32},
+    {"RGB1",  IMGFMT_RGB1},
+    {"BGR1",  IMGFMT_BGR1},
 
-        {"MPES",  IMGFMT_MPEGPES},
-        {"ZRMJPEGNI", IMGFMT_ZRMJPEGNI},
-        {"ZRMJPEGIT", IMGFMT_ZRMJPEGIT},
-        {"ZRMJPEGIB", IMGFMT_ZRMJPEGIB},
+    {"MPES",  IMGFMT_MPEGPES},
+    {"ZRMJPEGNI", IMGFMT_ZRMJPEGNI},
+    {"ZRMJPEGIT", IMGFMT_ZRMJPEGIT},
+    {"ZRMJPEGIB", IMGFMT_ZRMJPEGIB},
 
-        {"IDCT_MPEG2",IMGFMT_XVMC_IDCT_MPEG2},
-        {"MOCO_MPEG2",IMGFMT_XVMC_MOCO_MPEG2},
+    {"IDCT_MPEG2",IMGFMT_XVMC_IDCT_MPEG2},
+    {"MOCO_MPEG2",IMGFMT_XVMC_MOCO_MPEG2},
 
-        {"VDPAU_MPEG1",IMGFMT_VDPAU_MPEG1},
-        {"VDPAU_MPEG2",IMGFMT_VDPAU_MPEG2},
-        {"VDPAU_H264",IMGFMT_VDPAU_H264},
-        {"VDPAU_WMV3",IMGFMT_VDPAU_WMV3},
-        {"VDPAU_VC1",IMGFMT_VDPAU_VC1},
-        {"VDPAU_MPEG4",IMGFMT_VDPAU_MPEG4},
+    {"VDPAU_MPEG1",IMGFMT_VDPAU_MPEG1},
+    {"VDPAU_MPEG2",IMGFMT_VDPAU_MPEG2},
+    {"VDPAU_H264",IMGFMT_VDPAU_H264},
+    {"VDPAU_WMV3",IMGFMT_VDPAU_WMV3},
+    {"VDPAU_VC1",IMGFMT_VDPAU_VC1},
+    {"VDPAU_MPEG4",IMGFMT_VDPAU_MPEG4},
 
-        {NULL,    0}
-    };
+    {NULL,    0}
+};
 
 
 static int add_to_inout(char *sfmt, char *sflags, unsigned int *outfmt,
@@ -578,6 +581,7 @@ int parse_codec_cfg(const char *cfgfile)
         tmp = atoi(token[0]);
         if (tmp < CODEC_CFG_MIN)
             goto err_out_release_num;
+        codecs_conf_release = tmp;
         while ((tmp = get_token(1, 1)) == RET_EOL)
             /* NOTHING */;
         if (tmp == RET_EOF)
@@ -916,7 +920,7 @@ void list_codecs(int audioflag){
 
 
 #ifdef CODECS2HTML
-void wrapline(FILE *f2,char *s){
+static void wrapline(FILE *f2,char *s){
     int c;
     if(!s){
         fprintf(f2,"-");
@@ -927,7 +931,7 @@ void wrapline(FILE *f2,char *s){
     }
 }
 
-void parsehtml(FILE *f1,FILE *f2,codecs_t *codec,int section,int dshow){
+static void parsehtml(FILE *f1,FILE *f2,codecs_t *codec){
     int c,d;
     while((c=fgetc(f1))>=0){
         if(c!='%'){
@@ -1033,6 +1037,8 @@ int main(int argc, char* argv[])
      */
     if (!(nr_codecs = parse_codec_cfg((argc>1)?argv[1]:"etc/codecs.conf")))
         exit(1);
+    if (codecs_conf_release < CODEC_CFG_MIN)
+        exit(1);
 
     if (argc > 1) {
         int i, j;
@@ -1049,8 +1055,9 @@ int main(int argc, char* argv[])
         nr[1] = nr_acodecs;
 
         printf("/* GENERATED FROM %s, DO NOT EDIT! */\n\n",argv[1]);
-        printf("#include <stddef.h>\n",argv[1]);
-        printf("#include \"codec-cfg.h\"\n\n",argv[1]);
+        printf("#include <stddef.h>\n");
+        printf("#include \"codec-cfg.h\"\n\n");
+        printf("#define CODEC_CFG_MIN %i\n\n", codecs_conf_release);
 
         for (i=0; i<2; i++) {
             printf("const codecs_t %s[] = {\n", nm[i]);
@@ -1130,30 +1137,30 @@ int main(int argc, char* argv[])
                 case 5:
                     if(cl[i].status==CODECS_STATUS_WORKING)
 //                if(!(!strcmp(cl[i].drv,"vfw") || !strcmp(cl[i].drv,"dshow") || !strcmp(cl[i].drv,"vfwex") || !strcmp(cl[i].drv,"acm")))
-                        parsehtml(f1,f2,&cl[i],section,dshow);
+                        parsehtml(f1,f2,&cl[i]);
                     break;
 #if 0
                 case 1:
                 case 6:
                     if(cl[i].status==CODECS_STATUS_WORKING)
                         if((!strcmp(cl[i].drv,"vfw") || !strcmp(cl[i].drv,"dshow") || !strcmp(cl[i].drv,"vfwex") || !strcmp(cl[i].drv,"acm")))
-                            parsehtml(f1,f2,&cl[i],section,dshow);
+                            parsehtml(f1,f2,&cl[i]);
                     break;
 #endif
                 case 2:
                 case 7:
                     if(cl[i].status==CODECS_STATUS_PROBLEMS)
-                        parsehtml(f1,f2,&cl[i],section,dshow);
+                        parsehtml(f1,f2,&cl[i]);
                     break;
                 case 3:
                 case 8:
                     if(cl[i].status==CODECS_STATUS_NOT_WORKING)
-                        parsehtml(f1,f2,&cl[i],section,dshow);
+                        parsehtml(f1,f2,&cl[i]);
                     break;
                 case 4:
                 case 9:
                     if(cl[i].status==CODECS_STATUS_UNTESTED)
-                        parsehtml(f1,f2,&cl[i],section,dshow);
+                        parsehtml(f1,f2,&cl[i]);
                     break;
                 default:
                     printf("Warning! unimplemented section: %d\n",section);
@@ -1161,7 +1168,6 @@ int main(int argc, char* argv[])
             }
             fseek(f1,pos,SEEK_SET);
             skiphtml(f1);
-//void parsehtml(FILE *f1,FILE *f2,codecs_t *codec,int section,int dshow){
 
             continue;
         }

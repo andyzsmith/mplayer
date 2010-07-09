@@ -43,7 +43,7 @@
 #include "mp_msg.h"
 #include "help_mp.h"
 #include "mpbswap.h"
-
+#include "libavutil/common.h"
 #include "stream/stream.h"
 #include "aviprint.h"
 #include "demuxer.h"
@@ -51,8 +51,6 @@
 #include "demux_real.h"
 
 //#define mp_dbg(mod,lev, args... ) mp_msg_c((mod<<8)|lev, ## args )
-
-#define MKTAG(a, b, c, d) (a | (b << 8) | (c << 16) | (d << 24))
 
 #define MAX_STREAMS 32
 
@@ -1712,7 +1710,8 @@ header_end:
 
     switch (index_mode){
 	case -1: // untouched
-	    if (priv->index_chunk_offset && parse_index_chunk(demuxer))
+	    if ((demuxer->stream->flags & MP_STREAM_SEEK) == MP_STREAM_SEEK &&
+                priv->index_chunk_offset && parse_index_chunk(demuxer))
 	    {
 		demuxer->seekable = 1;
 	    }

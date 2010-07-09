@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
+#include "libvo/sub.h"
 #include "libvo/video_out.h"
 #include "spudec.h"
 #include "vobsub.h"
@@ -55,7 +56,6 @@
 int spu_aamode = 3;
 int spu_alignment = -1;
 float spu_gaussvar = 1.0;
-extern int sub_pos;
 
 typedef struct packet_t packet_t;
 struct packet_t {
@@ -1202,11 +1202,15 @@ void *spudec_new_scaled(unsigned int *palette, unsigned int frame_width, unsigne
       spudec_parse_extradata(this, extradata, extradata_len);
     /* XXX Although the video frame is some size, the SPU frame is
        always maximum size i.e. 720 wide and 576 or 480 high */
-    this->orig_frame_width = 720;
-    if (this->orig_frame_height == 480 || this->orig_frame_height == 240)
-      this->orig_frame_height = 480;
-    else
-      this->orig_frame_height = 576;
+    // For HD files in MKV the VobSub resolution can be higher though,
+    // see largeres_vobsub.mkv
+    if (this->orig_frame_width <= 720 && this->orig_frame_height <= 576) {
+      this->orig_frame_width = 720;
+      if (this->orig_frame_height == 480 || this->orig_frame_height == 240)
+        this->orig_frame_height = 480;
+      else
+        this->orig_frame_height = 576;
+    }
   }
   else
     mp_msg(MSGT_SPUDEC,MSGL_FATAL, "FATAL: spudec_init: calloc");
