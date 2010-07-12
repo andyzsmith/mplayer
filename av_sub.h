@@ -16,11 +16,14 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPLAYER_XA_GSM_H
-#define MPLAYER_XA_GSM_H
+#ifndef MPLAYER_AV_SUB_H
+#define MPLAYER_AV_SUB_H
 
-void XA_MSGSM_Decoder(unsigned char *ibuf,unsigned short *obuf);
-void XA_GSM_Decoder(unsigned char *ibuf,unsigned short *obuf);
-void GSM_Init(void);
+#include <stdint.h>
 
-#endif /* MPLAYER_XA_GSM_H */
+struct sh_sub;
+
+void reset_avsub(struct sh_sub *sh);
+int decode_avsub(struct sh_sub *sh, uint8_t **data, int *size, double *pts, double *endpts);
+
+#endif

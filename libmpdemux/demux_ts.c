@@ -339,10 +339,9 @@ static void ts_add_stream(demuxer_t * demuxer, ES_stream_t *es)
 
 	if((IS_AUDIO(es->type) || IS_AUDIO(es->subtype)) && priv->last_aid+1 < MAX_A_STREAMS)
 	{
-		sh_audio_t *sh = new_sh_audio_aid(demuxer, priv->last_aid, es->pid);
+		sh_audio_t *sh = new_sh_audio_aid(demuxer, priv->last_aid, es->pid, pid_lang_from_pmt(priv, es->pid));
 		if(sh)
 		{
-			const char *lang = pid_lang_from_pmt(priv, es->pid);
 			sh->needs_parsing = 1;
 			sh->format = IS_AUDIO(es->type) ? es->type : es->subtype;
 			sh->ds = demuxer->audio;
@@ -351,8 +350,6 @@ static void ts_add_stream(demuxer_t * demuxer, ES_stream_t *es)
 			priv->ts.streams[es->pid].sh = sh;
 			priv->ts.streams[es->pid].type = TYPE_AUDIO;
 			mp_msg(MSGT_DEMUX, MSGL_V, "\r\nADDED AUDIO PID %d, type: %x stream n. %d\r\n", es->pid, sh->format, priv->last_aid);
-			if (lang && lang[0])
-				mp_msg(MSGT_IDENTIFY, MSGL_V, "ID_AID_%d_LANG=%s\n", es->pid, lang);
 			priv->last_aid++;
 		}
 
@@ -1484,7 +1481,7 @@ static int pes_parse2(unsigned char *buf, uint16_t packet_len, ES_stream_t *es, 
 
 		if(
 			(type_from_pmt == AUDIO_A52) ||		 /* A52 - raw */
-			(p[0] == 0x0B && p[1] == 0x77)		/* A52 - syncword */
+			(packet_len >= 2 && p[0] == 0x0B && p[1] == 0x77)		/* A52 - syncword */
 		)
 		{
 			mp_msg(MSGT_DEMUX, MSGL_DBG2, "A52 RAW OR SYNCWORD\n");
@@ -1497,7 +1494,7 @@ static int pes_parse2(unsigned char *buf, uint16_t packet_len, ES_stream_t *es, 
 		}
 		/* SPU SUBS */
 		else if(type_from_pmt == SPU_DVB ||
-		((p[0] == 0x20) && pes_is_aligned)) // && p[1] == 0x00))
+		(packet_len >= 1 && (p[0] == 0x20) && pes_is_aligned)) // && p[1] == 0x00))
 		{
 			es->start = p;
 			es->size  = packet_len;
@@ -1506,7 +1503,7 @@ static int pes_parse2(unsigned char *buf, uint16_t packet_len, ES_stream_t *es, 
 
 			return 1;
 		}
-		else if (pes_is_aligned && ((p[0] & 0xE0) == 0x20))	//SPU_DVD
+		else if (pes_is_aligned && packet_len >= 1 && ((p[0] & 0xE0) == 0x20))	//SPU_DVD
 		{
 			//DVD SUBS
 			es->start   = p+1;
@@ -1516,7 +1513,7 @@ static int pes_parse2(unsigned char *buf, uint16_t packet_len, ES_stream_t *es, 
 
 			return 1;
 		}
-		else if (pes_is_aligned && (p[0] & 0xF8) == 0x80)
+		else if (pes_is_aligned && packet_len >= 4 && (p[0] & 0xF8) == 0x80)
 		{
 			mp_msg(MSGT_DEMUX, MSGL_DBG2, "A52 WITH HEADER\n");
 			es->start   = p+4;
@@ -1526,7 +1523,7 @@ static int pes_parse2(unsigned char *buf, uint16_t packet_len, ES_stream_t *es, 
 
 			return 1;
 		}
-		else if (pes_is_aligned && ((p[0]&0xf0) == 0xa0))
+		else if (pes_is_aligned && packet_len >= 1 && ((p[0]&0xf0) == 0xa0))
 		{
 			int pcm_offset;
 
@@ -3152,6 +3149,10 @@ static int ts_parse(demuxer_t *demuxer , ES_stream_t *es, unsigned char *packet,
 
 				demuxer->filepos = stream_tell(demuxer->stream) - es->size;
 
+				if(es->size < 0 || es->size > buf_size) {
+					mp_msg(MSGT_DEMUX, MSGL_ERR, "Broken ES packet size\n");
+					es->size = 0;
+				}
 				memmove(p, es->start, es->size);
 				*dp_offset += es->size;
 				(*dp)->flags = 0;

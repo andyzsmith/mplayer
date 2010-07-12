@@ -122,6 +122,7 @@ SRCS_COMMON-$(LIBASS_INTERNAL)       += libass/ass.c \
                                         libass/ass_utils.c \
 
 SRCS_COMMON-$(LIBAVCODEC)            += av_opts.c \
+                                        av_sub.c \
                                         libaf/af_lavcresample.c \
                                         libmpcodecs/ad_ffmpeg.c \
                                         libmpcodecs/vd_ffmpeg.c \
@@ -383,14 +384,12 @@ SRCS_COMMON = asxparser.c \
               libmpcodecs/ad_hwmpa.c \
               libmpcodecs/ad_imaadpcm.c \
               libmpcodecs/ad_msadpcm.c \
-              libmpcodecs/ad_msgsm.c \
               libmpcodecs/ad_pcm.c \
               libmpcodecs/dec_audio.c \
               libmpcodecs/dec_teletext.c \
               libmpcodecs/dec_video.c \
               libmpcodecs/img_format.c \
               libmpcodecs/mp_image.c \
-              libmpcodecs/native/xa_gsm.c \
               libmpcodecs/pullup.c \
               libmpcodecs/vd.c \
               libmpcodecs/vd_hmblck.c \

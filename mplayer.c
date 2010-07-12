@@ -336,7 +336,7 @@ FILE* edl_fd = NULL; ///< fd to write to when in -edlout mode.
 // have some time after the seek to decide what to do next
 // (next seek, pause,...), otherwise after the seek it will
 // enter the same scene again and skip forward immediately
-float edl_backward_extra_sec = 2;
+float edl_backward_delay = 2;
 int use_filedir_conf;
 int use_filename_title;
 
@@ -677,8 +677,7 @@ void uninit_player(unsigned int mask){
     vo_vobsub=NULL;
   }
 
-  if (mask&INITIALIZED_SPUDEC){
-    initialized_flags&=~INITIALIZED_SPUDEC;
+  if (vo_spudec){
     current_module="uninit_spudec";
     spudec_free(vo_spudec);
     vo_spudec=NULL;
@@ -1157,7 +1156,6 @@ void update_set_of_subtitles(void)
 void init_vo_spudec(void) {
   if (vo_spudec)
     spudec_free(vo_spudec);
-  initialized_flags &= ~INITIALIZED_SPUDEC;
   vo_spudec = NULL;
 
   // we currently can't work without video stream
@@ -1196,7 +1194,6 @@ void init_vo_spudec(void) {
   }
 
   if (vo_spudec!=NULL) {
-    initialized_flags|=INITIALIZED_SPUDEC;
     mp_property_do("sub_forced_only", M_PROPERTY_SET, &forced_subs_only, mpctx);
   }
 }
@@ -1878,32 +1875,42 @@ static float timing_sleep(float time_frame)
     return time_frame;
 }
 
-static void select_subtitle(MPContext *mpctx)
+static int select_subtitle(MPContext *mpctx)
 {
   // find the best sub to use
-  int vobsub_index_id = vobsub_get_index_by_id(vo_vobsub, vobsub_id);
+  int id;
+  int found = 0;
   mpctx->global_sub_pos = -1; // no subs by default
-  if (vobsub_index_id >= 0) {
+  if (vobsub_id >= 0) {
     // if user asks for a vobsub id, use that first.
-    mpctx->global_sub_pos = mpctx->global_sub_indices[SUB_SOURCE_VOBSUB] + vobsub_index_id;
-  } else if (dvdsub_id >= 0 && mpctx->global_sub_indices[SUB_SOURCE_DEMUX] >= 0) {
+    id = vobsub_id;
+    found = mp_property_do("sub_vob", M_PROPERTY_SET, &id, mpctx) == M_PROPERTY_OK;
+  }
+
+  if (!found && dvdsub_id >= 0) {
     // if user asks for a dvd sub id, use that next.
-    mpctx->global_sub_pos = mpctx->global_sub_indices[SUB_SOURCE_DEMUX] + dvdsub_id;
-  } else if (mpctx->global_sub_indices[SUB_SOURCE_SUBS] >= 0) {
+    id = dvdsub_id;
+    found = mp_property_do("sub_demux", M_PROPERTY_SET, &id, mpctx) == M_PROPERTY_OK;
+  }
+
+  if (!found) {
     // if there are text subs to use, use those.  (autosubs come last here)
-    mpctx->global_sub_pos = mpctx->global_sub_indices[SUB_SOURCE_SUBS];
-  } else if (dvdsub_id == -1 && mpctx->global_sub_indices[SUB_SOURCE_DEMUX] >= 0) {
+    id = 0;
+    found = mp_property_do("sub_file", M_PROPERTY_SET, &id, mpctx) == M_PROPERTY_OK;
+  }
+
+  if (!found && dvdsub_id == -1) {
     // finally select subs by language and container hints
     if (dvdsub_id == -1 && dvdsub_lang)
       dvdsub_id = demuxer_sub_track_by_lang(mpctx->demuxer, dvdsub_lang);
     if (dvdsub_id == -1)
       dvdsub_id = demuxer_default_sub_track(mpctx->demuxer);
-    if (dvdsub_id >= 0)
-      mpctx->global_sub_pos = mpctx->global_sub_indices[SUB_SOURCE_DEMUX] + dvdsub_id;
+    if (dvdsub_id >= 0) {
+      id = dvdsub_id;
+      found = mp_property_do("sub_demux", M_PROPERTY_SET, &id, mpctx) == M_PROPERTY_OK;
+    }
   }
-  // rather than duplicate code, use the SUB_SELECT handler to init the right one.
-  mpctx->global_sub_pos--;
-  mp_property_do("sub",M_PROPERTY_STEP_UP,NULL, mpctx);
+  return found;
 }
 
 #ifdef CONFIG_DVDNAV
@@ -1962,7 +1969,7 @@ static void mp_dvdnav_reset_stream (MPContext *ctx) {
     }
 
     audio_delay = 0.0f;
-    mpctx->global_sub_size = mpctx->global_sub_indices[SUB_SOURCE_DEMUX] + mp_dvdnav_number_of_subs(mpctx->stream);
+    mpctx->sub_counts[SUB_SOURCE_DEMUX] = mp_dvdnav_number_of_subs(mpctx->stream);
     if (dvdsub_lang && dvdsub_id == dvdsub_lang_id) {
         dvdsub_lang_id = mp_dvdnav_sid_from_lang(ctx->stream, dvdsub_lang);
         if (dvdsub_lang_id != dvdsub_id) {
@@ -2545,7 +2552,7 @@ static void edl_update(MPContext *mpctx)
                     abs_seek_pos = 0;
                     rel_seek_secs = -(mpctx->sh_video->pts -
                                       next_edl_record->start_sec +
-                                      edl_backward_extra_sec);
+                                      edl_backward_delay);
                     mp_msg(MSGT_CPLAYER, MSGL_DBG4, "EDL_SKIP: pts [%f], "
                            "offset [%f], start [%f], stop [%f], length [%f]\n",
                            mpctx->sh_video->pts, rel_seek_secs,
@@ -3053,7 +3060,7 @@ play_next_file:
 
   // init global sub numbers
   mpctx->global_sub_size = 0;
-  { int i; for (i = 0; i < SUB_SOURCES; i++) mpctx->global_sub_indices[i] = -1; }
+  memset(mpctx->sub_counts, 0, sizeof(mpctx->sub_counts));
 
   if (filename) {
     load_per_protocol_config (mconfig, filename);
@@ -3240,8 +3247,7 @@ if (edl_output_filename) {
       mp_property_do("sub_forced_only", M_PROPERTY_SET, &forced_subs_only, mpctx);
 
       // setup global sub numbering
-      mpctx->global_sub_indices[SUB_SOURCE_VOBSUB] = mpctx->global_sub_size; // the global # of the first vobsub.
-      mpctx->global_sub_size += vobsub_get_indexes_count(vo_vobsub);
+      mpctx->sub_counts[SUB_SOURCE_VOBSUB] = vobsub_get_indexes_count(vo_vobsub);
     }
 
 //============ Open & Sync STREAM --- fork cache2 ====================
@@ -3328,8 +3334,7 @@ if(mpctx->stream->type==STREAMTYPE_DVD){
   if(audio_id==-1) audio_id=dvd_aid_from_lang(mpctx->stream,audio_lang);
   if(dvdsub_lang && dvdsub_id==-1) dvdsub_id=dvd_sid_from_lang(mpctx->stream,dvdsub_lang);
   // setup global sub numbering
-  mpctx->global_sub_indices[SUB_SOURCE_DEMUX] = mpctx->global_sub_size; // the global # of the first demux-specific sub.
-  mpctx->global_sub_size += dvd_number_of_subs(mpctx->stream);
+  mpctx->sub_counts[SUB_SOURCE_DEMUX] = dvd_number_of_subs(mpctx->stream);
   current_module=NULL;
 }
 #endif
@@ -3342,8 +3347,7 @@ if(mpctx->stream->type==STREAMTYPE_DVDNAV){
   if(dvdsub_lang && dvdsub_id==-1)
     dvdsub_lang_id=dvdsub_id=mp_dvdnav_sid_from_lang(mpctx->stream,dvdsub_lang);
   // setup global sub numbering
-  mpctx->global_sub_indices[SUB_SOURCE_DEMUX] = mpctx->global_sub_size; // the global # of the first demux-specific sub.
-  mpctx->global_sub_size += mp_dvdnav_number_of_subs(mpctx->stream);
+  mpctx->sub_counts[SUB_SOURCE_DEMUX] = mp_dvdnav_number_of_subs(mpctx->stream);
   current_module=NULL;
 }
 #endif
@@ -3435,20 +3439,6 @@ if(dvd_chapter>1) {
 }
 
 initialized_flags|=INITIALIZED_DEMUXER;
-
-if (mpctx->stream->type != STREAMTYPE_DVD && mpctx->stream->type != STREAMTYPE_DVDNAV) {
-  int i;
-  int maxid = -1;
-  // setup global sub numbering
-  mpctx->global_sub_indices[SUB_SOURCE_DEMUX] = mpctx->global_sub_size; // the global # of the first demux-specific sub.
-  for (i = 0; i < MAX_S_STREAMS; i++)
-    if (mpctx->demuxer->s_streams[i])
-      maxid = FFMAX(maxid, ((sh_sub_t *)mpctx->demuxer->s_streams[i])->sid);
-  mpctx->global_sub_size += maxid + 1;
-}
-// Make dvdsub_id always selectable if set.
-if (mpctx->global_sub_size <= mpctx->global_sub_indices[SUB_SOURCE_DEMUX] + dvdsub_id)
-  mpctx->global_sub_size = mpctx->global_sub_indices[SUB_SOURCE_DEMUX] + dvdsub_id + 1;
 
 #ifdef CONFIG_ASS
 if (ass_enabled && ass_library) {
@@ -3599,15 +3589,11 @@ if(1 || mpctx->sh_video) {
     }
     free(tmp);
   }
-  if (mpctx->set_of_sub_size > 0)  {
-      // setup global sub numbering
-      mpctx->global_sub_indices[SUB_SOURCE_SUBS] = mpctx->global_sub_size; // the global # of the first sub.
-      mpctx->global_sub_size += mpctx->set_of_sub_size;
-  }
+  if (mpctx->set_of_sub_size > 0)
+      mpctx->sub_counts[SUB_SOURCE_SUBS] = mpctx->set_of_sub_size;
 }
 
-if (mpctx->global_sub_size) {
-  select_subtitle(mpctx);
+if (select_subtitle(mpctx)) {
   if(subdata)
     switch (stream_dump_type) {
         case 3: list_sub_file(subdata); break;
