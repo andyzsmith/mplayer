@@ -16,14 +16,24 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "config.h"
+#ifndef MPLAYER_BSTR_H
+#define MPLAYER_BSTR_H
 
-#include <sys/time.h>
-#include <sys/timeb.h>
-int gettimeofday(struct timeval* t, struct timezone* timezone)
-{       struct timeb timebuffer;
-        ftime( &timebuffer );
-        t->tv_sec=timebuffer.time;
-        t->tv_usec=1000*timebuffer.millitm;
-        return 0;
-}
+#include <stdint.h>
+#include <string.h>
+#include <sys/types.h>
+
+struct bstr {
+    const uint8_t *start;
+    size_t len;
+};
+
+int bstrcmp(struct bstr str1, struct bstr str2);
+int bstrcasecmp(struct bstr str1, struct bstr str2);
+
+// Create bstr compound literal from null-terminated string
+#define BSTR(s) (struct bstr){(s), (s) ? strlen(s) : 0}
+// create a pair (not single value!) for "%.*s" printf syntax
+#define BSTR_P(bstr) (int)((bstr).len), (bstr).start
+
+#endif /* MPLAYER_BSTR_H */

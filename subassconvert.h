@@ -1,4 +1,6 @@
 /*
+ * Header for subtitles converter to SSA/ASS
+ *
  * This file is part of MPlayer.
  *
  * MPlayer is free software; you can redistribute it and/or modify
@@ -16,14 +18,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "config.h"
+#ifndef MPLAYER_SUBASSCONVERT_H
+#define MPLAYER_SUBASSCONVERT_H
 
-#include <sys/time.h>
-#include <sys/timeb.h>
-int gettimeofday(struct timeval* t, struct timezone* timezone)
-{       struct timeb timebuffer;
-        ftime( &timebuffer );
-        t->tv_sec=timebuffer.time;
-        t->tv_usec=1000*timebuffer.millitm;
-        return 0;
-}
+void subassconvert_subrip(const char *orig, char *dest, size_t dest_buffer_size);
+void subassconvert_microdvd(const char *orig, char *dest, size_t dest_buffer_size);
+
+#endif

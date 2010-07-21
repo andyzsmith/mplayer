@@ -222,7 +222,7 @@ SRCS_COMMON-$(NEED_SHMEM)            += osdep/shmem.c
 SRCS_COMMON-$(NEED_STRSEP)           += osdep/strsep.c
 SRCS_COMMON-$(NEED_SWAB)             += osdep/swab.c
 SRCS_COMMON-$(NEED_VSSCANF)          += osdep/vsscanf.c
-SRCS_COMMON-$(NETWORK)               += stream/stream_netstream.c \
+SRCS_COMMON-$(NETWORKING)            += stream/stream_netstream.c \
                                         stream/asf_mmst_streaming.c \
                                         stream/asf_streaming.c \
                                         stream/cookies.c \
@@ -330,6 +330,7 @@ SRCS_COMMON-$(XVID4)                 += libmpcodecs/vd_xvid4.c
 SRCS_COMMON-$(ZR)                    += libmpcodecs/vd_zrmjpeg.c \
                                         libmpcodecs/vf_zrmjpeg.c
 SRCS_COMMON = asxparser.c \
+              bstr.c \
               codec-cfg.c \
               cpudetect.c \
               edl.c \
@@ -346,6 +347,7 @@ SRCS_COMMON = asxparser.c \
               playtreeparser.c \
               spudec.c \
               sub_cc.c \
+              subassconvert.c \
               subopt-helper.c \
               subreader.c \
               vobsub.c \

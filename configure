@@ -273,7 +273,7 @@ Optional features:
   --disable-tv-bsdbt848  disable BSD BT848 interface [autodetect]
   --disable-pvr          disable Video4Linux2 MPEG PVR [autodetect]
   --disable-rtc          disable RTC (/dev/rtc) on Linux [autodetect]
-  --disable-network      disable networking [enable]
+  --disable-networking   disable networking [enable]
   --enable-winsock2_h    enable winsock2_h [autodetect]
   --enable-smb           enable Samba (SMB) input [autodetect]
   --enable-live          enable LIVE555 Streaming Media [autodetect]
@@ -305,7 +305,7 @@ Optional features:
   --disable-vstream      disable TiVo vstream client support [autodetect]
   --disable-pthreads     disable Posix threads support [autodetect]
   --disable-w32threads   disable Win32 threads support [autodetect]
-  --disable-ass-internal disable internal SSA/ASS subtitle support [autodetect]
+  --enable-ass-internal  enable internal SSA/ASS subtitle support [autodetect]
   --disable-ass          disable SSA/ASS subtitle support [autodetect]
   --enable-rpath         enable runtime linker path for extra libs [disabled]
 
@@ -713,7 +713,7 @@ _tv_v4l2=auto
 _tv_bsdbt848=auto
 _tv_dshow=auto
 _pvr=auto
-_network=yes
+networking=yes
 _winsock2_h=auto
 _struct_addrinfo=auto
 _getaddrinfo=auto
@@ -785,7 +785,7 @@ _vstream=auto
 _pthreads=auto
 _w32threads=auto
 _ass=auto
-ass_internal=yes
+ass_internal=no
 _rpath=no
 _asmalign_pot=auto
 _stream_cache=yes
@@ -1154,8 +1154,8 @@ for ac_option do
   --disable-fastmemcpy) _fastmemcpy=no  ;;
   --enable-hardcoded-tables)  hardcoded_tables=yes ;;
   --disable-hardcoded-tables) hardcoded_tables=no  ;;
-  --enable-network)     _network=yes    ;;
-  --disable-network)    _network=no     ;;
+  --enable-networking)     networking=yes    ;;
+  --disable-networking)    networking=no     ;;
   --enable-winsock2_h)  _winsock2_h=yes ;;
   --disable-winsock2_h) _winsock2_h=no  ;;
   --enable-smb)         _smb=yes        ;;
@@ -1761,7 +1761,7 @@ if x86 && test "$_runtime_cpudetection" = no ; then
       cat > $TMPC <<EOF
 #include <stdlib.h>
 #include <signal.h>
-void catch(void) { exit(1); }
+void catch(int sig) { exit(1); }
 int main(void) {
   signal(SIGILL, catch);
   __asm__ volatile ("$3":::"memory"); return 0;
@@ -2643,6 +2643,23 @@ else
 fi
 echores $_asmalign_pot
 
+
+echocheck "PIC"
+def_pic='#define CONFIG_PIC 0'
+pic=no
+cat > $TMPC << EOF
+int main(void) {
+#if !(defined(__PIC__) || defined(__pic__) || defined(PIC))
+#error PIC not enabled
+#endif
+    return 0;
+}
+EOF
+cc_check && pic=yes && extra_cflags="$extra_cflags -DPIC" &&
+  def_pic='#define CONFIG_PIC 0'
+echores $pic
+
+
 if x86 ; then
 echocheck "10 assembler operands"
 ten_operands=no
@@ -2680,18 +2697,6 @@ EOF
 cc_check && ebx_available=yes && def_ebx_available='#define HAVE_EBX_AVAILABLE 1'
 echores $ebx_available
 
-echocheck "PIC"
-pic=no
-cat > $TMPC << EOF
-int main(void) {
-#if !(defined(__PIC__) || defined(__pic__) || defined(PIC))
-#error PIC not enabled
-#endif
-    return 0;
-}
-EOF
-cc_check && pic=yes && extra_cflags="$extra_cflags -DPIC"
-echores $pic
 
 echocheck "yasm"
 if test -z "$YASMFLAGS" ; then
@@ -2786,6 +2791,25 @@ int main(void) { __asm__ volatile ("lwzx %1, %y0" :: "Z"(*(int*)0), "r"(0)); ret
 EOF
 cc_check && xform_asm=yes && def_xform_asm='#define HAVE_XFORM_ASM 1'
 echores "$xform_asm"
+
+def_ibm_asm='#define HAVE_IBM_ASM 0'
+ibm_asm=no
+echocheck "IBM ASM support"
+cat > $TMPC << EOF
+int main(void) { __asm__ volatile ("add 0, 0, 0"); return 0; }
+EOF
+cc_check && ibm_asm=yes && def_ibm_asm='#define HAVE_IBM_ASM 1'
+echores "$ibm_asm"
+
+def_gnu_as='#define HAVE_GNU_AS 0'
+gnu_as=no
+echocheck "GNU assembler"
+cat > $TMPC << EOF
+int main(void) { __asm__ volatile (".macro m n\n\\n:.int 0\n.endm\nm x"); return 0; }
+EOF
+cc_check && gnu_as=yes && def_gnu_as='#define HAVE_GNU_AS 1'
+echores "$gnu_as"
+
 fi
 
 if arm ; then
@@ -3351,21 +3375,23 @@ fi
 echores "$_closesocket"
 
 
-echocheck "network"
+echocheck "networking"
 test $_winsock2_h = no && test $inet_pton = no &&
-  test $inet_aton = no && _network=no
-if test "$_network" = yes ; then
+  test $inet_aton = no && networking=no
+if test "$networking" = yes ; then
   def_network='#define CONFIG_NETWORK 1'
+  def_networking='#define CONFIG_NETWORKING 1'
   extra_ldflags="$extra_ldflags $_ld_sock"
-  inputmodules="network $inputmodules"
+  inputmodules="networking $inputmodules"
 else
-  noinputmodules="network $noinputmodules"
+  noinputmodules="networking $noinputmodules"
   def_network='#undef CONFIG_NETWORK'
+  def_networking='#undef CONFIG_NETWORKING'
   _ftp=no
   libavprotocols=$(echo $libavprotocols | sed -e s/GOPHER_PROTOCOL// -e s/HTTP_PROTOCOL// -e s/RTMP_PROTOCOL// -e s/RTP_PROTOCOL// -e s/TCP_PROTOCOL// -e s/UDP_PROTOCOL//)
   libavdemuxers=$(echo $libavdemuxers | sed -e s/RTSP_DEMUXER// -e s/SDP_DEMUXER//)
 fi
-echores "$_network"
+echores "$networking"
 
 
 echocheck "inet6"
@@ -5147,7 +5173,7 @@ if test "$_gif" = yes ; then
   cat > $TMPC << EOF
 #include <signal.h>
 #include <gif_lib.h>
-void catch(void) { exit(1); }
+void catch(int sig) { exit(1); }
 int main(void) {
   signal(SIGSEGV, catch);  // catch segfault
   printf("EGifPutExtensionFirst is at address %p\n", EGifPutExtensionFirst);
@@ -6218,7 +6244,7 @@ fi
 echores "$_libcdio"
 
 if test "$_cdda" = yes ; then
-    test $_cddb = auto && test $_network = yes && _cddb=yes
+    test $_cddb = auto && test $networking = yes && _cddb=yes
     def_cdparanoia='#define CONFIG_CDDA 1'
     inputmodules="cdda $inputmodules"
 else
@@ -6351,11 +6377,10 @@ EOF
     cat > $TMPC << EOF
 #include <ass/ass.h>
 int main(void) {
-#if defined(LIBASS_VERSION) && LIBASS_VERSION >= 0x00907010
-  ass_process_force_style(0);
-#else
-  process_force_style(0);
+#if !defined(LIBASS_VERSION) || LIBASS_VERSION < 0x00910000
+#error "libass version too old"
 #endif
+  ass_process_force_style(0);
   return 0;
 }
 EOF
@@ -6363,7 +6388,7 @@ EOF
             res_comment="external"
             extra_ldflags="$extra_ldflags -lass"
         else
-            _ass=no
+            ass_internal=yes
         fi
     fi
 fi
@@ -6970,7 +6995,7 @@ if test "$_ladspa" = auto ; then
   cat > $TMPC <<EOF
 #include <ladspa.h>
 int main(void) {
-const LADSPA_Descriptor *ld = NULL;
+LADSPA_Descriptor ld = {0};
 return 0;
 }
 EOF
@@ -7118,7 +7143,7 @@ fi
 echores "$_qtx"
 
 echocheck "Nemesi Streaming Media libraries"
-if test "$_nemesi" = auto  && test "$_network" = yes ; then
+if test "$_nemesi" = auto  && test "$networking" = yes ; then
     _nemesi=no
     if $_pkg_config libnemesi --atleast-version=0.6.3 ; then
         extra_cflags="$extra_cflags $($_pkg_config --cflags libnemesi)"
@@ -7131,7 +7156,7 @@ if test "$_nemesi" = yes; then
     def_nemesi='#define CONFIG_LIBNEMESI 1'
     inputmodules="nemesi $inputmodules"
 else
-    _native_rtsp="$_network"
+    _native_rtsp="$networking"
     _nemesi=no
     def_nemesi='#undef CONFIG_LIBNEMESI'
     noinputmodules="nemesi $noinputmodules"
@@ -7139,7 +7164,7 @@ fi
 echores "$_nemesi"
 
 echocheck "LIVE555 Streaming Media libraries"
-if test "$_live" = auto  && test "$_network" = yes ; then
+if test "$_live" = auto  && test "$networking" = yes ; then
   cat > $TMPCPP << EOF
 #include <liveMedia.hh>
 #if (LIVEMEDIA_LIBRARY_VERSION_INT < 1141257600)
@@ -7170,11 +7195,11 @@ EOF
       fi
   fi
 fi
-if test "$_live" = yes && test "$_network" = yes; then
+if test "$_live" = yes && test "$networking" = yes; then
   test $_livelibdir && res_comment="using $_livelibdir"
   def_live='#define CONFIG_LIVE555 1'
  inputmodules="live555 $inputmodules"
-elif test "$_live_dist" = yes && test "$_network" = yes; then
+elif test "$_live_dist" = yes && test "$networking" = yes; then
   res_comment="using distribution version"
   _live="yes"
   def_live='#define CONFIG_LIVE555 1'
@@ -7190,7 +7215,7 @@ fi
 echores "$_live"
 
 echocheck "RTMPDump Streaming Media library"
-if test "$_librtmp" = auto  && test "$_network" = yes ; then
+if test "$_librtmp" = auto  && test "$networking" = yes ; then
   cat > $TMPC << EOF
 #include <librtmp/rtmp.h>
 int main(void) { RTMP r; RTMP_Socket(&r); return 0; }
@@ -7204,7 +7229,7 @@ EOF
 	  extra_cflags="$extra_cflags $_inc_tmp"
   fi
 fi
-if test "$_librtmp" = yes && test "$_network" = yes; then
+if test "$_librtmp" = yes && test "$networking" = yes; then
   nolibrtmp=no
   def_librtmp='#define CONFIG_LIBRTMP 1'
   inputmodules="librtmp $inputmodules"
@@ -8640,7 +8665,7 @@ MPG123 = $_mpg123
 MUSEPACK = $_musepack
 NAS = $_nas
 NATIVE_RTSP = $_native_rtsp
-NETWORK = $_network
+NETWORKING = $networking
 OPENAL = $_openal
 OSS = $_ossaudio
 PE_EXECUTABLE = $_pe_executable
@@ -8778,7 +8803,7 @@ CONFIG_VDPAU    = $_vdpau
 CONFIG_XVMC     = $_xvmc
 CONFIG_ZLIB     = $_zlib
 
-HAVE_GNU_AS     = yes
+HAVE_GNU_AS     = $gnu_as
 HAVE_PTHREADS   = $_pthreads
 HAVE_SHM        = $_shm
 HAVE_W32THREADS = $_w32threads
@@ -8927,6 +8952,7 @@ $def_kstat
 $def_macosx_bundle
 $def_macosx_finder
 $def_maemo
+$def_memalign_hack
 $def_named_asm_args
 $def_priority
 $def_quicktime
@@ -9097,7 +9123,7 @@ $def_inet_aton
 $def_inet_pton
 $def_live
 $def_nemesi
-$def_network
+$def_networking
 $def_smb
 $def_socklen_t
 $def_struct_ipv6_mreq
@@ -9217,7 +9243,9 @@ $def_exp2
 $def_exp2f
 $def_fast_64bit
 $def_fast_unaligned
+$def_gnu_as
 $def_hardcoded_tables
+$def_ibm_asm
 $def_libavcodec_mpegaudio_hp
 $def_llrint
 $def_llrintf
@@ -9226,9 +9254,10 @@ $def_local_aligned_16
 $def_log2
 $def_log2f
 $def_lrint
-$def_memalign_hack
 $def_mlib
 $def_mkstemp
+$def_network
+$def_pic
 $def_posix_memalign
 $def_pthreads
 $def_round
@@ -9257,7 +9286,6 @@ $def_yasm
 
 #define HAVE_ATTRIBUTE_PACKED 1
 #define HAVE_GETHRTIME 0
-#define HAVE_GNU_AS 1
 #define HAVE_INLINE_ASM 1
 #define HAVE_ISATTY 0
 #define HAVE_LDBRX 0

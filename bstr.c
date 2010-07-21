@@ -16,14 +16,37 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "config.h"
+#include <string.h>
+#include <libavutil/avutil.h>
 
-#include <sys/time.h>
-#include <sys/timeb.h>
-int gettimeofday(struct timeval* t, struct timezone* timezone)
-{       struct timeb timebuffer;
-        ftime( &timebuffer );
-        t->tv_sec=timebuffer.time;
-        t->tv_usec=1000*timebuffer.millitm;
-        return 0;
+#include "bstr.h"
+
+int bstrcmp(struct bstr str1, struct bstr str2)
+{
+    int ret = memcmp(str1.start, str2.start, FFMIN(str1.len, str2.len));
+
+    if (!ret) {
+        if (str1.len == str2.len)
+            return 0;
+        else if (str1.len > str2.len)
+            return 1;
+        else
+            return -1;
+    }
+    return ret;
+}
+
+int bstrcasecmp(struct bstr str1, struct bstr str2)
+{
+    int ret = strncasecmp(str1.start, str2.start, FFMIN(str1.len, str2.len));
+
+    if (!ret) {
+        if (str1.len == str2.len)
+            return 0;
+        else if (str1.len > str2.len)
+            return 1;
+        else
+            return -1;
+    }
+    return ret;
 }
