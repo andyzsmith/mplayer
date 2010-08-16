@@ -108,6 +108,7 @@ SRCS_COMMON-$(LADSPA)                += libaf/af_ladspa.c
 SRCS_COMMON-$(LIBA52)                += libmpcodecs/ad_liba52.c
 SRCS_COMMON-$(LIBASS)                += libmpcodecs/vf_ass.c \
                                         libass/ass_mp.c \
+                                        subassconvert.c \
 
 SRCS_COMMON-$(LIBASS_INTERNAL)       += libass/ass.c \
                                         libass/ass_bitmap.c \
@@ -118,6 +119,7 @@ SRCS_COMMON-$(LIBASS_INTERNAL)       += libass/ass.c \
                                         libass/ass_library.c \
                                         libass/ass_parse.c \
                                         libass/ass_render.c \
+                                        libass/ass_render_api.c \
                                         libass/ass_strtod.c \
                                         libass/ass_utils.c \
 
@@ -347,7 +349,6 @@ SRCS_COMMON = asxparser.c \
               playtreeparser.c \
               spudec.c \
               sub_cc.c \
-              subassconvert.c \
               subopt-helper.c \
               subreader.c \
               vobsub.c \
@@ -515,6 +516,7 @@ SRCS_COMMON = asxparser.c \
               osdep/$(TIMER) \
               stream/open.c \
               stream/stream.c \
+              stream/stream_bd.c \
               stream/stream_cue.c \
               stream/stream_file.c \
               stream/stream_mf.c \
@@ -717,6 +719,7 @@ SRCS_MENCODER = mencoder.c \
 
 COMMON_LIBS-$(LIBAVFORMAT_A)      += libavformat/libavformat.a
 COMMON_LIBS-$(LIBAVCODEC_A)       += libavcodec/libavcodec.a
+COMMON_LIBS-$(LIBAVCORE_A)        += libavcore/libavcore.a
 COMMON_LIBS-$(LIBAVUTIL_A)        += libavutil/libavutil.a
 COMMON_LIBS-$(LIBPOSTPROC_A)      += libpostproc/libpostproc.a
 COMMON_LIBS-$(LIBSWSCALE_A)       += libswscale/libswscale.a
@@ -759,6 +762,7 @@ DIRS =  . \
         libavcodec/sh4 \
         libavcodec/sparc \
         libavcodec/x86 \
+        libavcore \
         libavformat \
         libavutil \
         libavutil/arm \
@@ -806,6 +810,7 @@ ADD_ALL_DIRS    = $(call ADDSUFFIXES,$(1),$(DIRS))
 ADD_ALL_EXESUFS = $(1) $(call ADDSUFFIXES,$(EXESUFS_ALL),$(1))
 
 FFMPEGPARTS = libavcodec \
+              libavcore \
               libavformat \
               libavutil \
               libpostproc \
@@ -827,13 +832,13 @@ all: $(ALL_PRG-yes)
 	$(CC) $(ASFLAGS) -c -o $@ $<
 
 %.o: %.c
-	$(CC) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CC_DEPFLAGS) $(CFLAGS) -c -o $@ $<
 
 %.o: %.cpp
-	$(CC) $(DEPFLAGS) $(CXXFLAGS) -c -o $@ $<
+	$(CC) $(CC_DEPFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 %.o: %.m
-	$(CC) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CC_DEPFLAGS) $(CFLAGS) -c -o $@ $<
 
 %-rc.o: %.rc
 	$(WINDRES) -I. $< $@
@@ -991,6 +996,7 @@ distclean: clean testsclean toolsclean driversclean dhahelperclean dhahelperwinc
 	-rm -f config.log config.mak config.h codecs.conf.h help_mp.h \
            version.h $(VIDIX_PCI_FILES) TAGS tags
 	-rm -f $(call ADD_ALL_EXESUFS,codec-cfg cpuinfo)
+	-rm -f libavutil/avconfig.h
 
 doxygen:
 	doxygen DOCS/tech/Doxyfile

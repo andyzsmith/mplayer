@@ -346,11 +346,11 @@ void mpeg2_set_buf (mpeg2dec_t * mpeg2dec, uint8_t * buf[3], void * id)
     fbuf->buf[2] = buf[2];
     fbuf->id = id;
     // HACK! FIXME! At first I frame, copy pointers to prediction frame too!
-    if (mpeg2dec->custom_fbuf && !mpeg2dec->fbuf[1]->buf[0]){
-	mpeg2dec->fbuf[1]->buf[0]=buf[0];
-	mpeg2dec->fbuf[1]->buf[1]=buf[1];
-	mpeg2dec->fbuf[1]->buf[2]=buf[2];
-	mpeg2dec->fbuf[1]->id=NULL;
+    if (mpeg2dec->custom_fbuf && !mpeg2dec->fbuf[1]->buf[0]) {
+	mpeg2dec->fbuf[1]->buf[0] = buf[0];
+	mpeg2dec->fbuf[1]->buf[1] = buf[1];
+	mpeg2dec->fbuf[1]->buf[2] = buf[2];
+	mpeg2dec->fbuf[1]->id     = NULL;
     }
 }
 

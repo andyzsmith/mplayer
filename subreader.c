@@ -373,6 +373,7 @@ static subtitle *sub_read_line_subrip(stream_t* st, subtitle *current, int utf16
     return current;
 }
 
+#ifdef CONFIG_ASS
 static subtitle *sub_ass_read_line_subviewer(stream_t *st, subtitle *current, int utf16)
 {
     int h1, m1, s1, ms1, h2, m2, s2, ms2, j = 0;
@@ -428,6 +429,7 @@ static subtitle *sub_ass_read_line_subviewer(stream_t *st, subtitle *current, in
     }
     return current;
 }
+#endif
 
 static subtitle *sub_read_line_subviewer(stream_t *st,subtitle *current, int utf16) {
     char line[LINE_LEN+1];
@@ -1447,8 +1449,7 @@ sub_data* sub_read_file (char *filename, float fps) {
     const struct subreader *srp;
 
     if(filename==NULL) return NULL; //qnx segfault
-    i = 0;
-    fd=open_stream (filename, NULL, &i); if (!fd) return NULL;
+    fd=open_stream (filename, NULL, NULL); if (!fd) return NULL;
 
     sub_format = SUB_INVALID;
     for (utf16 = 0; sub_format == SUB_INVALID && utf16 < 3; utf16++) {
@@ -2378,6 +2379,11 @@ void sub_add_text(subtitle *sub, const char *txt, int len, double endpts, int st
   sub->text[sub->lines] = buf;
   sub->endpts[sub->lines] = endpts;
 
+#ifndef CONFIG_ASS
+  if (!strip_markup)
+    mp_msg(MSGT_SUBREADER, MSGL_ERR, "strip_markup must be set when ASS support is disabled!\n");
+  strip_markup = 1;
+#endif
   if (!strip_markup) {
     subassconvert_subrip(txt, buf, MAX_SUBLINE + 1);
     sub->text[sub->lines] = buf;

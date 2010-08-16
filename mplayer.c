@@ -92,6 +92,7 @@
 #include "libvo/video_out.h"
 #include "stream/cache2.h"
 #include "stream/stream.h"
+#include "stream/stream_bd.h"
 #include "stream/stream_dvdnav.h"
 #include "stream/stream_radio.h"
 #include "stream/tv.h"
@@ -344,6 +345,11 @@ static unsigned int initialized_flags=0;
 
 /// step size of mixer changes
 int volstep = 3;
+
+#ifdef CONFIG_CRASH_DEBUG
+static char *prog_path;
+static int crash_debug = 0;
+#endif
 
 /* This header requires all the global variable declarations. */
 #include "cfg-mplayer.h"
@@ -659,6 +665,11 @@ void uninit_player(unsigned int mask){
 #ifdef CONFIG_DVDNAV
     mp_dvdnav_context_free(mpctx);
 #endif
+    if (vo_spudec){
+      current_module="uninit_spudec";
+      spudec_free(vo_spudec);
+      vo_spudec=NULL;
+    }
   }
 
   // Must be after libvo uninit, as few vo drivers (svgalib) have tty code.
@@ -675,12 +686,6 @@ void uninit_player(unsigned int mask){
     current_module="uninit_vobsub";
     if(vo_vobsub) vobsub_close(vo_vobsub);
     vo_vobsub=NULL;
-  }
-
-  if (vo_spudec){
-    current_module="uninit_spudec";
-    spudec_free(vo_spudec);
-    vo_spudec=NULL;
   }
 
   if(mask&INITIALIZED_AO){
@@ -790,11 +795,6 @@ static void child_sighandler(int x){
   pid_t pid;
   while((pid=waitpid(-1,NULL,WNOHANG)) > 0);
 }
-#endif
-
-#ifdef CONFIG_CRASH_DEBUG
-static char *prog_path;
-static int crash_debug = 0;
 #endif
 
 static void exit_sighandler(int x){
@@ -1091,7 +1091,7 @@ void add_subtitles(char *filename, float fps, int noerr)
 {
     sub_data *subd;
 #ifdef CONFIG_ASS
-    ass_track_t *asst = 0;
+    ASS_Track *asst = 0;
 #endif
 
     if (filename == NULL || mpctx->set_of_sub_size >= MAX_SUBTITLE_FILES) {
@@ -1187,7 +1187,7 @@ void init_vo_spudec(void) {
 #endif
 
   if (vo_spudec==NULL) {
-    sh_sub_t *sh = (sh_sub_t *)mpctx->d_sub->sh;
+    sh_sub_t *sh = mpctx->d_sub->sh;
     current_module="spudec_init_normal";
     vo_spudec=spudec_new_scaled(NULL, mpctx->sh_video->disp_w, mpctx->sh_video->disp_h, sh->extradata, sh->extradata_len);
     spudec_set_font_factor(vo_spudec,font_factor);
@@ -2649,7 +2649,7 @@ static int seek(MPContext *mpctx, double amount, int style)
 	vobsub_seek(vo_vobsub, mpctx->sh_video->pts);
     }
 
-#if defined(CONFIG_ASS) && defined(LIBASS_VERSION) && LIBASS_VERSION >= 0x00910000
+#ifdef CONFIG_ASS
     if (ass_enabled && mpctx->d_sub->sh && ((sh_sub_t *)mpctx->d_sub->sh)->ass_track)
         ass_flush_events(((sh_sub_t *)mpctx->d_sub->sh)->ass_track);
 #endif
@@ -3344,10 +3344,15 @@ if(stream_dump_type==5){
   exit_player_with_rc(EXIT_EOF, 0);
 }
 
+if(mpctx->stream->type==STREAMTYPE_BD){
+  if(audio_lang && audio_id==-1) audio_id=bd_aid_from_lang(mpctx->stream,audio_lang);
+  if(dvdsub_lang && dvdsub_id==-1) dvdsub_id=bd_sid_from_lang(mpctx->stream,dvdsub_lang);
+}
+
 #ifdef CONFIG_DVDREAD
 if(mpctx->stream->type==STREAMTYPE_DVD){
   current_module="dvd lang->id";
-  if(audio_id==-1) audio_id=dvd_aid_from_lang(mpctx->stream,audio_lang);
+  if(audio_lang && audio_id==-1) audio_id=dvd_aid_from_lang(mpctx->stream,audio_lang);
   if(dvdsub_lang && dvdsub_id==-1) dvdsub_id=dvd_sid_from_lang(mpctx->stream,dvdsub_lang);
   // setup global sub numbering
   mpctx->sub_counts[SUB_SOURCE_DEMUX] = dvd_number_of_subs(mpctx->stream);
@@ -3358,7 +3363,7 @@ if(mpctx->stream->type==STREAMTYPE_DVD){
 #ifdef CONFIG_DVDNAV
 if(mpctx->stream->type==STREAMTYPE_DVDNAV){
   current_module="dvdnav lang->id";
-  if(audio_id==-1) audio_id=mp_dvdnav_aid_from_lang(mpctx->stream,audio_lang);
+  if(audio_lang && audio_id==-1) audio_id=mp_dvdnav_aid_from_lang(mpctx->stream,audio_lang);
   dvdsub_lang_id = -3;
   if(dvdsub_lang && dvdsub_id==-1)
     dvdsub_lang_id=dvdsub_id=mp_dvdnav_sid_from_lang(mpctx->stream,dvdsub_lang);
@@ -3920,8 +3925,14 @@ if(auto_quality>0){
  if (mpctx->stream->type == STREAMTYPE_DVDNAV) {
    nav_highlight_t hl;
    mp_dvdnav_get_highlight (mpctx->stream, &hl);
+   if (!vo_spudec || !spudec_apply_palette_crop(vo_spudec, hl.palette, hl.sx, hl.sy, hl.ex, hl.ey)) {
    osd_set_nav_box (hl.sx, hl.sy, hl.ex, hl.ey);
    vo_osd_changed (OSDTYPE_DVDNAV);
+   } else {
+     osd_set_nav_box(0, 0, 0, 0);
+     vo_osd_changed(OSDTYPE_DVDNAV);
+     vo_osd_changed(OSDTYPE_SPU);
+   }
 
    if (mp_dvdnav_stream_has_changed(mpctx->stream)) {
      double ar = -1.0;
