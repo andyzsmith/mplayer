@@ -336,6 +336,7 @@ SRCS_COMMON = asxparser.c \
               codec-cfg.c \
               cpudetect.c \
               edl.c \
+              eosd.c \
               find_sub.c \
               fmt-conversion.c \
               m_config.c \
@@ -845,9 +846,6 @@ all: $(ALL_PRG-yes)
 
 checkheaders: $(ALLHEADERS:.h=.ho)
 
-dep depend: $(DEPS)
-	for part in $(FFMPEGPARTS); do $(MAKE) -C $$part depend; done
-
 $(FFMPEGLIBS): $(FFMPEGFILES) config.h
 	$(MAKE) -C $(@D)
 	touch $@
@@ -1158,13 +1156,10 @@ dhahelperwinclean:
 
 
 
-# Do not include dependencies when they are about to be removed anyway.
-ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPS)
-endif
 
 .PHONY: all doxygen *install* *tools drivers dhahelper*
-.PHONY: checkheaders *clean dep depend tests
+.PHONY: checkheaders *clean tests
 
 # Disable suffix rules.  Most of the builtin rules are suffix rules,
 # so this saves some time on slow systems.

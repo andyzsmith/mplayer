@@ -97,6 +97,7 @@
 #include "path.h"
 #include "spudec.h"
 #include "vobsub.h"
+#include "eosd.h"
 
 
 int vo_doublebuffering=0;
@@ -1031,12 +1032,10 @@ default: {
           break;
         }
     if (insert) {
-      extern vf_info_t vf_info_ass;
-      vf_info_t* libass_vfs[] = {&vf_info_ass, NULL};
       char* vf_arg[] = {"auto", "1", NULL};
-      vf_instance_t* vf_ass = vf_open_plugin(libass_vfs,sh_video->vfilter,"ass",vf_arg);
+      vf_instance_t* vf_ass = vf_open_filter(sh_video->vfilter,"ass",vf_arg);
       if (vf_ass)
-        sh_video->vfilter=(void*)vf_ass;
+        sh_video->vfilter=vf_ass;
       else
         mp_msg(MSGT_CPLAYER,MSGL_ERR, "ASS: cannot add video filter\n");
     }
@@ -1054,11 +1053,12 @@ default: {
   }
 #endif
 
-    sh_video->vfilter=append_filters(sh_video->vfilter);
+  sh_video->vfilter=append_filters(sh_video->vfilter);
+  eosd_init(sh_video->vfilter);
 
 #ifdef CONFIG_ASS
   if (ass_enabled)
-    ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_INIT_EOSD, ass_library);
+    eosd_ass_init(ass_library);
 #endif
 
 // after reading video params we should load subtitles because
@@ -1537,8 +1537,12 @@ case VCODEC_FRAMENO:
     break;
 default:
     // decode_video will callback down to ve_*.c encoders, through the video filters
-    {void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
-      skip_flag>0 && (!sh_video->vfilter || ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE), vfr ? sh_video->pts : MP_NOPTS_VALUE);
+    {
+    int drop_frame = skip_flag > 0 &&
+                     (!sh_video->vfilter ||
+                      ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE);
+    void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
+                                       drop_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE);
     blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE);}
 
     if (sh_video->vf_initialized < 0) mencoder_exit(1, NULL);

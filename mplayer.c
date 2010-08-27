@@ -124,6 +124,7 @@
 #include "spudec.h"
 #include "subreader.h"
 #include "vobsub.h"
+#include "eosd.h"
 
 #ifdef CONFIG_X11
 #include "libvo/x11_common.h"
@@ -2285,7 +2286,7 @@ int reinit_video_chain(void) {
   current_module="init_video_filters";
   {
     char* vf_arg[] = { "_oldargs_", (char*)mpctx->video_out , NULL };
-    sh_video->vfilter=(void*)vf_open_filter(NULL,"vo",vf_arg);
+    sh_video->vfilter=vf_open_filter(NULL,"vo",vf_arg);
   }
 #ifdef CONFIG_MENU
   if(use_menu) {
@@ -2297,7 +2298,7 @@ int reinit_video_chain(void) {
     }
   }
   if(vf_menu)
-    sh_video->vfilter=(void*)vf_menu;
+    sh_video->vfilter=vf_menu;
 #endif
 
 #ifdef CONFIG_ASS
@@ -2311,23 +2312,22 @@ int reinit_video_chain(void) {
           break;
         }
     if (insert) {
-      extern vf_info_t vf_info_ass;
-      const vf_info_t* libass_vfs[] = {&vf_info_ass, NULL};
       char* vf_arg[] = {"auto", "1", NULL};
-      vf_instance_t* vf_ass = vf_open_plugin(libass_vfs,sh_video->vfilter,"ass",vf_arg);
+      vf_instance_t* vf_ass = vf_open_filter(sh_video->vfilter,"ass",vf_arg);
       if (vf_ass)
-        sh_video->vfilter=(void*)vf_ass;
+        sh_video->vfilter=vf_ass;
       else
         mp_msg(MSGT_CPLAYER,MSGL_ERR, "ASS: cannot add video filter\n");
     }
   }
 #endif
 
-  sh_video->vfilter=(void*)append_filters(sh_video->vfilter);
+  sh_video->vfilter=append_filters(sh_video->vfilter);
+  eosd_init(sh_video->vfilter);
 
 #ifdef CONFIG_ASS
   if (ass_enabled)
-    ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_INIT_EOSD, ass_library);
+    eosd_ass_init(ass_library);
 #endif
 
   current_module="init_video_codec";
@@ -2768,9 +2768,13 @@ int gui_no_filename=0;
 	{
 		HMODULE kernel32 = GetModuleHandle("Kernel32.dll");
 		BOOL WINAPI (*setDEP)(DWORD) = NULL;
-		if (kernel32)
+		BOOL WINAPI (*setDllDir)(LPCTSTR) = NULL;
+		if (kernel32) {
 			setDEP = GetProcAddress(kernel32, "SetProcessDEPPolicy");
+			setDllDir = GetProcAddress(kernel32, "SetDllDirectory");
+		}
 		if (setDEP) setDEP(3);
+		if (setDllDir) setDllDir("");
 	}
 	// stop Windows from showing all kinds of annoying error dialogs
 	SetErrorMode(0x8003);
