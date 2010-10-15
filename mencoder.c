@@ -58,7 +58,6 @@
 #include "input/input.h"
 #include "libaf/af_format.h"
 #include "libao2/audio_out.h"
-#include "libass/ass_mp.h"
 #include "libavcodec/avcodec.h"
 #include "libmpcodecs/ae.h"
 #include "libmpcodecs/dec_audio.h"
@@ -76,7 +75,6 @@
 #include "libvo/font_load.h"
 #include "libvo/sub.h"
 #include "libvo/video_out.h"
-#include "osdep/priority.h"
 #include "osdep/timer.h"
 #include "stream/stream.h"
 #include "stream/stream_bd.h"
@@ -84,6 +82,7 @@
 #include "stream/stream_dvd.h"
 #endif
 #include "stream/stream_dvdnav.h"
+#include "ass_mp.h"
 #include "codec-cfg.h"
 #include "edl.h"
 #include "help_mp.h"
@@ -98,6 +97,7 @@
 #include "spudec.h"
 #include "vobsub.h"
 #include "eosd.h"
+#include "mencoder.h"
 
 
 int vo_doublebuffering=0;
@@ -110,12 +110,8 @@ int forced_subs_only=0;
 // cache2:
 int stream_cache_size=-1;
 #ifdef CONFIG_STREAM_CACHE
-extern int cache_fill_status;
-
 float stream_cache_min_percent=20.0;
 float stream_cache_seek_min_percent=50.0;
-#else
-#define cache_fill_status 0
 #endif
 
 int audio_id=-1;
@@ -130,9 +126,6 @@ static char** audio_codec_list=NULL;  // override audio codec
 static char** video_codec_list=NULL;  // override video codec
 static char** audio_fm_list=NULL;     // override audio codec family
 static char** video_fm_list=NULL;     // override video codec family
-extern char *demuxer_name; // override demuxer
-extern char *audio_demuxer_name; // override audio demuxer
-extern char *sub_demuxer_name; // override sub demuxer
 
 static int out_audio_codec=-1;
 static int out_video_codec=-1;
@@ -185,7 +178,6 @@ static int play_n_frames_mf=-1;
 // sub:
 char *font_name=NULL;
 char *sub_font_name=NULL;
-extern int font_fontconfig;
 float font_factor=0.75;
 char **sub_name=NULL;
 float sub_delay=0;
@@ -302,7 +294,8 @@ static int dec_audio(sh_audio_t *sh_audio,unsigned char* buffer,int total){
     while(size<total && !at_eof){
 	int len=total-size;
 		if(len>MAX_OUTBURST) len=MAX_OUTBURST;
-		if (decode_audio(sh_audio, len) < 0) at_eof=1;
+		if (mp_decode_audio(sh_audio, len) < 0)
+                    at_eof = 1;
 		if(len>sh_audio->a_out_buffer_len) len=sh_audio->a_out_buffer_len;
 		fast_memcpy(buffer+size,sh_audio->a_out_buffer,len);
 		sh_audio->a_out_buffer_len-=len; size+=len;
@@ -465,7 +458,7 @@ static int slowseek(float end_pts, demux_stream_t *d_video,
 
         if (vfilter) {
             int softskip = (vfilter->control(vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) == CONTROL_TRUE);
-            void *decoded_frame = decode_video(sh_video, frame_data->start, frame_data->in_size, !softskip, MP_NOPTS_VALUE);
+            void *decoded_frame = decode_video(sh_video, frame_data->start, frame_data->in_size, !softskip, MP_NOPTS_VALUE, NULL);
 	    if (decoded_frame)
 		filter_video(sh_video, decoded_frame, MP_NOPTS_VALUE);
         }
@@ -582,7 +575,7 @@ audio_encoder_t *aencoder = NULL;
 
 user_correct_pts = 0;
 
-  mp_msg_init();
+  common_preinit();
 
   // Create the config context and register the options
   mconfig = m_config_new();
@@ -594,27 +587,11 @@ user_correct_pts = 0;
 
   print_version("MEncoder");
 
-#if (defined(__MINGW32__) || defined(__CYGWIN__)) && defined(CONFIG_WIN32DLL)
-  set_path_env();
-#endif
-
-  InitTimer();
-
-// check codec.conf
-if(!codecs_file || !parse_codec_cfg(codecs_file)){
-  if(!parse_codec_cfg(get_path("codecs.conf"))){
-    if(!parse_codec_cfg(MPLAYER_CONFDIR "/codecs.conf")){
-      if(!parse_codec_cfg(NULL)){
-	mencoder_exit(1,NULL);
-      }
-      mp_msg(MSGT_MENCODER,MSGL_V,MSGTR_BuiltinCodecsConf);
-    }
-  }
-}
-
  parse_cfgfiles(mconfig);
  filelist = m_config_parse_me_command_line(mconfig, argc, argv);
  if(!filelist) mencoder_exit(1, MSGTR_ErrorParsingCommandLine);
+ if (!common_init())
+   mencoder_exit(1,NULL);
 
 {
 	char *extension;
@@ -654,38 +631,6 @@ if (frameno_filename) {
   }
 }
 
-#ifdef CONFIG_PRIORITY
-  set_priority();
-#endif
-
-  if (codec_path)
-    set_codec_path(codec_path);
-
-// check font
-#ifdef CONFIG_FREETYPE
-  init_freetype();
-#endif
-#ifdef CONFIG_FONTCONFIG
-  if(font_fontconfig <= 0)
-  {
-#endif
-#ifdef CONFIG_BITMAP_FONT
-  if(font_name){
-       vo_font=read_font_desc(font_name,font_factor,verbose>1);
-       if(!vo_font) mp_msg(MSGT_CPLAYER,MSGL_ERR,MSGTR_CantLoadFont,font_name);
-  } else {
-      // try default:
-       vo_font=read_font_desc(get_path("font/font.desc"),font_factor,verbose>1);
-       if(!vo_font)
-         vo_font=read_font_desc(MPLAYER_DATADIR "/font/font.desc",font_factor,verbose>1);
-  }
-#endif
-#ifdef CONFIG_FONTCONFIG
-  }
-#endif
-
-  vo_init_osd();
-
   /* HACK, for some weird reason, push() has to be called twice,
      otherwise options are not saved correctly */
   m_config_push(mconfig);
@@ -693,10 +638,6 @@ play_next_file:
   m_config_push(mconfig);
   m_entry_set_options(mconfig,&filelist[curfile]);
   filename = filelist[curfile].name;
-
-#ifdef CONFIG_ASS
-  ass_library = ass_init();
-#endif
 
   if(!filename){
 	mp_msg(MSGT_CPLAYER, MSGL_FATAL, MSGTR_MissingFilename);
@@ -906,7 +847,7 @@ mux_v->buffer=malloc(mux_v->buffer_size);
 mux_v->source=sh_video;
 
 mux_v->h.dwSampleSize=0; // VBR
-#ifdef CONFIG_LIBAVCODEC
+#ifdef CONFIG_FFMPEG
 {
     double fps = force_ofps?force_ofps:sh_video->fps*playback_speed;
     AVRational q= av_d2q(fps, fps*1001+2);
@@ -934,8 +875,8 @@ case VCODEC_COPY:
 		}
     else
     {
-	mux_v->bih=calloc(1,sizeof(BITMAPINFOHEADER));
-	mux_v->bih->biSize=sizeof(BITMAPINFOHEADER);
+	mux_v->bih=calloc(1,sizeof(*mux_v->bih));
+	mux_v->bih->biSize=sizeof(*mux_v->bih);
 	mux_v->bih->biWidth=sh_video->disp_w;
 	mux_v->bih->biHeight=sh_video->disp_h;
 	mux_v->bih->biCompression=sh_video->format;
@@ -974,8 +915,8 @@ case VCODEC_COPY:
     break;
 case VCODEC_FRAMENO:
 	if (!curfile) {
-    mux_v->bih=calloc(1,sizeof(BITMAPINFOHEADER));
-    mux_v->bih->biSize=sizeof(BITMAPINFOHEADER);
+    mux_v->bih=calloc(1,sizeof(*mux_v->bih));
+    mux_v->bih->biSize=sizeof(*mux_v->bih);
     mux_v->bih->biWidth=sh_video->disp_w;
     mux_v->bih->biHeight=sh_video->disp_h;
     mux_v->bih->biPlanes=1;
@@ -1163,11 +1104,11 @@ case ACODEC_COPY:
 	mencoder_exit(1,NULL);
     }
     if (sh_audio->wf){
-	mux_a->wf=malloc(sizeof(WAVEFORMATEX) + sh_audio->wf->cbSize);
-	memcpy(mux_a->wf, sh_audio->wf, sizeof(WAVEFORMATEX) + sh_audio->wf->cbSize);
+	mux_a->wf=malloc(sizeof(*mux_a->wf) + sh_audio->wf->cbSize);
+	memcpy(mux_a->wf, sh_audio->wf, sizeof(*mux_a->wf) + sh_audio->wf->cbSize);
 	if(!sh_audio->i_bps) sh_audio->i_bps=mux_a->wf->nAvgBytesPerSec;
     } else {
-	mux_a->wf = malloc(sizeof(WAVEFORMATEX));
+	mux_a->wf = malloc(sizeof(*mux_a->wf));
 	mux_a->wf->nBlockAlign = 1; //mux_a->h.dwSampleSize;
 	mux_a->wf->wFormatTag = sh_audio->format;
 	mux_a->wf->nChannels = sh_audio->channels;
@@ -1542,7 +1483,7 @@ default:
                      (!sh_video->vfilter ||
                       ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE);
     void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
-                                       drop_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE);
+                                       drop_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE, NULL);
     blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE);}
 
     if (sh_video->vf_initialized < 0) mencoder_exit(1, NULL);

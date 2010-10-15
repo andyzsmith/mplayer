@@ -25,6 +25,8 @@
 #include "help_mp.h"
 
 #include "ad_internal.h"
+#include "dec_audio.h"
+#include "vd_ffmpeg.h"
 #include "libaf/reorder_ch.h"
 
 #include "mpbswap.h"
@@ -44,7 +46,6 @@ LIBAD_EXTERN(ffmpeg)
 
 #include "libavcodec/avcodec.h"
 
-extern int avcodec_initialized;
 
 static int preinit(sh_audio_t *sh)
 {
@@ -54,6 +55,7 @@ static int preinit(sh_audio_t *sh)
 
 static int setup_format(sh_audio_t *sh_audio, const AVCodecContext *lavc_context)
 {
+    int broken_srate = 0;
     int samplerate    = lavc_context->sample_rate;
     int sample_format = sh_audio->sample_format;
     switch (lavc_context->sample_fmt) {
@@ -70,8 +72,7 @@ static int setup_format(sh_audio_t *sh_audio, const AVCodecContext *lavc_context
 
         if (lavc_context->codec_id == CODEC_ID_AAC &&
             samplerate == 2*sh_audio->wf->nSamplesPerSec) {
-            mp_msg(MSGT_DECAUDIO, MSGL_WARN,
-                   "Ignoring broken container sample rate for ACC with SBR\n");
+            broken_srate = 1;
         } else if (sh_audio->wf->nSamplesPerSec)
             samplerate=sh_audio->wf->nSamplesPerSec;
     }
@@ -82,6 +83,9 @@ static int setup_format(sh_audio_t *sh_audio, const AVCodecContext *lavc_context
         sh_audio->samplerate=samplerate;
         sh_audio->sample_format = sample_format;
         sh_audio->samplesize=af_fmt2bits(sh_audio->sample_format)/ 8;
+        if (broken_srate)
+            mp_msg(MSGT_DECAUDIO, MSGL_WARN,
+                   "Ignoring broken container sample rate for AAC with SBR\n");
         return 1;
     }
     return 0;
@@ -95,11 +99,7 @@ static int init(sh_audio_t *sh_audio)
     AVCodec *lavc_codec;
 
     mp_msg(MSGT_DECAUDIO,MSGL_V,"FFmpeg's libavcodec audio codec\n");
-    if(!avcodec_initialized){
-      avcodec_init();
-      avcodec_register_all();
-      avcodec_initialized=1;
-    }
+    init_avcodec();
 
     lavc_codec = avcodec_find_decoder_by_name(sh_audio->codec->dll);
     if(!lavc_codec){
@@ -129,7 +129,7 @@ static int init(sh_audio_t *sh_audio)
     if (sh_audio->wf && sh_audio->wf->cbSize > 0) {
         lavc_context->extradata = av_mallocz(sh_audio->wf->cbSize + FF_INPUT_BUFFER_PADDING_SIZE);
         lavc_context->extradata_size = sh_audio->wf->cbSize;
-        memcpy(lavc_context->extradata, (char *)sh_audio->wf + sizeof(WAVEFORMATEX),
+        memcpy(lavc_context->extradata, sh_audio->wf + 1,
                lavc_context->extradata_size);
     }
 

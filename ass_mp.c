@@ -1,22 +1,20 @@
-// -*- c-basic-offset: 8; indent-tabs-mode: t -*-
-// vim:ts=8:sw=8:noet:ai:
 /*
  * Copyright (C) 2006 Evgeniy Stepanov <eugeni.stepanov@gmail.com>
  *
- * This file is part of libass.
+ * This file is part of MPlayer.
  *
- * libass is free software; you can redistribute it and/or modify
+ * MPlayer is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * libass is distributed in the hope that it will be useful,
+ * MPlayer is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License along
- * with libass; if not, write to the Free Software Foundation, Inc.,
+ * with MPlayer; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
@@ -25,10 +23,16 @@
 #include <stdlib.h>
 
 #include "mp_msg.h"
+#include "mpcommon.h"
 #include "path.h"
+#include "subreader.h"
 
 #include "ass_mp.h"
+#include "eosd.h"
+#include "mpcommon.h"
+#include "libvo/sub.h"
 #include "help_mp.h"
+#include "libvo/font_load.h"
 #include "stream/stream.h"
 
 #ifdef CONFIG_FONTCONFIG
@@ -42,33 +46,13 @@ float ass_font_scale = 1.;
 float ass_line_spacing = 0.;
 int ass_top_margin = 0;
 int ass_bottom_margin = 0;
-#if defined(FC_VERSION) && (FC_VERSION >= 20402)
 int extract_embedded_fonts = 1;
-#else
-int extract_embedded_fonts = 0;
-#endif
 char **ass_force_style_list = NULL;
 int ass_use_margins = 0;
 char* ass_color = NULL;
 char* ass_border_color = NULL;
 char* ass_styles_file = NULL;
 int ass_hinting = ASS_HINTING_NATIVE + 4; // native hinting for unscaled osd
-
-#ifdef CONFIG_FONTCONFIG
-extern int font_fontconfig;
-#else
-static int font_fontconfig = -1;
-#endif
-extern char* font_name;
-extern char* sub_font_name;
-extern float text_font_scale_factor;
-extern int subtitle_autoscale;
-
-#ifdef CONFIG_ICONV
-extern char* sub_cp;
-#else
-static char* sub_cp = 0;
-#endif
 
 ASS_Track* ass_default_track(ASS_Library* library) {
 	ASS_Track* track = ass_new_track(library);
@@ -331,4 +315,65 @@ ASS_Image* ass_mp_render_frame(ASS_Renderer *priv, ASS_Track* track, long long n
 		ass_force_reload = 0;
 	}
 	return ass_render_frame(priv, track, now, detect_change);
+}
+
+/* EOSD source for ASS subtitles. */
+
+static ASS_Renderer *ass_renderer;
+static int prev_visibility;
+
+static void eosd_ass_update(struct mp_eosd_source *src, const struct mp_eosd_settings *res, double ts)
+{
+	long long ts_ms = (ts + sub_delay) * 1000 + .5;
+	ASS_Image *aimg;
+	struct mp_eosd_image *img;
+	if (res->changed) {
+		double dar = (double) (res->w - res->ml - res->mr) / (res->h - res->mt - res->mb);
+		ass_configure(ass_renderer, res->w, res->h, res->unscaled);
+		ass_set_margins(ass_renderer, res->mt, res->mb, res->ml, res->mr);
+		ass_set_aspect_ratio(ass_renderer, dar, (double)res->srcw / res->srch);
+	}
+	aimg = sub_visibility && ass_track && ts != MP_NOPTS_VALUE ?
+		ass_mp_render_frame(ass_renderer, ass_track, ts_ms, &src->changed) :
+		NULL;
+	if (!aimg != !src->images)
+		src->changed = 2;
+	if (src->changed) {
+		eosd_image_remove_all(src);
+		while (aimg) {
+			img = eosd_image_alloc();
+			img->w      = aimg->w;
+			img->h      = aimg->h;
+			img->bitmap = aimg->bitmap;
+			img->stride = aimg->stride;
+			img->color  = aimg->color;
+			img->dst_x  = aimg->dst_x;
+			img->dst_y  = aimg->dst_y;
+			eosd_image_append(src, img);
+			aimg = aimg->next;
+		}
+	}
+	prev_visibility = sub_visibility;
+}
+
+static void eosd_ass_uninit(struct mp_eosd_source *src)
+{
+	eosd_image_remove_all(src);
+	ass_renderer_done(ass_renderer);
+}
+
+static struct mp_eosd_source eosd_ass = {
+	.uninit  = eosd_ass_uninit,
+	.update  = eosd_ass_update,
+	.z_index = 10,
+};
+
+void eosd_ass_init(ASS_Library *ass_library)
+{
+	ass_renderer = ass_renderer_init(ass_library);
+	if (!ass_renderer)
+		return;
+	ass_configure_fonts(ass_renderer);
+	if (!eosd_registered(&eosd_ass))
+		eosd_register(&eosd_ass);
 }

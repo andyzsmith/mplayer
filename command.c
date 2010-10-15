@@ -58,18 +58,18 @@
 #include "stream/stream_dvd.h"
 #endif
 #include "stream/stream_dvdnav.h"
-#include "libass/ass_mp.h"
+#include "ass_mp.h"
 #include "m_struct.h"
 #include "libmenu/menu.h"
 #include "gui/interface.h"
+#include "eosd.h"
 
 #include "mp_core.h"
 #include "mp_fifo.h"
 #include "libavutil/avstring.h"
+#include "edl.h"
 
 #define ROUND(x) ((int)((x)<0 ? (x)-0.5 : (x)+0.5))
-
-extern int use_menu;
 
 static void rescale_input_coordinates(int ix, int iy, double *dx, double *dy)
 {
@@ -94,7 +94,7 @@ static void rescale_input_coordinates(int ix, int iy, double *dx, double *dy)
     *dy = (double) iy / (double) vo_dheight;
 
     mp_msg(MSGT_CPLAYER, MSGL_V,
-           "\r\nrescaled coordinates: %.3lf, %.3lf, screen (%d x %d), vodisplay: (%d, %d), fullscreen: %d\r\n",
+           "\r\nrescaled coordinates: %.3f, %.3f, screen (%d x %d), vodisplay: (%d, %d), fullscreen: %d\r\n",
            *dx, *dy, vo_screenwidth, vo_screenheight, vo_dwidth,
            vo_dheight, vo_fs);
 }
@@ -1952,18 +1952,18 @@ static int mp_property_tv_color(m_option_t *prop, int action, void *arg,
         if (!arg)
             return M_PROPERTY_ERROR;
         M_PROPERTY_CLAMP(prop, *(int *) arg);
-        return tv_set_color_options(tvh, (int) prop->priv, *(int *) arg);
+        return tv_set_color_options(tvh, (intptr_t) prop->priv, *(int *) arg);
     case M_PROPERTY_GET:
-        return tv_get_color_options(tvh, (int) prop->priv, arg);
+        return tv_get_color_options(tvh, (intptr_t) prop->priv, arg);
     case M_PROPERTY_STEP_UP:
     case M_PROPERTY_STEP_DOWN:
-        if ((r = tv_get_color_options(tvh, (int) prop->priv, &val)) >= 0) {
+        if ((r = tv_get_color_options(tvh, (intptr_t) prop->priv, &val)) >= 0) {
             if (!r)
                 return M_PROPERTY_ERROR;
             val += (arg ? *(int *) arg : 1) *
                 (action == M_PROPERTY_STEP_DOWN ? -1 : 1);
             M_PROPERTY_CLAMP(prop, val);
-            return tv_set_color_options(tvh, (int) prop->priv, val);
+            return tv_set_color_options(tvh, (intptr_t) prop->priv, val);
         }
         return M_PROPERTY_ERROR;
     }
@@ -1976,7 +1976,7 @@ static int mp_property_teletext_common(m_option_t *prop, int action, void *arg,
                   MPContext *mpctx)
 {
     int val,result;
-    int base_ioctl=(int)prop->priv;
+    int base_ioctl=(intptr_t)prop->priv;
     /*
       for teletext's GET,SET,STEP ioctls this is not 0
       SET is GET+1
@@ -2024,7 +2024,7 @@ static int mp_property_teletext_mode(m_option_t *prop, int action, void *arg,
         return result;
 
     if(teletext_control(mpctx->demuxer->teletext,
-                        (int)prop->priv, &val)==VBI_CONTROL_TRUE && val)
+                        (intptr_t)prop->priv, &val)==VBI_CONTROL_TRUE && val)
         mp_input_set_section("teletext");
     else
         mp_input_set_section("tv");
@@ -2493,6 +2493,70 @@ static void remove_subtitle_range(MPContext *mpctx, int start, int count)
     }
 }
 
+static int overlay_source_registered = 0;
+static struct mp_eosd_source overlay_source = {
+    .z_index = 5,
+};
+
+static void overlay_add(char *file, int id, int x, int y, unsigned col)
+{
+    FILE *f;
+    unsigned w, h, nc;
+    unsigned char *data;
+    struct mp_eosd_image *img;
+
+    if (!(f = fopen(file, "r"))) {
+        mp_msg(MSGT_CPLAYER, MSGL_ERR, "overlay_add: unable to open file.\n");
+        return;
+    }
+    if (fscanf(f, "P5\n%d %d\n%d\n", &w, &h, &nc) != 3 || nc != 255) {
+        mp_msg(MSGT_CPLAYER, MSGL_ERR, "overlay_add: unable to parse file.\n");
+        fclose(f);
+        return;
+    }
+    data = malloc(w * h);
+    if (fread(data, 1, w * h, f) != w * h) {
+        mp_msg(MSGT_CPLAYER, MSGL_ERR, "overlay_add: unable to read file.\n");
+        fclose(f);
+        return;
+    }
+    if (!overlay_source_registered) {
+        eosd_register(&overlay_source);
+        eosd_image_remove_all(&overlay_source);
+        overlay_source_registered = 1;
+    }
+    fclose(f);
+    img = eosd_image_alloc();
+    img->w      = w;
+    img->h      = h;
+    img->stride = w;
+    img->bitmap = data;
+    img->color  = col ^ 0xFF; /* col is RGBA, img->color is RGBT */
+    img->dst_x  = x;
+    img->dst_y  = y;
+    img->opaque = (void *)(intptr_t)id;
+    eosd_image_append(&overlay_source, img);
+    overlay_source.changed = EOSD_CHANGED_BITMAP;
+}
+
+static void overlay_remove(int id)
+{
+    struct mp_eosd_image *img, **prev, *next;
+    prev = &overlay_source.images;
+    img  = overlay_source.images;
+    while (img) {
+        next = img->next;
+        if ((intptr_t)img->opaque == id) {
+            free(img->bitmap);
+            eosd_image_remove(&overlay_source, img, prev);
+            overlay_source.changed = EOSD_CHANGED_BITMAP;
+        } else {
+            prev = &img->next;
+        }
+        img  = next;
+    }
+}
+
 int run_command(MPContext *mpctx, mp_cmd_t *cmd)
 {
     sh_audio_t * const sh_audio = mpctx->sh_audio;
@@ -2614,7 +2678,8 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
                     if (mpctx->begin_skip > v)
                         mp_msg(MSGT_CPLAYER, MSGL_WARN, MSGTR_EdloutBadStop);
                     else {
-                        fprintf(edl_fd, "%f %f %d\n", mpctx->begin_skip, v, 0);
+                        double pts = edl_start_pts ? start_pts : 0;
+                        fprintf(edl_fd, "%f %f %d\n", mpctx->begin_skip - pts, v - pts, 0);
                         mp_msg(MSGT_CPLAYER, MSGL_INFO, MSGTR_EdloutEndSkip);
                     }
                     mpctx->begin_skip = MP_NOPTS_VALUE;
@@ -3047,19 +3112,23 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
             break;
 #endif /* CONFIG_TV */
         case MP_CMD_TV_TELETEXT_ADD_DEC:
-        {
             if (mpctx->demuxer->teletext)
                 teletext_control(mpctx->demuxer->teletext,TV_VBI_CONTROL_ADD_DEC,
                                  &(cmd->args[0].v.s));
             break;
-        }
         case MP_CMD_TV_TELETEXT_GO_LINK:
-        {
             if (mpctx->demuxer->teletext)
                 teletext_control(mpctx->demuxer->teletext,TV_VBI_CONTROL_GO_LINK,
                                  &(cmd->args[0].v.i));
             break;
-        }
+
+        case MP_CMD_OVERLAY_ADD:
+            overlay_add(cmd->args[0].v.s, cmd->args[1].v.i,
+                        cmd->args[2].v.i, cmd->args[3].v.i, cmd->args[4].v.i);
+            break;
+        case MP_CMD_OVERLAY_REMOVE:
+            overlay_remove(cmd->args[0].v.i);
+            break;
 
         case MP_CMD_SUB_LOAD:
             if (sh_video) {
@@ -3108,7 +3177,7 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
             break;
 
         case MP_CMD_GET_TIME_LENGTH:{
-                mp_msg(MSGT_GLOBAL, MSGL_INFO, "ANS_LENGTH=%.2lf\n",
+                mp_msg(MSGT_GLOBAL, MSGL_INFO, "ANS_LENGTH=%.2f\n",
                        demuxer_get_time_length(mpctx->demuxer));
             }
             break;
