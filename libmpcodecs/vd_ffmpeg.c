@@ -536,9 +536,6 @@ static int init_vo(sh_video_t *sh, enum PixelFormat pix_fmt){
     float aspect= av_q2d(avctx->sample_aspect_ratio) * avctx->width / avctx->height;
     int width, height;
 
-    if (ctx->last_sample_aspect_ratio.den == 0)
-        ctx->last_sample_aspect_ratio = avctx->sample_aspect_ratio;
-
     width = avctx->width;
     height = avctx->height;
 
