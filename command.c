@@ -63,6 +63,7 @@
 #include "libmenu/menu.h"
 #include "gui/interface.h"
 #include "eosd.h"
+#include "pnm_loader.h"
 
 #include "mp_core.h"
 #include "mp_fifo.h"
@@ -1109,6 +1110,50 @@ static int mp_property_deinterlace(m_option_t *prop, int action,
     return M_PROPERTY_NOT_IMPLEMENTED;
 }
 
+static int mp_property_capture(m_option_t *prop, int action,
+                               void *arg, MPContext *mpctx)
+{
+    int ret;
+    int capturing = !!mpctx->stream->capture_file;
+
+    if (!mpctx->stream)
+        return M_PROPERTY_UNAVAILABLE;
+    if (!capture_dump) {
+        mp_msg(MSGT_GLOBAL, MSGL_ERR,
+               "Capturing not enabled (forgot -capture parameter?)\n");
+        return M_PROPERTY_ERROR;
+    }
+
+    ret = m_property_flag(prop, action, arg, &capturing);
+    if (ret == M_PROPERTY_OK && capturing != !!mpctx->stream->capture_file) {
+        if (capturing) {
+            mpctx->stream->capture_file = fopen(stream_dump_name, "ab");
+            if (!mpctx->stream->capture_file) {
+                mp_msg(MSGT_GLOBAL, MSGL_ERR,
+                       "Error opening capture file: %s\n", strerror(errno));
+                ret = M_PROPERTY_ERROR;
+            }
+        } else {
+            fclose(mpctx->stream->capture_file);
+            mpctx->stream->capture_file = NULL;
+        }
+    }
+
+    switch (ret) {
+    case M_PROPERTY_ERROR:
+        set_osd_msg(OSD_MSG_SPEED, 1, osd_duration, MSGTR_OSDCapturingFailure);
+        break;
+    case M_PROPERTY_OK:
+        set_osd_msg(OSD_MSG_SPEED, 1, osd_duration, MSGTR_OSDCapturing,
+                    mpctx->stream->capture_file ? MSGTR_Enabled : MSGTR_Disabled);
+        break;
+    default:
+        break;
+    }
+
+    return ret;
+}
+
 /// Panscan (RW)
 static int mp_property_panscan(m_option_t *prop, int action, void *arg,
                                MPContext *mpctx)
@@ -2097,6 +2142,8 @@ static const m_option_t mp_properties[] = {
      0, 0, 0, NULL },
     { "pause", mp_property_pause, CONF_TYPE_FLAG,
      M_OPT_RANGE, 0, 1, NULL },
+    { "capturing", mp_property_capture, CONF_TYPE_FLAG,
+     M_OPT_RANGE, 0, 1, NULL },
 
     // Audio
     { "volume", mp_property_volume, CONF_TYPE_FLOAT,
@@ -2286,6 +2333,7 @@ static struct {
     { "loop", MP_CMD_LOOP, 0, 0, -1, MSGTR_LoopStatus },
     { "chapter", MP_CMD_SEEK_CHAPTER, 0, 0, -1, NULL },
     { "angle", MP_CMD_SWITCH_ANGLE, 0, 0, -1, NULL },
+    { "capturing", MP_CMD_CAPTURING, 1, 0, -1, NULL },
     // audio
     { "volume", MP_CMD_VOLUME, 0, OSD_VOLUME, -1, MSGTR_Volume },
     { "mute", MP_CMD_MUTE, 1, 0, -1, MSGTR_MuteStatus },
@@ -2501,23 +2549,24 @@ static struct mp_eosd_source overlay_source = {
 static void overlay_add(char *file, int id, int x, int y, unsigned col)
 {
     FILE *f;
-    unsigned w, h, nc;
-    unsigned char *data;
+    unsigned w, h, bpp, maxval;
+    uint8_t *data;
     struct mp_eosd_image *img;
 
-    if (!(f = fopen(file, "r"))) {
+    f = fopen(file, "rb");
+    if (!f) {
         mp_msg(MSGT_CPLAYER, MSGL_ERR, "overlay_add: unable to open file.\n");
         return;
     }
-    if (fscanf(f, "P5\n%d %d\n%d\n", &w, &h, &nc) != 3 || nc != 255) {
-        mp_msg(MSGT_CPLAYER, MSGL_ERR, "overlay_add: unable to parse file.\n");
-        fclose(f);
+    data = read_pnm(f, &w, &h, &bpp, &maxval);
+    fclose(f);
+    if (!data) {
+        mp_msg(MSGT_CPLAYER, MSGL_ERR, "overlay_add: unable to load file.\n");
         return;
     }
-    data = malloc(w * h);
-    if (fread(data, 1, w * h, f) != w * h) {
-        mp_msg(MSGT_CPLAYER, MSGL_ERR, "overlay_add: unable to read file.\n");
-        fclose(f);
+    if (bpp != 1 || maxval != 255) {
+        mp_msg(MSGT_CPLAYER, MSGL_ERR,
+               "overlay_add: file format not supported.\n");
         return;
     }
     if (!overlay_source_registered) {
@@ -2525,7 +2574,6 @@ static void overlay_add(char *file, int id, int x, int y, unsigned col)
         eosd_image_remove_all(&overlay_source);
         overlay_source_registered = 1;
     }
-    fclose(f);
     img = eosd_image_alloc();
     img->w      = w;
     img->h      = h;
@@ -3432,6 +3480,19 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
         af_init(mpctx->mixer.afilter);
         build_afilter_chain(sh_audio, &ao_data);
         break;
+    case MP_CMD_AF_CMDLINE:
+        if (sh_audio) {
+            af_instance_t *af = af_get(sh_audio->afilter, cmd->args[0].v.s);
+            if (!af) {
+                mp_msg(MSGT_CPLAYER, MSGL_WARN,
+                       "Filter '%s' not found in chain.\n", cmd->args[0].v.s);
+                break;
+            }
+            af->control(af, AF_CONTROL_COMMAND_LINE, cmd->args[1].v.s);
+            af_reinit(sh_audio->afilter, af);
+        }
+        break;
+
         default:
                 mp_msg(MSGT_CPLAYER, MSGL_V,
                        "Received unknown cmd %s\n", cmd->name);
