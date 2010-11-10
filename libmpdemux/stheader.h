@@ -145,6 +145,5 @@ const char *sh_sub_type2str(int type);
 // video.c:
 int video_read_properties(sh_video_t *sh_video);
 int video_read_frame(sh_video_t* sh_video,float* frame_time_ptr,unsigned char** start,int force_fps);
-int video_vfr(sh_video_t* sh_video);
 
 #endif /* MPLAYER_STHEADER_H */

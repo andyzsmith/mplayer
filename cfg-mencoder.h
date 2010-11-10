@@ -174,6 +174,9 @@ const m_option_t mencoder_opts[]={
     {"ofps", &force_ofps, CONF_TYPE_DOUBLE, CONF_MIN|CONF_GLOBAL, 0, 0, NULL},
     {"o", &out_filename, CONF_TYPE_STRING, CONF_GLOBAL, 0, 0, NULL},
 
+    // encode with variable framerate (VFR) - forces -noskip too
+    {"ovfr", &ovfr, CONF_TYPE_FLAG, CONF_GLOBAL, 0, 1, NULL},
+
     // limit number of skippable frames after a non-skipped one
     {"skiplimit", &skip_limit, CONF_TYPE_INT, 0, 0, 0, NULL},
     {"noskiplimit", &skip_limit, CONF_TYPE_FLAG, 0, 0, -1, NULL},

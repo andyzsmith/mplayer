@@ -649,9 +649,3 @@ int video_read_frame(sh_video_t* sh_video,float* frame_time_ptr,unsigned char** 
     if(frame_time_ptr) *frame_time_ptr=frame_time;
     return in_size;
 }
-
-// determine if we should support VFR encoding
-int video_vfr(sh_video_t* sh_video) {
-    video_codec_t video_codec = find_video_codec(sh_video);
-    return video_codec != VIDEO_MPEG12;
-}

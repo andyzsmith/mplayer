@@ -156,7 +156,7 @@ double force_fps=0;
 static double force_ofps=0; // set to 24 for inverse telecine
 static int skip_limit=-1;
 float playback_speed=1.0;
-static int vfr=0; // set to 1 if we should encode VFR
+static int ovfr=0; // set to 1 if we should encode VFR
 
 static int force_srate=0;
 static int audio_output_format=0;
@@ -1042,8 +1042,7 @@ default: {
     init_best_video_codec(sh_video,video_codec_list,video_fm_list);
     mp_msg(MSGT_CPLAYER,MSGL_INFO,"==========================================================================\n");
     if(!sh_video->initialized) mencoder_exit(1,NULL);
-    vfr = video_vfr(sh_video);
-    if (vfr) skip_limit = 0;  // force noskip if encoding VFR
+    if (ovfr) skip_limit = 0;  // force noskip if encoding VFR
  }
 }
 
@@ -1504,8 +1503,8 @@ default:
                      (!sh_video->vfilter ||
                       ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE);
     void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
-                                       drop_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE, NULL);
-    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, vfr ? sh_video->pts : MP_NOPTS_VALUE);}
+                                       drop_frame, ovfr ? sh_video->pts : MP_NOPTS_VALUE, NULL);
+    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, ovfr ? sh_video->pts : MP_NOPTS_VALUE);}
     v_muxer_time = adjusted_muxer_time(mux_v); // update after muxing
 
     if (sh_video->vf_initialized < 0) mencoder_exit(1, NULL);
