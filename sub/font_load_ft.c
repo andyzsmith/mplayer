@@ -71,7 +71,11 @@ int vo_image_height = 0;
 int force_load_font;
 
 int using_freetype = 0;
+#ifdef CONFIG_FONTCONFIG
 int font_fontconfig = 1;
+#else
+int font_fontconfig = -1;
+#endif
 
 //// constants
 static unsigned int const colors = 256;
@@ -860,27 +864,27 @@ void free_font_desc(font_desc_t *desc)
 
 //    if (!desc->dynamic) return; // some vo_aa crap, better leaking than crashing
 
-    if (desc->name) free(desc->name);
-    if (desc->fpath) free(desc->fpath);
+    free(desc->name);
+    free(desc->fpath);
 
     for(i = 0; i < 16; i++) {
 	if (desc->pic_a[i]) {
-	    if (desc->pic_a[i]->bmp) free(desc->pic_a[i]->bmp);
-	    if (desc->pic_a[i]->pal) free(desc->pic_a[i]->pal);
-	    free (desc->pic_a[i]);
+	    free(desc->pic_a[i]->bmp);
+	    free(desc->pic_a[i]->pal);
+	    free(desc->pic_a[i]);
 	}
 	if (desc->pic_b[i]) {
-	    if (desc->pic_b[i]->bmp) free(desc->pic_b[i]->bmp);
-	    if (desc->pic_b[i]->pal) free(desc->pic_b[i]->pal);
-	    free (desc->pic_b[i]);
+	    free(desc->pic_b[i]->bmp);
+	    free(desc->pic_b[i]->pal);
+	    free(desc->pic_b[i]);
 	}
     }
 
-    if (desc->tables.g) free(desc->tables.g);
-    if (desc->tables.gt2) free(desc->tables.gt2);
-    if (desc->tables.om) free(desc->tables.om);
-    if (desc->tables.omt) free(desc->tables.omt);
-    if (desc->tables.tmp) free(desc->tables.tmp);
+    free(desc->tables.g);
+    free(desc->tables.gt2);
+    free(desc->tables.om);
+    free(desc->tables.omt);
+    free(desc->tables.tmp);
 
     for(i = 0; i < desc->face_cnt; i++) {
 	FT_Done_Face(desc->faces[i]);

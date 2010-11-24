@@ -1063,7 +1063,9 @@ static demuxer_t *demux_open_ts(demuxer_t * demuxer)
 	mp_msg(MSGT_DEMUXER,MSGL_V, "Opened TS demuxer, audio: %x(pid %d), video: %x(pid %d)...POS=%"PRIu64", PROBE=%"PRIu64"\n", params.atype, demuxer->audio->id, params.vtype, demuxer->video->id, (uint64_t) start_pos, ts_probe);
 
 
-	start_pos = (start_pos <= priv->ts.packet_size ? 0 : start_pos - priv->ts.packet_size);
+	start_pos = start_pos <= priv->ts.packet_size ?
+                    demuxer->stream->start_pos :
+                    start_pos - priv->ts.packet_size;
 	demuxer->movi_start = start_pos;
 	demuxer->reference_clock = MP_NOPTS_VALUE;
 	stream_reset(demuxer->stream);
@@ -1100,19 +1102,15 @@ static void demux_close_ts(demuxer_t * demuxer)
 
 	if(priv)
 	{
-		if(priv->pat.section.buffer)
-			free(priv->pat.section.buffer);
-		if(priv->pat.progs)
-			free(priv->pat.progs);
+		free(priv->pat.section.buffer);
+		free(priv->pat.progs);
 
 		if(priv->pmt)
 		{
 			for(i = 0; i < priv->pmt_cnt; i++)
 			{
-				if(priv->pmt[i].section.buffer)
-					free(priv->pmt[i].section.buffer);
-				if(priv->pmt[i].es)
-					free(priv->pmt[i].es);
+				free(priv->pmt[i].section.buffer);
+				free(priv->pmt[i].es);
 			}
 			free(priv->pmt);
 		}
@@ -2963,6 +2961,11 @@ static int ts_parse(demuxer_t *demuxer , ES_stream_t *es, unsigned char *packet,
 			//IS IT TIME TO QUEUE DATA to the dp_packet?
 			if(is_start && (dp != NULL))
 			{
+				// subtitle packets _have_ to be submitted before video, otherwise
+				// they might get stuck "forever" and subtitles will be completely
+				// out of sync.
+				if (is_video)
+					fill_packet(demuxer, demuxer->sub, &priv->fifo[2].pack, &priv->fifo[2].offset, NULL);
 				retv = fill_packet(demuxer, ds, dp, dp_offset, si);
 			}
 

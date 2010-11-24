@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "libavutil/avutil.h"
 #include "osdep/shmem.h"
 #include "osdep/timer.h"
 #if defined(__MINGW32__)
@@ -169,6 +170,7 @@ static int cache_fill(cache_vars_t *s)
 {
   int back,back2,newb,space,len,pos;
   off_t read=s->read_filepos;
+  int read_chunk;
 
   if(read<s->min_filepos || read>s->max_filepos){
       // seek...
@@ -182,7 +184,7 @@ static int cache_fill(cache_vars_t *s)
         s->offset= // FIXME!?
         s->min_filepos=s->max_filepos=read; // drop cache content :(
         if(s->stream->eof) stream_reset(s->stream);
-        stream_seek(s->stream,read);
+        stream_seek_internal(s->stream,read);
         mp_msg(MSGT_CACHE,MSGL_DBG2,"Seek done. new pos: 0x%"PRIX64"  \n",(int64_t)stream_tell(s->stream));
       }
   }
@@ -214,7 +216,9 @@ static int cache_fill(cache_vars_t *s)
   if(space>s->buffer_size-pos) space=s->buffer_size-pos;
 
   // limit one-time block size
-  if(space>4*s->sector_size) space=4*s->sector_size;
+  read_chunk = s->stream->read_chunk;
+  if (!read_chunk) read_chunk = 4*s->sector_size;
+  space = FFMIN(space, read_chunk);
 
 #if 1
   // back+newb+space <= buffer_size
@@ -224,7 +228,7 @@ static int cache_fill(cache_vars_t *s)
   s->min_filepos=read-back; // avoid seeking-back to temp area...
 #endif
 
-  len=stream_read(s->stream,&s->buffer[pos],space);
+  len = stream_read_internal(s->stream, &s->buffer[pos], space);
   s->eof= !len;
 
   s->max_filepos+=len;

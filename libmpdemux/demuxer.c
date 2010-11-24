@@ -472,9 +472,13 @@ static void allocate_parser(AVCodecContext **avctx, AVCodecParserContext **parse
     init_avcodec();
 
     switch (format) {
+    case MKTAG('M', 'P', '4', 'L'):
+        codec_id = CODEC_ID_AAC_LATM;
+        break;
     case 0x2000:
     case 0x332D6361:
     case 0x332D4341:
+    case 0x20736D:
     case MKTAG('d', 'n', 'e', 't'):
     case MKTAG('s', 'a', 'c', '3'):
         codec_id = CODEC_ID_AC3;
@@ -491,12 +495,14 @@ static void allocate_parser(AVCodecContext **avctx, AVCodecParserContext **parse
         break;
     case 0x55:
     case 0x5500736d:
+    case 0x55005354:
     case MKTAG('.', 'm', 'p', '3'):
-    case MKTAG('M', 'P', 'E', ' '):
+    case MKTAG('M', 'P', '3', ' '):
     case MKTAG('L', 'A', 'M', 'E'):
         codec_id = CODEC_ID_MP3;
         break;
     case 0x50:
+    case 0x5000736d:
     case MKTAG('.', 'm', 'p', '2'):
     case MKTAG('.', 'm', 'p', '1'):
         codec_id = CODEC_ID_MP2;
