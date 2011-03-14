@@ -26,7 +26,7 @@
 #include "gui/skin/font.h"
 
 #include "access_mpcontext.h"
-#include "codec-cfg.h"             // this should be in libmpdemux/stheader.h
+#include "codec-cfg.h"
 #include "config.h"
 #include "help_mp.h"
 #include "libavutil/avstring.h"
@@ -91,7 +91,7 @@ static void TranslateFilename(int c, char *tmp, size_t tmplen)
     }
 
     if (c) {
-        for (i = 0; i < (int)strlen(tmp); i++) {
+        for (i = 0; tmp[i]; i++) {
             int t = 0;
 
             if (c == 1)
@@ -107,7 +107,7 @@ static void TranslateFilename(int c, char *tmp, size_t tmplen)
     }
 }
 
-char *Translate(char *str)
+static char *Translate(char *str)
 {
     static char trbuf[512];
     char tmp[512];
@@ -310,7 +310,7 @@ calclengthmmmmss:
     return trbuf;
 }
 
-void PutImage(txSample *bf, int x, int y, int max, int ofs)
+static void PutImage(txSample *bf, int x, int y, int max, int ofs)
 {
     int i = 0, ix, iy;
     uint32_t *buf = NULL;
@@ -350,7 +350,7 @@ void PutImage(txSample *bf, int x, int y, int max, int ofs)
 #endif
 }
 
-void SimplePotmeterPutImage(txSample *bf, int x, int y, float frac)
+static void SimplePotmeterPutImage(txSample *bf, int x, int y, float frac)
 {
     int i = 0, w, r, ix, iy;
     uint32_t *buf = NULL;

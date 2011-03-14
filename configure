@@ -634,6 +634,8 @@ _libopencore_amrwb=auto
 libopenjpeg=auto
 libavdecoders_all=$(sed -n 's/^[^#]*DEC.*(.*, *\(.*\)).*/\1_decoder/p' ffmpeg/libavcodec/allcodecs.c | tr '[a-z]' '[A-Z]')
 libavdecoders=$(echo $libavdecoders_all | sed -e 's/ LIB[A-Z0-9_]*_DECODER//g')
+# temporary hack until we have proper crystalhd support
+libavdecoders=$(echo $libavdecoders | sed -e 's/[A-Z0-9]*_CRYSTALHD_DECODER//g')
 libavencoders_all=$(sed -n 's/^[^#]*ENC.*(.*, *\(.*\)).*/\1_encoder/p' ffmpeg/libavcodec/allcodecs.c | tr '[a-z]' '[A-Z]')
 libavencoders=$(echo $libavencoders_all | sed -e 's/ LIB[A-Z0-9_]*_ENCODER//g')
 libavparsers_all=$(sed -n 's/^[^#]*PARSER.*(.*, *\(.*\)).*/\1_parser/p' ffmpeg/libavcodec/allcodecs.c | tr '[a-z]' '[A-Z]')
@@ -4403,7 +4405,7 @@ if test "$_vdpau" = yes ; then
 else
   def_vdpau='#define CONFIG_VDPAU 0'
   novomodules="vdpau $novomodules"
-  libavdecoders=$(echo $libavdecoders | sed -e s/MPEG_VDPAU_DECODER// -e s/MPEG1_VDPAU_DECODER// -e s/H264_VDPAU_DECODER// -e s/WMV3_VDPAU_DECODER// -e s/VC1_VDPAU_DECODER// -e s/MPEG4_VDPAU_DECODER//)
+  libavdecoders=$(echo $libavdecoders | sed -e 's/[A-Z0-9]*_VDPAU_DECODER//g')
 fi
 echores "$_vdpau"
 
@@ -8166,6 +8168,7 @@ $mak_libavcodec_mpegaudio_hp
 !CONFIG_LIBRTMP = $nolibrtmp
 CONFIG_LIBRTMP  = $_librtmp
 
+CONFIG_AC3DSP   = $_mencoder
 CONFIG_BZLIB    = $bzlib
 CONFIG_ENCODERS = yes
 CONFIG_GPL      = yes
