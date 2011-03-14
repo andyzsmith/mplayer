@@ -28,6 +28,7 @@
 
 #include "url.h"
 #include "mp_msg.h"
+#include "mp_strings.h"
 #include "help_mp.h"
 
 #ifndef SIZE_MAX
@@ -58,19 +59,31 @@ URL_t *url_redirect(URL_t **url, const char *redir) {
   return res;
 }
 
-static int make_noauth_url(URL_t *url, char *dst, int dst_size)
+static char *get_noauth_url(const URL_t *url)
 {
     if (url->port)
-        return snprintf(dst, dst_size, "%s://%s:%d%s", url->protocol,
-                        url->hostname, url->port, url->file);
+        return mp_asprintf("%s://%s:%d%s",
+                           url->protocol, url->hostname, url->port, url->file);
     else
-        return snprintf(dst, dst_size, "%s://%s%s", url->protocol,
-                        url->hostname, url->file);
+        return mp_asprintf("%s://%s%s",
+                           url->protocol, url->hostname, url->file);
+}
+
+char *get_http_proxy_url(const URL_t *proxy, const char *host_url)
+{
+    if (proxy->username)
+        return mp_asprintf("http_proxy://%s:%s@%s:%d/%s",
+                           proxy->username,
+                           proxy->password ? proxy->password : "",
+                           proxy->hostname, proxy->port, host_url);
+    else
+        return mp_asprintf("http_proxy://%s:%d/%s",
+                           proxy->hostname, proxy->port, host_url);
 }
 
 URL_t*
 url_new(const char* url) {
-	int pos1, pos2,v6addr = 0, noauth_len;
+	int pos1, pos2,v6addr = 0;
 	URL_t* Curl = NULL;
         char *escfilename=NULL;
 	char *ptr1=NULL, *ptr2=NULL, *ptr3=NULL, *ptr4=NULL;
@@ -89,14 +102,11 @@ url_new(const char* url) {
         }
 
 	// Create the URL container
-	Curl = malloc(sizeof(URL_t));
+	Curl = calloc(1, sizeof(*Curl));
 	if( Curl==NULL ) {
 		mp_msg(MSGT_NETWORK,MSGL_FATAL,MSGTR_MemAllocFailed);
 		goto err_out;
 	}
-
-	// Initialisation of the URL container members
-	memset( Curl, 0, sizeof(URL_t) );
 
 	url_escape_string(escfilename,url);
 
@@ -242,16 +252,11 @@ url_new(const char* url) {
 		strcpy(Curl->file, "/");
 	}
 
-	noauth_len = make_noauth_url(Curl, NULL, 0);
-	if (noauth_len > 0) {
-		noauth_len++;
-		Curl->noauth_url = malloc(noauth_len);
+	Curl->noauth_url = get_noauth_url(Curl);
 		if (!Curl->noauth_url) {
 			mp_msg(MSGT_NETWORK, MSGL_FATAL, MSGTR_MemAllocFailed);
 			goto err_out;
 		}
-		make_noauth_url(Curl, Curl->noauth_url, noauth_len);
-	}
 
         free(escfilename);
 	return Curl;
@@ -317,8 +322,7 @@ url_escape_string_part(char *outbuf, const char *inbuf) {
 
 		if(	(c >= 'A' && c <= 'Z') ||
 			(c >= 'a' && c <= 'z') ||
-			(c >= '0' && c <= '9') ||
-			(c >= 0x7f)) {
+			(c >= '0' && c <= '9')) {
 			*outbuf++ = c;
                 } else if ( c=='%' && ((c1 >= '0' && c1 <= '9') || (c1 >= 'A' && c1 <= 'F')) &&
                            ((c2 >= '0' && c2 <= '9') || (c2 >= 'A' && c2 <= 'F'))) {

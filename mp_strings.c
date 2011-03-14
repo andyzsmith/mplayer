@@ -1,4 +1,6 @@
 /*
+ * Strings utilities
+ *
  * This file is part of MPlayer.
  *
  * MPlayer is free software; you can redistribute it and/or modify
@@ -16,22 +18,34 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPLAYER_GUI_PLAY_H
-#define MPLAYER_GUI_PLAY_H
+#include <stdlib.h>
+#include <stdarg.h>
+#include <stdio.h>
 
-extern int mplGotoTheNext;
+#include "mp_strings.h"
 
-void ChangeSkin(char *name);
-void mplAbsSeek(float sec);
-void mplCurr(void);
-void mplEnd(void);
-void mplFullScreen(void);
-void mplNext(void);
-void mplPause(void);
-void mplPlay(void);
-void mplPrev(void);
-void mplRelSeek(float percent);
-void mplSetFileName(char *dir, char *name, int type);
-void mplState(void);
+char *mp_asprintf(const char *fmt, ...)
+{
+    char *p = NULL;
+    va_list va, va_bak;
+    int len;
 
-#endif /* MPLAYER_GUI_PLAY_H */
+    va_start(va, fmt);
+    va_copy(va_bak, va);
+
+    len = vsnprintf(NULL, 0, fmt, va);
+    if (len < 0)
+        goto end;
+
+    p = malloc(len + 1);
+    if (!p)
+        goto end;
+
+    len = vsnprintf(p, len + 1, fmt, va_bak);
+    if (len < 0)
+        free(p), p = NULL;
+
+end:
+    va_end(va);
+    return p;
+}

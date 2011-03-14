@@ -479,9 +479,12 @@ static void allocate_parser(AVCodecContext **avctx, AVCodecParserContext **parse
     case 0x332D6361:
     case 0x332D4341:
     case 0x20736D:
-    case MKTAG('d', 'n', 'e', 't'):
     case MKTAG('s', 'a', 'c', '3'):
         codec_id = CODEC_ID_AC3;
+        break;
+    case MKTAG('d', 'n', 'e', 't'):
+        // DNET/byte-swapped AC-3 - there is no parser for that yet
+        //codec_id = CODEC_ID_DNET;
         break;
     case MKTAG('E', 'A', 'C', '3'):
         codec_id = CODEC_ID_EAC3;
@@ -489,6 +492,9 @@ static void allocate_parser(AVCodecContext **avctx, AVCodecParserContext **parse
     case 0x2001:
     case 0x86:
         codec_id = CODEC_ID_DTS;
+        break;
+    case MKTAG('f', 'L', 'a', 'C'):
+        codec_id = CODEC_ID_FLAC;
         break;
     case MKTAG('M', 'L', 'P', ' '):
         codec_id = CODEC_ID_MLP;
@@ -639,6 +645,8 @@ int ds_fill_buffer(demux_stream_t *ds)
     while (1) {
         if (ds->packs) {
             demux_packet_t *p = ds->first;
+            // obviously not yet EOF after all
+            ds->eof = 0;
 #if 0
             if (demux->reference_clock != MP_NOPTS_VALUE) {
                 if (   p->pts != MP_NOPTS_VALUE
@@ -673,6 +681,9 @@ int ds_fill_buffer(demux_stream_t *ds)
             --ds->packs;
             return 1;
         }
+        // avoid printing the "too many ..." message over and over
+        if (ds->eof)
+            break;
         if (demux->audio->packs >= MAX_PACKS
             || demux->audio->bytes >= MAX_PACK_BYTES) {
             mp_msg(MSGT_DEMUXER, MSGL_ERR, MSGTR_TooManyAudioInBuffer,

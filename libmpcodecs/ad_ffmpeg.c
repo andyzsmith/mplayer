@@ -16,6 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define _XOPEN_SOURCE 600
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -28,6 +29,7 @@
 #include "dec_audio.h"
 #include "vd_ffmpeg.h"
 #include "libaf/reorder_ch.h"
+#include "fmt-conversion.h"
 
 #include "mpbswap.h"
 
@@ -57,15 +59,9 @@ static int setup_format(sh_audio_t *sh_audio, const AVCodecContext *lavc_context
 {
     int broken_srate = 0;
     int samplerate    = lavc_context->sample_rate;
-    int sample_format = sh_audio->sample_format;
-    switch (lavc_context->sample_fmt) {
-        case SAMPLE_FMT_U8:  sample_format = AF_FORMAT_U8;       break;
-        case SAMPLE_FMT_S16: sample_format = AF_FORMAT_S16_NE;   break;
-        case SAMPLE_FMT_S32: sample_format = AF_FORMAT_S32_NE;   break;
-        case SAMPLE_FMT_FLT: sample_format = AF_FORMAT_FLOAT_NE; break;
-        default:
-            mp_msg(MSGT_DECAUDIO, MSGL_FATAL, "Unsupported sample format\n");
-    }
+    int sample_format = samplefmt2affmt(lavc_context->sample_fmt);
+    if (!sample_format)
+        sample_format = sh_audio->sample_format;
     if(sh_audio->wf){
         // If the decoder uses the wrong number of channels all is lost anyway.
         // sh_audio->channels=sh_audio->wf->nChannels;
@@ -122,7 +118,7 @@ static int init(sh_audio_t *sh_audio)
     }
     lavc_context->request_channels = audio_output_channels;
     lavc_context->codec_tag = sh_audio->format; //FOURCC
-    lavc_context->codec_type = CODEC_TYPE_AUDIO;
+    lavc_context->codec_type = AVMEDIA_TYPE_AUDIO;
     lavc_context->codec_id = lavc_codec->id; // not sure if required, imho not --A'rpi
 
     /* alloc extra data */
@@ -172,10 +168,10 @@ static int init(sh_audio_t *sh_audio)
       sh_audio->i_bps=sh_audio->wf->nAvgBytesPerSec;
 
   switch (lavc_context->sample_fmt) {
-      case SAMPLE_FMT_U8:
-      case SAMPLE_FMT_S16:
-      case SAMPLE_FMT_S32:
-      case SAMPLE_FMT_FLT:
+      case AV_SAMPLE_FMT_U8:
+      case AV_SAMPLE_FMT_S16:
+      case AV_SAMPLE_FMT_S32:
+      case AV_SAMPLE_FMT_FLT:
           break;
       default:
           return 0;
@@ -225,6 +221,10 @@ static int decode_audio(sh_audio_t *sh_audio,unsigned char *buf,int minlen,int m
 	    int consumed = ds_parse(sh_audio->ds, &start, &x, pts, 0);
 	    sh_audio->ds->buffer_pos -= in_size - consumed;
 	}
+        if (((AVCodecContext *)sh_audio->context)->codec_id == CODEC_ID_AC3 &&
+            sh_audio->format == MKTAG('d', 'n', 'e', 't'))
+            swab(start, start, x & ~1);
+
 	av_init_packet(&pkt);
 	pkt.data = start;
 	pkt.size = x;
@@ -242,7 +242,7 @@ static int decode_audio(sh_audio_t *sh_audio,unsigned char *buf,int minlen,int m
 	    sh_audio->ds->buffer_pos+=y-x;  // put back data (HACK!)
 	if(len2>0){
 	  if (((AVCodecContext *)sh_audio->context)->channels >= 5) {
-            int samplesize = av_get_bits_per_sample_format(((AVCodecContext *)
+            int samplesize = av_get_bits_per_sample_fmt(((AVCodecContext *)
                                     sh_audio->context)->sample_fmt) / 8;
             reorder_channel_nch(buf, AF_CHANNEL_LAYOUT_LAVC_DEFAULT,
                                 AF_CHANNEL_LAYOUT_MPLAYER_DEFAULT,
