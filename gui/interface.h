@@ -21,13 +21,18 @@
 
 #include "config.h"
 #include "m_config.h"
+#include "mp_core.h"
 #include "playtree.h"
 #include "stream/stream.h"
 
-// these are in support of the non-GUI files that interact with
-// the GUI and that only need to include interface.h for this
+// These are in support of the non-GUI files that interact with
+// the GUI and that only need to include interface.h for this.
+// ------------------------------------------------------------
 #include "cfg.h"
 #include "mplayer/play.h"
+
+extern int use_gui;             // this is defined in mplayer.c
+// ------------------------------------------------------------
 
 #define guiXEvent          0
 #define guiCEvent          1
@@ -89,13 +94,13 @@
 
 #define guiSetFilename(s, n) \
     { \
-        gfree((void **)&s); \
+        free(s); \
         s = gstrdup(n); \
     }
 
 #define guiSetDF(s, d, n) \
     { \
-        gfree((void **)&s); \
+        free(s); \
         s = malloc(strlen(d) + strlen(n) + 5); \
         sprintf(s, "%s/%s", d, n); \
     }
@@ -210,7 +215,6 @@ typedef struct urlItem {
 
 extern guiInterface_t guiIntfStruct;
 
-extern int use_gui;   // this is defined in mplayer.c
 extern int guiWinID;
 
 extern char *skinName;
@@ -229,12 +233,14 @@ extern float gtkEquChannels[6][10];
 
 void gaddlist(char ***list, const char *entry);
 void gfree(void **p);
+void gmp_msg(int mod, int lev, const char *format, ...);
 char *gstrchr(char *str, int c);
 int gstrcmp(const char *a, const char *b);
 char *gstrdup(const char *str);
 void *gtkSet(int cmd, float fparam, void *vparam);
 void guiDone(void);
 void guiEventHandling(void);
+void guiExit(enum exit_reason how);
 int guiGetEvent(int type, void *arg);
 void guiInit(void);
 void guiLoadFont(void);

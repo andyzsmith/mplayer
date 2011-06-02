@@ -628,7 +628,7 @@ static const char help_text[]=
 #define MSGTR_LeaveTelecineMode "\ndemux_mpg : contenu NTSC 30000/1001fps détecté, ajustement du débit.\n"
 #define MSGTR_EnterTelecineMode "\ndemux_mpg : contenu NTSC 24000/1001fps progressif détecté, ajustement du débit.\n"
 #define MSGTR_CacheFill "\rRemplissage du cache : %5.2f%% (%"PRId64" octets)   "
-#define MSGTR_NoBindFound "Aucune action attachée à la touche '%s'"
+#define MSGTR_NoBindFound "Aucune action attachée à la touche '%s'\n"
 #define MSGTR_FailedToOpen "Échec à l'ouverture de '%s'\n"
 
 #define MSGTR_VideoID "[%s] Flux vidéo trouvé, -vid %d\n"
@@ -741,7 +741,6 @@ static const char help_text[]=
 #define MSGTR_NEMFMR "Désolé, pas assez de mémoire pour le rendu des menus."
 #define MSGTR_IDFGCVD "Désolé, aucun pilote de sortie vidéo compatible avec la GUI."
 #define MSGTR_NEEDLAVC "Désolé, vous ne pouvez pas lire de fichiers non-MPEG avec le périphérique DXR3/H+ sans réencoder.\nActivez plutôt lavc dans la boîte de configuration DXR3/H+."
-#define MSGTR_UNKNOWNWINDOWTYPE "Genre de fenêtre inconnue trouvé ..."
 
 // --- messages d'erreurs du chargement de peau ---
 #define MSGTR_SKIN_ERRORMESSAGE "[Peau] erreur à la ligne %d du fichier de config de peau : %s"
@@ -749,22 +748,17 @@ static const char help_text[]=
 #define MSGTR_SKIN_SkinFileNotReadable "[peau] fichier ( %s ) non lisible.\n"
 #define MSGTR_SKIN_BITMAP_16bit  "les images bitmaps 16 bits ou moins ne sont pas supportées ( %s ).\n"
 #define MSGTR_SKIN_BITMAP_FileNotFound  "Fichier non trouvé (%s)\n"
-#define MSGTR_SKIN_BITMAP_BMPReadError "erreur de lecture BMP (%s)\n"
-#define MSGTR_SKIN_BITMAP_TGAReadError "erreur de lecture TGA (%s)\n"
 #define MSGTR_SKIN_BITMAP_PNGReadError "erreur de lecture PNG (%s)\n"
-#define MSGTR_SKIN_BITMAP_RLENotSupported "tga compacté en RLE non supporté (%s)\n"
-#define MSGTR_SKIN_BITMAP_UnknownFileType "format de fichier inconnu (%s)\n"
 #define MSGTR_SKIN_BITMAP_ConversionError "Erreur de conversion 24 bit vers 32 bit (%s)\n"
-#define MSGTR_SKIN_BITMAP_UnknownMessage "message inconnu : %s\n"
-#define MSGTR_SKIN_FONT_NotEnoughtMemory "pas assez de mémoire\n"
+#define MSGTR_SKIN_UnknownMessage "message inconnu : %s\n"
+#define MSGTR_SKIN_NotEnoughMemory "pas assez de mémoire\n"
 #define MSGTR_SKIN_FONT_TooManyFontsDeclared "trop de polices déclarées.\n"
 #define MSGTR_SKIN_FONT_FontFileNotFound "fichier de police introuvable.\n"
 #define MSGTR_SKIN_FONT_FontImageNotFound "fichier d'image de police introuvable\n"
-#define MSGTR_SKIN_FONT_NonExistentFontID "identificateur de fonte inéxistant (%s)\n"
+#define MSGTR_SKIN_FONT_NonExistentFont "identificateur de fonte inéxistant (%s)\n"
 #define MSGTR_SKIN_UnknownParameter "paramètre inconnu (%s)\n"
 #define MSGTR_SKIN_SKINCFG_SkinNotFound "Skin non trouvée (%s).\n"
 #define MSGTR_SKIN_SKINCFG_SelectedSkinNotFound "Peau choisi ( %s ) non trouvé, essaie de 'par défaut'...\n"
-#define MSGTR_SKIN_SKINCFG_SkinCfgReadError "erreur de lecture du fichier de configuration du peau (%s)\n"
 #define MSGTR_SKIN_LABEL "Peaux :"
 
 // --- menus gtk
@@ -956,11 +950,6 @@ static const char help_text[]=
 #define MSGTR_MSGBOX_LABEL_Error "Erreur !"
 #define MSGTR_MSGBOX_LABEL_Warning "Attention !"
 
-// bitmap.c
-
-#define MSGTR_NotEnoughMemoryC32To1 "[c32to1] mémoire insuffisante pour image\n"
-#define MSGTR_NotEnoughMemoryC1To32 "[c1to32] mémoire insuffisante pour image\n"
-
 // cfg.c
 
 #define MSGTR_ConfigFileReadError "[cfg] Erreur lecture fichier config ...\n"
@@ -971,7 +960,6 @@ static const char help_text[]=
 #define MSGTR_DeletingSubtitles "[GUI] Suppression des sous-titres.\n"
 #define MSGTR_LoadingSubtitles "[GUI] Chargement des soustitres : %s\n"
 #define MSGTR_AddingVideoFilter "[GUI] Ajout de filtre vidéo : %s\n"
-#define MSGTR_RemovingVideoFilter "[GUI] Enlèvement de filtre video : %s\n"
 
 // mw.c
 

@@ -20,7 +20,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <inttypes.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
@@ -76,7 +75,7 @@ int             i,pot = 0;
 void mplMainDraw( void )
 {
 
- if ( appMPlayer.mainWindow.State == wsWindowClosed ) exit_player( EXIT_QUIT );
+ if ( appMPlayer.mainWindow.State == wsWindowClosed ) guiExit( EXIT_QUIT );
 
  if ( appMPlayer.mainWindow.Visible == wsWindowNotVisible ||
       !mainVisible ) return;
@@ -106,7 +105,7 @@ void mplEventHandling( int msg,float param )
   {
 // --- user events
    case evExit:
-        exit_player( EXIT_QUIT );
+        guiExit( EXIT_QUIT );
         break;
 
    case evPlayNetwork:
@@ -177,10 +176,7 @@ play:
 	       if ( guiIntfStruct.Playing != 2 )
 	        {
 		 if ( !guiIntfStruct.Track )
-		  {
-		   if ( guiIntfStruct.VCDTracks > 1 ) guiIntfStruct.Track=2;
-		    else guiIntfStruct.Track=1;
-		  }
+                   guiIntfStruct.Track=1;
                  guiIntfStruct.DiskChanged=1;
 		}
 	       break;
@@ -440,8 +436,11 @@ void mplMainMouseHandle( int Button,int X,int Y,int RX,int RY )
           break;
    case wsRLMouseButton:
           boxMoved=0;
-          item=&appMPlayer.mainItems[SelectedItem];
-          item->pressed=btnReleased;
+          if ( SelectedItem != -1 )   // NOTE TO MYSELF: only if itButton, itHPotmeter or itVPotmeter
+           {
+            item=&appMPlayer.mainItems[SelectedItem];
+            item->pressed=btnReleased;
+           }
           SelectedItem=-1;
           if ( currentselected == - 1 ) { itemtype=0; break; }
           value=0;

@@ -214,16 +214,16 @@ void ChangeSkin(char *name)
 
     if (prev && appMPlayer.menuIsPresent) {
         free(mplMenuDrawBuffer);
-        mplMenuDrawBuffer = calloc(1, appMPlayer.menuBase.Bitmap.ImageSize);
+        mplMenuDrawBuffer = calloc(1, appMPlayer.menu.Bitmap.ImageSize);
 
         if (!mplMenuDrawBuffer) {
             mp_msg(MSGT_GPLAYER, MSGL_STATUS, MSGTR_NEMDB);
             return;
         }
 
-        wsResizeWindow(&appMPlayer.menuWindow, appMPlayer.menuBase.width, appMPlayer.menuBase.height);
-        wsResizeImage(&appMPlayer.menuWindow, appMPlayer.menuBase.width, appMPlayer.menuBase.height);
-        wsSetShape(&appMPlayer.menuWindow, appMPlayer.menuBase.Mask.Image);
+        wsResizeWindow(&appMPlayer.menuWindow, appMPlayer.menu.width, appMPlayer.menu.height);
+        wsResizeImage(&appMPlayer.menuWindow, appMPlayer.menu.width, appMPlayer.menu.height);
+        wsSetShape(&appMPlayer.menuWindow, appMPlayer.menu.Mask.Image);
         wsVisibleWindow(&appMPlayer.menuWindow, wsHideWindow);
     } else
         mplMenuInit();
@@ -429,10 +429,16 @@ void mplNext(void)
 
 #ifdef CONFIG_VCD
     case STREAMTYPE_VCD:
-        if (++guiIntfStruct.Track > guiIntfStruct.VCDTracks) {
+
+        if (++guiIntfStruct.Track >= guiIntfStruct.VCDTracks) {
             guiIntfStruct.Track = guiIntfStruct.VCDTracks;
+
+            if (guiIntfStruct.VCDTracks > 1)
+                guiIntfStruct.Track--;
+
             stop = 1;
         }
+
         break;
 #endif
 

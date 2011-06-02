@@ -32,7 +32,6 @@
 #include "help_mp.h"
 #include "input/input.h"
 #include "libaf/equalizer.h"
-#include "libao2/audio_out.h"
 #include "libmpcodecs/dec_audio.h"
 #include "libmpcodecs/dec_video.h"
 #include "libmpcodecs/vd.h"
@@ -40,7 +39,6 @@
 #include "libvo/video_out.h"
 #include "libvo/x11_common.h"
 #include "mixer.h"
-#include "mp_core.h"
 #include "mp_msg.h"
 #include "mpcommon.h"
 #include "mplayer.h"
@@ -51,8 +49,6 @@
 #ifdef CONFIG_DVDREAD
 #include "stream/stream_dvd.h"
 #endif
-
-int vcd_seek_to_track(void *vcd, int track);
 
 guiInterface_t guiIntfStruct;
 
@@ -71,6 +67,8 @@ URLItem *URLList = NULL;
 char *fsHistory[fsPersistant_MaxPos] = { NULL, NULL, NULL, NULL, NULL };
 
 float gtkEquChannels[6][10];
+
+static int initialized;
 
 int gstrcmp(const char *a, const char *b)
 {
@@ -167,8 +165,6 @@ void guiInit(void)
     guiIntfStruct.Balance    = 50.0f;
     guiIntfStruct.StreamType = -1;
 
-    appInitStruct();
-
     memset(&gtkEquChannels, 0, sizeof(gtkEquChannels));
 
 #ifdef CONFIG_DXR3
@@ -221,12 +217,12 @@ void guiInit(void)
 
     switch (i) {
     case -1:
-        mp_msg(MSGT_GPLAYER, MSGL_ERR, MSGTR_SKIN_SKINCFG_SkinNotFound, skinName);
-        exit(0);
+        gmp_msg(MSGT_GPLAYER, MSGL_FATAL, MSGTR_SKIN_SKINCFG_SkinNotFound, skinName);
+        guiExit(EXIT_ERROR);
 
     case -2:
-        mp_msg(MSGT_GPLAYER, MSGL_ERR, MSGTR_SKIN_SKINCFG_SkinCfgReadError, skinName);
-        exit(0);
+        gmp_msg(MSGT_GPLAYER, MSGL_FATAL, MSGTR_SKIN_SKINCFG_SkinCfgError, skinName);
+        guiExit(EXIT_ERROR);
     }
 
     // initialize windows
@@ -234,15 +230,19 @@ void guiInit(void)
     mplDrawBuffer = malloc(appMPlayer.main.Bitmap.ImageSize);
 
     if (!mplDrawBuffer) {
-        fprintf(stderr, MSGTR_NEMDB); // NOTE TO MYSELF: (g)mp_msg this
-        exit(0);
+        gmp_msg(MSGT_GPLAYER, MSGL_FATAL, MSGTR_NEMDB);
+        guiExit(EXIT_ERROR);
     }
 
     if (gui_save_pos) {
-        appMPlayer.main.x = gui_main_pos_x;
-        appMPlayer.main.y = gui_main_pos_y;
-        appMPlayer.sub.x  = gui_sub_pos_x;
-        appMPlayer.sub.y  = gui_sub_pos_y;
+        if (gui_main_pos_x != -3)
+            appMPlayer.main.x = gui_main_pos_x;
+        if (gui_main_pos_y != -3)
+            appMPlayer.main.y = gui_main_pos_y;
+        if (gui_sub_pos_x != -3)
+            appMPlayer.sub.x = gui_sub_pos_x;
+        if (gui_sub_pos_y != -3)
+            appMPlayer.sub.y = gui_sub_pos_y;
     }
 
     if (WinID > 0) {
@@ -375,30 +375,46 @@ void guiInit(void)
         guiSetFilename(guiIntfStruct.Subtitlename, subdata->filename);
 
     guiLoadFont();
+
+    initialized = 1;
 }
 
 void guiDone(void)
 {
-    mplMainRender = 0;
+    if (initialized) {
+        mplMainRender = 0;
 
-    mp_msg(MSGT_GPLAYER, MSGL_V, "[GUI] done.\n");
+        mp_msg(MSGT_GPLAYER, MSGL_V, "[GUI] done.\n");
 
-    if (gui_save_pos) {
-        gui_main_pos_x = appMPlayer.mainWindow.X;
-        gui_main_pos_y = appMPlayer.mainWindow.Y;
-        gui_sub_pos_x  = appMPlayer.subWindow.X;
-        gui_sub_pos_y  = appMPlayer.subWindow.Y;
-    }
+        if (gui_save_pos) {
+            gui_main_pos_x = appMPlayer.mainWindow.X;
+            gui_main_pos_y = appMPlayer.mainWindow.Y;
+            gui_sub_pos_x  = appMPlayer.subWindow.X;
+            gui_sub_pos_y  = appMPlayer.subWindow.Y;
+        }
 
 #ifdef CONFIG_ASS
-    ass_enabled       = gtkASS.enabled;
-    ass_use_margins   = gtkASS.use_margins;
-    ass_top_margin    = gtkASS.top_margin;
-    ass_bottom_margin = gtkASS.bottom_margin;
+        ass_enabled       = gtkASS.enabled;
+        ass_use_margins   = gtkASS.use_margins;
+        ass_top_margin    = gtkASS.top_margin;
+        ass_bottom_margin = gtkASS.bottom_margin;
 #endif
 
-    cfg_write();
-    wsXDone();
+        cfg_write();
+        wsXDone();
+    }
+
+    appFreeStruct();
+
+    if (gui_conf) {
+        m_config_free(gui_conf);
+        gui_conf = NULL;
+    }
+}
+
+void guiExit(enum exit_reason how)
+{
+    exit_player_with_rc(how, how >= EXIT_ERROR);
 }
 
 void guiLoadFont(void)
@@ -534,50 +550,8 @@ static void add_vf(char *str)
     mp_msg(MSGT_GPLAYER, MSGL_STATUS, MSGTR_AddingVideoFilter, str);
 }
 
-static void remove_vf(char *str)
-{
-    int n = 0;
-
-    if (!vf_settings)
-        return;
-
-    mp_msg(MSGT_GPLAYER, MSGL_STATUS, MSGTR_RemovingVideoFilter, str);
-
-    while (vf_settings[n++].name) ;
-
-    n--;
-
-    if (n > -1) {
-        int i = 0, m = -1;
-
-        while (vf_settings[i].name) {
-            if (!gstrcmp(vf_settings[i++].name, str)) {
-                m = i - 1;
-                break;
-            }
-        }
-
-        i--;
-
-        if (m > -1) {
-            if (n == 1) {
-                free(vf_settings[0].name);
-                free(vf_settings[0].attribs);
-                free(vf_settings);
-                vf_settings = NULL;
-            } else {
-                free(vf_settings[i].name);
-                free(vf_settings[i].attribs);
-                memcpy(&vf_settings[i], &vf_settings[i + 1], (n - i) * sizeof(m_obj_settings_t));
-            }
-        }
-    }
-}
-
 int guiGetEvent(int type, void *arg)
 {
-    const ao_functions_t *audio_out = NULL;
-    const vo_functions_t *video_out = NULL;
     mixer_t *mixer = NULL;
 
     stream_t *stream = arg;
@@ -586,11 +560,8 @@ int guiGetEvent(int type, void *arg)
     dvd_priv_t *dvdp = arg;
 #endif
 
-    if (guiIntfStruct.mpcontext) {
-        audio_out = mpctx_get_audio_out(guiIntfStruct.mpcontext);
-        video_out = mpctx_get_video_out(guiIntfStruct.mpcontext);
-        mixer     = mpctx_get_mixer(guiIntfStruct.mpcontext);
-    }
+    if (guiIntfStruct.mpcontext)
+        mixer = mpctx_get_mixer(guiIntfStruct.mpcontext);
 
     switch (type) {
     case guiXEvent:
@@ -698,23 +669,9 @@ int guiGetEvent(int type, void *arg)
 
 #ifdef CONFIG_VCD
         case STREAMTYPE_VCD:
-        {
-            int i;
-
-            if (!stream->priv) {
-                guiIntfStruct.VCDTracks = 0;
-                break;
-            }
-
-            for (i = 1; i < 100; i++)
-                if (vcd_seek_to_track(stream->priv, i) < 0)
-                    break;
-
-            vcd_seek_to_track(stream->priv, vcd_track);
-            guiIntfStruct.VCDTracks = --i;
-
+            guiIntfStruct.VCDTracks = 0;
+            stream_control(stream, STREAM_CTRL_GET_NUM_CHAPTERS, &guiIntfStruct.VCDTracks);
             break;
-        }
 #endif
 
         default:
@@ -744,7 +701,7 @@ int guiGetEvent(int type, void *arg)
         break;
 
     case guiSetVolume:
-        if (audio_out) {
+        if (mixer) {
             float l, r;
 
             mixer_getvolume(mixer, &l, &r);
@@ -785,7 +742,7 @@ int guiGetEvent(int type, void *arg)
 
         // audio
 
-        if (audio_out) {
+        if (mixer) {
             float l, r;
 
             mixer_getvolume(mixer, &l, &r);
@@ -836,7 +793,6 @@ int guiGetEvent(int type, void *arg)
             vobsub_id = -1;
             stream_cache_size = -1;
             autosync  = 0;
-            vcd_track = 0;
             dvd_title = 0;
             force_fps = 0;
         }
@@ -904,8 +860,8 @@ int guiGetEvent(int type, void *arg)
         }
 
         if (!video_driver_list && !video_driver_list[0]) {
-            gtkMessageBox(GTK_MB_FATAL, MSGTR_IDFGCVD);
-            exit_player(EXIT_ERROR);
+            gmp_msg(MSGT_GPLAYER, MSGL_FATAL, MSGTR_IDFGCVD);
+            guiExit(EXIT_ERROR);
         }
 
         {
@@ -924,8 +880,6 @@ int guiGetEvent(int type, void *arg)
         }
 
 #ifdef CONFIG_DXR3
-        remove_vf("lavc");
-
         if (video_driver_list && !gstrcmp(video_driver_list[0], "dxr3"))
             if (guiIntfStruct.StreamType != STREAMTYPE_DVD && guiIntfStruct.StreamType != STREAMTYPE_VCD)
                 if (gtkVfLAVC)
@@ -934,8 +888,6 @@ int guiGetEvent(int type, void *arg)
 
         if (gtkVfPP)
             add_vf("pp");
-        else
-            remove_vf("pp");
 
         // audio opts
 
@@ -1129,6 +1081,7 @@ void *gtkSet(int cmd, float fparam, void *vparam)
         }
 
         list();
+
         return NULL;
 
     // add item into playlist after current
@@ -1167,6 +1120,7 @@ void *gtkSet(int cmd, float fparam, void *vparam)
 // }
             return plCurrent;
         }
+
         return NULL;
 
     case gtkGetPrevPlItem:
@@ -1175,6 +1129,7 @@ void *gtkSet(int cmd, float fparam, void *vparam)
 // if ( !plCurrent && plList ) plCurrent=plList;
             return plCurrent;
         }
+
         return NULL;
 
     // set current item
@@ -1210,6 +1165,7 @@ void *gtkSet(int cmd, float fparam, void *vparam)
     }
 
         mplCurr();   // instead of using mplNext && mplPrev
+
         return plCurrent;
 
     // delete list
@@ -1238,6 +1194,7 @@ void *gtkSet(int cmd, float fparam, void *vparam)
         plList    = NULL;
         plCurrent = NULL;
     }
+
         return NULL;
 
     // handle url
@@ -1261,6 +1218,7 @@ void *gtkSet(int cmd, float fparam, void *vparam)
             url_item->next = NULL;
             URLList = url_item;
         }
+
         return NULL;
 
         // subtitle
@@ -1350,6 +1308,7 @@ void *gtkSet(int cmd, float fparam, void *vparam)
         mp_cmd->args[1].v.i = 1;
         mp_input_queue_cmd(mp_cmd);
     }
+
         return NULL;
 
     case gtkSetAutoq:
@@ -1507,4 +1466,26 @@ int import_playtree_playlist_into_gui(play_tree_t *my_playtree, m_config_t *conf
     filename = NULL;
 
     return result;
+}
+
+// NOTE TO MYSELF: This function is nonsense.
+//                 MPlayer should pass messages to the GUI
+//                 which must decide then which message has
+//                 to be shown (MSGL_FATAL, for example).
+//                 But with this function it is at least
+//                 possible to show GUI's very critical or
+//                 abort messages.
+void gmp_msg(int mod, int lev, const char *format, ...)
+{
+    char msg[512];
+    va_list va;
+
+    va_start(va, format);
+    vsnprintf(msg, sizeof(msg), format, va);
+    va_end(va);
+
+    mp_msg(mod, lev, msg);
+
+    if (mp_msg_test(mod, lev))
+        gtkMessageBox(GTK_MB_FATAL, msg);
 }

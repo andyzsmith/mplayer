@@ -20,18 +20,13 @@
 #define MPLAYER_GUI_FONT_H
 
 #include "gui/app.h"
-#include "gui/bitmap.h"
+#include "gui/util/bitmap.h"
 
 #define ASCII_CHRS 128   // number of ASCII characters
 #define EXTRA_CHRS 128   // (arbitrary) number of non-ASCII characters
 #define UTF8LENGTH 4     // length of an UTF-8 encoding according to RFC 3629
 
 #define MAX_FONT_NAME 128
-#define MAX_FONTS 25
-
-#define fntAlignLeft   0
-#define fntAlignCenter 1
-#define fntAlignRight  2
 
 typedef struct {
     int x, y;     // location

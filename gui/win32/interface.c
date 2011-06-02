@@ -22,6 +22,13 @@
  */
 
 #include <windows.h>
+
+#if defined(__CYGWIN__)
+#define _beginthreadex CreateThread
+#else
+#include <process.h>
+#endif
+
 #include "path.h"
 #include "gui/interface.h"
 #include "m_option.h"
@@ -433,8 +440,10 @@ void mplSetFileName(char *dir, char *name, int type)
         guiSetDF(guiIntfStruct.Filename, dir, name);
 
     guiIntfStruct.StreamType = type;
-    free((void **) &guiIntfStruct.AudioFile);
-    free((void **) &guiIntfStruct.Subtitlename);
+    free(guiIntfStruct.AudioFile);
+    guiIntfStruct.AudioFile = NULL;
+    free(guiIntfStruct.Subtitlename);
+    guiIntfStruct.Subtitlename = NULL;
 }
 
 void mplFullScreen( void )
@@ -703,7 +712,6 @@ int guiGetEvent(int type, void *arg)
             vobsub_id = -1;
             stream_cache_size = -1;
             autosync = 0;
-            vcd_track = 0;
             dvd_title = 0;
             force_fps = 0;
             if(!mygui->playlist->tracks) return 0;

@@ -4,7 +4,7 @@
  * to compile test application:
  *  cc -I. -DTESTING -o codec-cfg-test codec-cfg.c mp_msg.o osdep/getch2.o -ltermcap
  * to compile CODECS2HTML:
- *   gcc -DCODECS2HTML -o codecs2html codec-cfg.c mp_msg.o
+ *   gcc -DCODECS2HTML -o codecs2html codec-cfg.c
  *
  * TODO: implement informat in CODECS2HTML too
  *
@@ -179,7 +179,10 @@ static const struct {
     {"420P16BE", IMGFMT_420P16_BE},
     {"444P16", IMGFMT_444P16},
     {"422P16", IMGFMT_422P16},
+    {"422P10", IMGFMT_422P10},
     {"420P16", IMGFMT_420P16},
+    {"420P10", IMGFMT_420P10},
+    {"420P9", IMGFMT_420P9},
     {"420A",  IMGFMT_420A},
     {"444P",  IMGFMT_444P},
     {"422P",  IMGFMT_422P},

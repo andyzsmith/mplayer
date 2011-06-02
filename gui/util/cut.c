@@ -16,19 +16,34 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPLAYER_GUI_BITMAP_H
-#define MPLAYER_GUI_BITMAP_H
+#include <stdlib.h>
+#include <string.h>
 
-typedef struct {
-    unsigned long Width;
-    unsigned long Height;
-    unsigned int BPP;
-    unsigned long ImageSize;
-    char *Image;
-} txSample;
+#include "cut.h"
 
-void bpFree(txSample *bf);
-int bpRead(char *fname, txSample *bf);
-void Convert32to1(txSample *in, txSample *out, int adaptivlimit);
+void cutItemString(char *in, char *out, char sep, int num, size_t maxout)
+{
+    int n;
+    unsigned int i, c;
 
-#endif /* MPLAYER_GUI_BITMAP_H */
+    for (c = 0, n = 0, i = 0; in[i]; i++) {
+        if (in[i] == sep)
+            n++;
+        if (n >= num && in[i] != sep && c + 1 < maxout)
+            out[c++] = in[i];
+        if (n >= num && in[i + 1] == sep)
+            break;
+    }
+
+    if (c < maxout)
+        out[c] = 0;
+}
+
+int cutItemToInt(char *in, char sep, int num)
+{
+    char tmp[64];
+
+    cutItem(in, tmp, sep, num);
+
+    return atoi(tmp);
+}

@@ -173,6 +173,8 @@ static subtitle *sub_read_line_sami(stream_t* st, subtitle *current, int utf16) 
 	    break;
 
 	case 3: /* get all text until '<' appears */
+	    if (p - text >= LINE_LEN)
+	        sami_add_line(current, text, &p);
 	    if (*s == '\0') break;
 	    else if (!strncasecmp (s, "<br>", 4)) {
                 sami_add_line(current, text, &p);
@@ -1231,6 +1233,24 @@ subtitle* subcp_recode (subtitle *sub)
 
 #ifdef CONFIG_FRIBIDI
 /**
+ * Helper function to share code between subreader and libmenu/menu.c
+ */
+int do_fribid_log2vis(int charset, const char *in, FriBidiChar *logical, FriBidiChar *visual, int flip_commas)
+{
+#if defined(FRIBIDI_PAR_LTR) || FRIBIDI_INTERFACE_VERSION >= 3
+  FriBidiParType base = flip_commas ? FRIBIDI_PAR_ON : FRIBIDI_PAR_LTR;
+#else
+  FriBidiCharType base = flip_commas ? FRIBIDI_TYPE_ON : FRIBIDI_TYPE_L;
+#endif
+  int len = strlen(in);
+  len = fribidi_charset_to_unicode(charset, in, len, logical);
+  if (!fribidi_log2vis(logical, len, &base, visual, NULL, NULL, NULL))
+    return -1;
+  len = fribidi_remove_bidi_marks(visual, len, NULL, NULL, NULL);
+  return len;
+}
+
+/**
  * Do conversion necessary for right-to-left language support via fribidi.
  * @param sub subtitle to convert
  * @param sub_utf8 whether the subtitle is encoded in UTF-8
@@ -1240,11 +1260,9 @@ static subtitle* sub_fribidi (subtitle *sub, int sub_utf8, int from)
 {
   FriBidiChar logical[LINE_LEN+1], visual[LINE_LEN+1]; // Hopefully these two won't smash the stack
   char        *ip      = NULL, *op     = NULL;
-  FriBidiCharType base;
   size_t len,orig_len;
   int l=sub->lines;
   int char_set_num;
-  fribidi_boolean log2vis;
   if (!flip_hebrew)
     return sub;
   fribidi_set_mirroring(1);
@@ -1257,20 +1275,14 @@ static subtitle* sub_fribidi (subtitle *sub, int sub_utf8, int from)
   }
   while (l > from) {
     ip = sub->text[--l];
-    orig_len = len = strlen( ip ); // We assume that we don't use full unicode, only UTF-8 or ISO8859-x
-    if(len > LINE_LEN) {
+    orig_len = strlen( ip ); // We assume that we don't use full unicode, only UTF-8 or ISO8859-x
+    if(orig_len > LINE_LEN) {
       mp_msg(MSGT_SUBREADER,MSGL_WARN,"SUB: sub->text is longer than LINE_LEN.\n");
       l++;
       break;
     }
-    len = fribidi_charset_to_unicode (char_set_num, ip, len, logical);
-    base = fribidi_flip_commas?FRIBIDI_TYPE_ON:FRIBIDI_TYPE_L;
-    log2vis = fribidi_log2vis (logical, len, &base,
-			       /* output */
-			       visual, NULL, NULL, NULL);
-    if(log2vis) {
-      len = fribidi_remove_bidi_marks (visual, len, NULL, NULL,
-				       NULL);
+    len = do_fribid_log2vis(char_set_num, ip, logical, visual, fribidi_flip_commas);
+    if(len > 0) {
       if((op = malloc((FFMAX(2*orig_len,2*len) + 1))) == NULL) {
 	mp_msg(MSGT_SUBREADER,MSGL_WARN,"SUB: error allocating mem.\n");
 	l++;

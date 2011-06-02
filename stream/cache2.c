@@ -168,6 +168,7 @@ static int cache_fill(cache_vars_t *s)
   int back,back2,newb,space,len,pos;
   off_t read=s->read_filepos;
   int read_chunk;
+  int wraparound_copy = 0;
 
   if(read<s->min_filepos || read>s->max_filepos){
       // seek...
@@ -209,8 +210,16 @@ static int cache_fill(cache_vars_t *s)
 
 //  printf("### read=0x%X  back=%d  newb=%d  space=%d  pos=%d\n",read,back,newb,space,pos);
 
-  // reduce space if needed:
-  if(space>s->buffer_size-pos) space=s->buffer_size-pos;
+  // try to avoid wrap-around. If not possible due to sector size
+  // do an extra copy.
+  if(space>s->buffer_size-pos) {
+    if (s->buffer_size-pos >= s->sector_size) {
+      space=s->buffer_size-pos;
+    } else {
+      space = s->sector_size;
+      wraparound_copy = 1;
+    }
+  }
 
   // limit one-time block size
   read_chunk = s->stream->read_chunk;
@@ -225,6 +234,13 @@ static int cache_fill(cache_vars_t *s)
   s->min_filepos=read-back; // avoid seeking-back to temp area...
 #endif
 
+  if (wraparound_copy) {
+    int to_copy;
+    len = stream_read_internal(s->stream, s->stream->buffer, space);
+    to_copy = FFMIN(len, s->buffer_size-pos);
+    memcpy(s->buffer + pos, s->stream->buffer, to_copy);
+    memcpy(s->buffer, s->stream->buffer + to_copy, len - to_copy);
+  } else
   len = stream_read_internal(s->stream, &s->buffer[pos], space);
   s->eof= !len;
 
@@ -239,6 +255,8 @@ static int cache_fill(cache_vars_t *s)
 }
 
 static int cache_execute_control(cache_vars_t *s) {
+  double double_res;
+  unsigned uint_res;
   static unsigned last;
   int quit = s->control == -2;
   if (quit || !s->stream->control) {
@@ -258,18 +276,22 @@ static int cache_execute_control(cache_vars_t *s) {
   }
   if (s->control == -1) return 1;
   switch (s->control) {
-    case STREAM_CTRL_GET_CURRENT_TIME:
     case STREAM_CTRL_SEEK_TO_TIME:
+      double_res = s->control_double_arg;
+    case STREAM_CTRL_GET_CURRENT_TIME:
     case STREAM_CTRL_GET_ASPECT_RATIO:
-      s->control_res = s->stream->control(s->stream, s->control, &s->control_double_arg);
+      s->control_res = s->stream->control(s->stream, s->control, &double_res);
+      s->control_double_arg = double_res;
       break;
     case STREAM_CTRL_SEEK_TO_CHAPTER:
+    case STREAM_CTRL_SET_ANGLE:
+      uint_res = s->control_uint_arg;
     case STREAM_CTRL_GET_NUM_CHAPTERS:
     case STREAM_CTRL_GET_CURRENT_CHAPTER:
     case STREAM_CTRL_GET_NUM_ANGLES:
     case STREAM_CTRL_GET_ANGLE:
-    case STREAM_CTRL_SET_ANGLE:
-      s->control_res = s->stream->control(s->stream, s->control, &s->control_uint_arg);
+      s->control_res = s->stream->control(s->stream, s->control, &uint_res);
+      s->control_uint_arg = uint_res;
       break;
     default:
       s->control_res = STREAM_UNSUPPORTED;

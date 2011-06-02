@@ -63,6 +63,7 @@ SRCS_COMMON-$(FFMPEG)                += av_opts.c                   \
                                         libaf/af_lavcresample.c     \
                                         libmpcodecs/ad_ffmpeg.c     \
                                         libmpcodecs/vd_ffmpeg.c     \
+                                        libmpcodecs/vf_geq.c        \
                                         libmpcodecs/vf_lavc.c       \
                                         libmpcodecs/vf_lavcdeint.c  \
                                         libmpcodecs/vf_pp.c         \
@@ -74,7 +75,6 @@ SRCS_COMMON-$(FFMPEG)                += av_opts.c                   \
 # These filters use private headers and do not work with shared FFmpeg.
 SRCS_COMMON-$(FFMPEG_A)              += libaf/af_lavcac3enc.c    \
                                         libmpcodecs/vf_fspp.c    \
-                                        libmpcodecs/vf_geq.c     \
                                         libmpcodecs/vf_mcdeint.c \
                                         libmpcodecs/vf_qp.c      \
                                         libmpcodecs/vf_spp.c     \
@@ -518,7 +518,7 @@ SRCS_MPLAYER-$(GL_SDL)       += libvo/sdl_common.c
 SRCS_MPLAYER-$(GL_WIN32)     += libvo/w32_common.c
 SRCS_MPLAYER-$(GL_X11)       += libvo/x11_common.c
 SRCS_MPLAYER-$(MATRIXVIEW)   += libvo/vo_matrixview.c libvo/matrixview.c
-SRCS_MPLAYER-$(GUI)          += gui/bitmap.c
+SRCS_MPLAYER-$(GUI)          += gui/util/bitmap.c
 SRCS_MPLAYER-$(GUI_GTK)      += gui/app.c \
                                 gui/cfg.c \
                                 gui/interface.c \
@@ -539,9 +539,10 @@ SRCS_MPLAYER-$(GUI_GTK)      += gui/app.c \
                                 gui/mplayer/gtk/opts.c \
                                 gui/mplayer/gtk/pl.c \
                                 gui/mplayer/gtk/sb.c \
-                                gui/skin/cut.c \
                                 gui/skin/font.c \
                                 gui/skin/skin.c \
+                                gui/util/cut.c \
+                                gui/util/string.c \
                                 gui/wm/ws.c \
                                 gui/wm/wsxdnd.c \
 
@@ -575,6 +576,7 @@ SRCS_MPLAYER-$(LIBMENU_DVBIN) += libmenu/menu_dvbin.c
 SRCS_MPLAYER-$(LIRC)          += input/lirc.c
 SRCS_MPLAYER-$(MD5SUM)        += libvo/vo_md5sum.c
 SRCS_MPLAYER-$(MGA)           += libvo/vo_mga.c
+SRCS_MPLAYER-$(MNG)           += libvo/vo_mng.c
 SRCS_MPLAYER-$(NAS)           += libao2/ao_nas.c
 SRCS_MPLAYER-$(NETWORKING)    += udp_sync.c
 SRCS_MPLAYER-$(OPENAL)        += libao2/ao_openal.c
@@ -820,6 +822,12 @@ codec-cfg$(EXESUF): codec-cfg.c codec-cfg.h help_mp.h
 codecs.conf.h: codec-cfg$(EXESUF) etc/codecs.conf
 	./$^ > $@
 
+checksums: $(MPLAYER_DEPS) $(MENCODER_DEPS) mplayer$(EXESUF) mencoder$(EXESUF)
+	md5sum $^ > checksums
+
+check_checksums: $(MPLAYER_DEPS) $(MENCODER_DEPS) mplayer$(EXESUF) mencoder$(EXESUF)
+	md5sum -c checksums
+
 # ./configure must be rerun if it changed
 config.mak: configure
 	@echo "############################################################"
@@ -974,7 +982,7 @@ TEST_OBJS = mp_msg.o mp_fifo.o osdep/$(GETCH) osdep/$(TIMER) -ltermcap -lm
 codec-cfg-test$(EXESUF): codec-cfg.c codecs.conf.h help_mp.h $(TEST_OBJS)
 	$(CC) -I. -Iffmpeg -DTESTING -o $@ $^
 
-codecs2html$(EXESUF): codec-cfg.c help_mp.h $(TEST_OBJS)
+codecs2html$(EXESUF): codec-cfg.c help_mp.h
 	$(CC) -I. -Iffmpeg -DCODECS2HTML -o $@ $^
 
 libvo/aspecttest$(EXESUF): libvo/aspect.o libvo/geometry.o $(TEST_OBJS)
@@ -1112,7 +1120,7 @@ dhahelperclean:
 -include $(DEP_FILES) $(DRIVER_DEP_FILES) $(TESTS_DEP_FILES) $(TOOLS_DEP_FILES) $(DHAHELPER_DEPS_FILES)
 
 .PHONY: all doxygen *install* *tools drivers dhahelper*
-.PHONY: checkheaders *clean tests
+.PHONY: checkheaders *clean tests check_checksums
 
 # Disable suffix rules.  Most of the builtin rules are suffix rules,
 # so this saves some time on slow systems.

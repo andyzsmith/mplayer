@@ -456,10 +456,12 @@ static void handle_stream(demuxer_t *demuxer, AVFormatContext *avfc, int i) {
             break;
         }
         case AVMEDIA_TYPE_ATTACHMENT:{
-            if (st->codec->codec_id == CODEC_ID_TTF)
-                demuxer_add_attachment(demuxer, st->filename,
+            if (st->codec->codec_id == CODEC_ID_TTF) {
+                AVMetadataTag *fnametag = av_metadata_get(st->metadata, "filename", NULL, 0);
+                demuxer_add_attachment(demuxer, fnametag ? fnametag->value : NULL,
                                        "application/x-truetype-font",
                                        codec->extradata, codec->extradata_size);
+            }
             break;
         }
         default:
@@ -664,7 +666,8 @@ static void demux_seek_lavf(demuxer_t *demuxer, float rel_seek_secs, float audio
     mp_msg(MSGT_DEMUX,MSGL_DBG2,"demux_seek_lavf(%p, %f, %f, %d)\n", demuxer, rel_seek_secs, audio_delay, flags);
 
     if (flags & SEEK_ABSOLUTE) {
-      priv->last_pts = priv->avfc->start_time;
+      priv->last_pts = priv->avfc->start_time != AV_NOPTS_VALUE ?
+                       priv->avfc->start_time : 0;
     } else {
       if (rel_seek_secs < 0) avsflags = AVSEEK_FLAG_BACKWARD;
     }

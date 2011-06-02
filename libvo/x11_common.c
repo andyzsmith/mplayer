@@ -763,7 +763,6 @@ void vo_x11_uninit(void)
     {
         if (vo_gc != None)
         {
-            XSetBackground(mDisplay, vo_gc, 0);
             XFreeGC(mDisplay, vo_gc);
             vo_gc = None;
         }
@@ -1045,7 +1044,7 @@ Window vo_x11_create_smooth_window(Display * mDisplay, Window mRoot,
     xswa.bit_gravity = StaticGravity;
 
     ret_win =
-        XCreateWindow(mDisplay, mRootWin, x, y, width, height, 0, depth,
+        XCreateWindow(mDisplay, mRoot, x, y, width, height, 0, depth,
                       CopyFromParent, vis, xswamask, &xswa);
     XSetWMProtocols(mDisplay, ret_win, &XAWM_DELETE_WINDOW, 1);
     if (f_gc == None)
@@ -1076,7 +1075,6 @@ void vo_x11_create_vo_window(XVisualInfo *vis, int x, int y,
                              Colormap col_map,
                              const char *classname, const char *title)
 {
-  XGCValues xgcv;
   if (WinID >= 0) {
     vo_fs = flags & VOFLAG_FULLSCREEN;
     vo_window = WinID ? (Window)WinID : mRootWin;
@@ -1132,11 +1130,11 @@ void vo_x11_create_vo_window(XVisualInfo *vis, int x, int y,
     if (!vo_border) vo_x11_decoration(mDisplay, vo_window, 0);
     // map window
     XMapWindow(mDisplay, vo_window);
-    vo_x11_clearwindow(mDisplay, vo_window);
     // wait for map
     do {
       XNextEvent(mDisplay, &xev);
     } while (xev.type != MapNotify || xev.xmap.event != vo_window);
+    vo_x11_clearwindow(mDisplay, vo_window);
     XSelectInput(mDisplay, vo_window, NoEventMask);
     XSync(mDisplay, False);
     vo_x11_selectinput_witherr(mDisplay, vo_window,
@@ -1158,7 +1156,8 @@ void vo_x11_create_vo_window(XVisualInfo *vis, int x, int y,
 final:
   if (vo_gc != None)
     XFreeGC(mDisplay, vo_gc);
-  vo_gc = XCreateGC(mDisplay, vo_window, GCForeground, &xgcv);
+  vo_gc = XCreateGC(mDisplay, vo_window, 0, NULL);
+
   XSync(mDisplay, False);
   vo_mouse_autohide = 1;
 }
@@ -1827,7 +1826,7 @@ static int transform_color(float val,
     return (unsigned short) (s * 65535);
 }
 
-uint32_t vo_x11_set_equalizer(char *name, int value)
+uint32_t vo_x11_set_equalizer(const char *name, int value)
 {
     float gamma, brightness, contrast;
     float rf, gf, bf;
@@ -1878,7 +1877,7 @@ uint32_t vo_x11_set_equalizer(char *name, int value)
     return VO_TRUE;
 }
 
-uint32_t vo_x11_get_equalizer(char *name, int *value)
+uint32_t vo_x11_get_equalizer(const char *name, int *value)
 {
     if (cmap == None)
         return VO_NOTAVAIL;
@@ -1894,7 +1893,7 @@ uint32_t vo_x11_get_equalizer(char *name, int *value)
 }
 
 #ifdef CONFIG_XV
-int vo_xv_set_eq(uint32_t xv_port, char *name, int value)
+int vo_xv_set_eq(uint32_t xv_port, const char *name, int value)
 {
     XvAttribute *attributes;
     int i, howmany, xv_atom;
@@ -1964,7 +1963,7 @@ int vo_xv_set_eq(uint32_t xv_port, char *name, int value)
     return VO_FALSE;
 }
 
-int vo_xv_get_eq(uint32_t xv_port, char *name, int *value)
+int vo_xv_get_eq(uint32_t xv_port, const char *name, int *value)
 {
 
     XvAttribute *attributes;

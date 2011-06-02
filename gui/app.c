@@ -23,7 +23,11 @@
 
 #include "libavutil/common.h"
 
-guiItems appMPlayer;
+guiItems appMPlayer = {
+    .IndexOfMainItems = -1,
+    .IndexOfBarItems  = -1,
+    .IndexOfMenuItems = -1
+};
 
 static const evName evNames[] = {
     { evNone,              "evNone"              },
@@ -34,7 +38,6 @@ static const evName evNames[] = {
     { evNext,              "evNext"              },
     { evLoad,              "evLoad"              },
     { evEqualizer,         "evEqualizer"         },
-    { evEqualizer,         "evEqualeaser"        }, // NOTE TO MYSELF: any skin using this?
     { evPlayList,          "evPlaylist"          },
     { evExit,              "evExit"              },
     { evIconify,           "evIconify"           },
@@ -85,16 +88,6 @@ static void appClearItem(wItem *item)
     memset(item, 0, sizeof(*item));
 }
 
-void appInitStruct(void)
-{
-    appMPlayer.IndexOfMainItems = -1;
-    appMPlayer.IndexOfBarItems  = -1;
-    appMPlayer.IndexOfMenuItems = -1;
-
-    appMPlayer.sub.x = -1;   // NOTE TO MYSELF: is this really necessary?
-    appMPlayer.sub.y = -1;   // NOTE TO MYSELF: is this really necessary?
-}
-
 void appFreeStruct(void)
 {
     int i;
@@ -107,7 +100,7 @@ void appFreeStruct(void)
     appClearItem(&appMPlayer.bar);
     appMPlayer.barIsPresent = 0;
 
-    appClearItem(&appMPlayer.menuBase);
+    appClearItem(&appMPlayer.menu);
     appClearItem(&appMPlayer.menuSelected);
     appMPlayer.menuIsPresent = 0;
 
@@ -118,7 +111,10 @@ void appFreeStruct(void)
     for (i = 0; i <= appMPlayer.IndexOfMenuItems; i++)
         appClearItem(&appMPlayer.menuItems[i]);
 
-    appInitStruct();
+    appMPlayer.IndexOfMainItems = -1;
+    appMPlayer.IndexOfBarItems  = -1;
+    appMPlayer.IndexOfMenuItems = -1;
+
     fntFreeFont();
 }
 
@@ -142,7 +138,6 @@ void btnModify(int event, float state)
             switch (appMPlayer.mainItems[i].type) {
             case itButton:
                 appMPlayer.mainItems[i].pressed = (int)state;
-                appMPlayer.mainItems[i].tmp     = (int)state;
                 break;
 
             case itPotmeter:
@@ -163,7 +158,6 @@ void btnModify(int event, float state)
             switch (appMPlayer.barItems[i].type) {
             case itButton:
                 appMPlayer.barItems[i].pressed = (int)state;
-                appMPlayer.barItems[i].tmp     = (int)state;
                 break;
 
             case itPotmeter:
@@ -184,17 +178,11 @@ void btnSet(int event, int set)
 {
     int i;
 
-    for (i = 0; i <= appMPlayer.IndexOfMainItems; i++) {
-        if (appMPlayer.mainItems[i].message == event) {
+    for (i = 0; i <= appMPlayer.IndexOfMainItems; i++)
+        if (appMPlayer.mainItems[i].message == event)
             appMPlayer.mainItems[i].pressed = set;
-            appMPlayer.barItems[i].tmp      = 0;
-        }
-    }
 
-    for (i = 0; i <= appMPlayer.IndexOfBarItems; i++) {
-        if (appMPlayer.barItems[i].message == event) {
+    for (i = 0; i <= appMPlayer.IndexOfBarItems; i++)
+        if (appMPlayer.barItems[i].message == event)
             appMPlayer.barItems[i].pressed = set;
-            appMPlayer.barItems[i].tmp     = 0;
-        }
-    }
 }

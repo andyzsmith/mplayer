@@ -16,19 +16,21 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPLAYER_VF_SCALE_H
-#define MPLAYER_VF_SCALE_H
+#ifndef MPLAYER_GUI_BITMAP_H
+#define MPLAYER_GUI_BITMAP_H
 
-extern int sws_chr_vshift;
-extern int sws_chr_hshift;
+#define TRANSPARENT 0x00ff00ff   // transparent color (fuchsia/magenta)
 
-extern float sws_chr_gblur;
-extern float sws_lum_gblur;
-extern float sws_chr_sharpen;
-extern float sws_lum_sharpen;
+typedef struct {
+    unsigned long Width;
+    unsigned long Height;
+    unsigned int BPP;
+    unsigned long ImageSize;
+    char *Image;
+} txSample;
 
-extern int sws_flags;
+void bpFree(txSample *bf);
+int bpRead(char *fname, txSample *bf);
+int Convert32to1(txSample *in, txSample *out);
 
-struct SwsContext *sws_getContextFromCmdLine(int srcW, int srcH, int srcFormat, int dstW, int dstH, int dstFormat);
-
-#endif /* MPLAYER_VF_SCALE_H */
+#endif /* MPLAYER_GUI_BITMAP_H */

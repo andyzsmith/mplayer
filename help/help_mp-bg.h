@@ -597,7 +597,6 @@ static const char help_text[]=
 #define MSGTR_NEMFMR "За съжаление, няма достатъчно памет за менюто."
 #define MSGTR_IDFGCVD "За съжаление, няма съвместим с GUI видео драйвер."
 #define MSGTR_NEEDLAVC "За съжаление, не можете да възпроизвеждате различни от MPEG\nфайлове с вашето DXR3/H+ устройство без прекодиране.\nМоля разрешете lavc в полето за конфигурация на DXR3/H+ ."
-#define MSGTR_UNKNOWNWINDOWTYPE "Неизвестен тип на прозорец ..."
 
 // --- skin loader error messages
 #define MSGTR_SKIN_ERRORMESSAGE "[skin] грешка в конфигурационния файл на skin-а на ред %d: %s"
@@ -607,22 +606,17 @@ static const char help_text[]=
 #define MSGTR_SKIN_SkinFileNotFound "[skin] файлът ( %s ) не е намерен.\n"
 #define MSGTR_SKIN_BITMAP_16bit  "Bitmap с 16 и по-малко бита за цвят не се поддържа (%s).\n"
 #define MSGTR_SKIN_BITMAP_FileNotFound  "файлът не е намерен (%s)\n"
-#define MSGTR_SKIN_BITMAP_BMPReadError "грешка при четене на BMP (%s)\n"
-#define MSGTR_SKIN_BITMAP_TGAReadError "грешка при четене на TGA (%s)\n"
 #define MSGTR_SKIN_BITMAP_PNGReadError "грешка при четене на PNG (%s)\n"
-#define MSGTR_SKIN_BITMAP_RLENotSupported "TGA с RLE компресия не се поддържа (%s)\n"
-#define MSGTR_SKIN_BITMAP_UnknownFileType "неизвестен вид на файла (%s)\n"
 #define MSGTR_SKIN_BITMAP_ConversionError "Грешка при преобразуване от 24 към 32 бита (%s)\n"
-#define MSGTR_SKIN_BITMAP_UnknownMessage "неизвестно съобщение: %s\n"
-#define MSGTR_SKIN_FONT_NotEnoughtMemory "недостатъчно памет\n"
+#define MSGTR_SKIN_UnknownMessage "неизвестно съобщение: %s\n"
+#define MSGTR_SKIN_NotEnoughMemory "недостатъчно памет\n"
 #define MSGTR_SKIN_FONT_TooManyFontsDeclared "Декларирани са твърде много шрифтове.\n"
 #define MSGTR_SKIN_FONT_FontFileNotFound "Файлът със шрифта не е намерен.\n"
 #define MSGTR_SKIN_FONT_FontImageNotFound "Файл с изображението на шрифта не е намерен.\n"
-#define MSGTR_SKIN_FONT_NonExistentFontID "несъществуващ идентификатор на шрифт (%s)\n"
+#define MSGTR_SKIN_FONT_NonExistentFont "несъществуващ идентификатор на шрифт (%s)\n"
 #define MSGTR_SKIN_UnknownParameter "неизвестен параметър (%s)\n"
 #define MSGTR_SKIN_SKINCFG_SkinNotFound "Скинът не е намерен (%s).\n"
 #define MSGTR_SKIN_SKINCFG_SelectedSkinNotFound "Избраният скин ( %s ) не е намерен, ще се ползва 'default'...\n"
-#define MSGTR_SKIN_SKINCFG_SkinCfgReadError "Грешка в конфигурационен файл (%s)\n"
 #define MSGTR_SKIN_LABEL "Скинове:"
 
 // --- gtk menus
@@ -801,11 +795,6 @@ static const char help_text[]=
 #define MSGTR_MSGBOX_LABEL_Error "Грешка!"
 #define MSGTR_MSGBOX_LABEL_Warning "Внимание!"
 
-// bitmap.c
-
-#define MSGTR_NotEnoughMemoryC32To1 "[c32to1] недостатъчно памет за изображението\n"
-#define MSGTR_NotEnoughMemoryC1To32 "[c1to32] недостатъчно памет за изображението\n"
-
 // cfg.c
 
 #define MSGTR_ConfigFileReadError "[cfg] грешка при четене на конфигурационния файл ...\n"
@@ -816,7 +805,6 @@ static const char help_text[]=
 #define MSGTR_DeletingSubtitles "[GUI] Изтриване на субтитрите.\n"
 #define MSGTR_LoadingSubtitles "[GUI] Зареждане на субтитрите: %s\n"
 #define MSGTR_AddingVideoFilter "[GUI] Добавяне на видео филтър: %s\n"
-#define MSGTR_RemovingVideoFilter "[GUI] Премахване на видео филтър: %s\n"
 
 // mw.c
 
