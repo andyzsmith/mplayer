@@ -93,8 +93,8 @@ int stop_xscreensaver = 0;
 
 static int dpms_disabled = 0;
 
-char *mDisplayName = NULL;
-Display *mDisplay = NULL;
+char *mDisplayName;
+Display *mDisplay;
 Window mRootWin;
 int mScreen;
 int mLocalDisplay;
@@ -408,8 +408,6 @@ int vo_init(void)
     int depth, bpp;
     unsigned int mask;
 
-// char    * DisplayName = ":0.0";
-// Display * mDisplay;
     XImage *mXImage = NULL;
 
 // Window    mRootWin;
@@ -427,13 +425,7 @@ int vo_init(void)
 
     XSetErrorHandler(x11_errorhandler);
 
-#if 0
-    if (!mDisplayName)
-        if (!(mDisplayName = getenv("DISPLAY")))
-            mDisplayName = strdup(":0.0");
-#else
     dispName = XDisplayName(mDisplayName);
-#endif
 
     mp_msg(MSGT_VO, MSGL_V, "X11 opening display: %s\n", dispName);
 

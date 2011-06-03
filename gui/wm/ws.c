@@ -197,23 +197,13 @@ static int wsErrorHandler( Display * dpy, XErrorEvent * Event )
  return 0;
 }
 
-void wsXInit( void* mDisplay )
+void wsXInit( Display* mDisplay )
 {
  int    eventbase;
  int    errorbase;
 
-if(mDisplay){
+ // NOTE TO MYSELF: Use global mDisplay, get rid of wsDisplay.
  wsDisplay=mDisplay;
-} else {
- char * DisplayName = ":0.0";
- if ( getenv( "DISPLAY" ) ) DisplayName=getenv( "DISPLAY" );
- wsDisplay=XOpenDisplay( DisplayName );
- if ( !wsDisplay )
-  {
-   mp_msg( MSGT_GPLAYER,MSGL_FATAL,MSGTR_WS_CouldNotOpenDisplay );
-   guiExit( EXIT_ERROR );
-  }
-}
 
  XSetErrorHandler( wsErrorHandler );
 
