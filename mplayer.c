@@ -158,7 +158,7 @@ static int cfg_inc_verbose(m_option_t *conf)
     return 0;
 }
 
-static int cfg_include(m_option_t *conf, char *filename)
+static int cfg_include(m_option_t *conf, const char *filename)
 {
     return m_config_parse_config_file(mconfig, filename);
 }
@@ -252,9 +252,7 @@ int dvdsub_lang_id;
 int vobsub_id = -1;
 char *audio_lang;
 char *dvdsub_lang;
-static char *spudec_ifo;
 char *filename;
-int forced_subs_only;
 int file_filter = 1;
 
 // cache2:
@@ -283,7 +281,7 @@ static int softsleep;
 
 double force_fps;
 static int force_srate;
-static int audio_output_format = -1; // AF_FORMAT_UNKNOWN
+static int audio_output_format = AF_FORMAT_UNKNOWN;
 int frame_dropping;        // option  0=no drop  1= drop vo  2= drop decode
 static int play_n_frames    = -1;
 static int play_n_frames_mf = -1;
@@ -323,19 +321,19 @@ static int nortc = 1;
 static char *rtc_device;
 #endif
 
-edl_record_ptr edl_records; ///< EDL entries memory area
+edl_record_ptr edl_records;     ///< EDL entries memory area
 edl_record_ptr next_edl_record; ///< only for traversing edl_records
-short edl_decision; ///< 1 when an EDL operation has been made.
-short edl_needs_reset; ///< 1 if we need to reset EDL next pointer
-short edl_backward; ///< 1 if we need to skip to the beginning of the next EDL record
-FILE *edl_fd; ///< fd to write to when in -edlout mode.
+short edl_decision;             ///< 1 when an EDL operation has been made.
+short edl_needs_reset;          ///< 1 if we need to reset EDL next pointer
+short edl_backward;             ///< 1 if we need to skip to the beginning of the next EDL record
+FILE *edl_fd;                   ///< fd to write to when in -edlout mode.
 // Number of seconds to add to the seek when jumping out
 // of EDL scene in backward direction. This is needed to
 // have some time after the seek to decide what to do next
 // (next seek, pause,...), otherwise after the seek it will
 // enter the same scene again and skip forward immediately
 float edl_backward_delay = 2;
-int edl_start_pts; ///< Automatically add/sub this from EDL start/stop pos
+int edl_start_pts;              ///< Automatically add/sub this from EDL start/stop pos
 int use_filedir_conf;
 int use_filename_title;
 
@@ -522,10 +520,10 @@ static void print_file_properties(const MPContext *mpctx, const char *filename)
             mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_FORMAT=%.4s\n", (char *)&mpctx->sh_video->format);
         else
             mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_FORMAT=0x%08X\n", mpctx->sh_video->format);
-        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_BITRATE=%d\n", mpctx->sh_video->i_bps * 8);
-        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_WIDTH=%d\n", mpctx->sh_video->disp_w);
-        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_HEIGHT=%d\n", mpctx->sh_video->disp_h);
-        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_FPS=%5.3f\n", mpctx->sh_video->fps);
+        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_BITRATE=%d\n",   mpctx->sh_video->i_bps * 8);
+        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_WIDTH=%d\n",     mpctx->sh_video->disp_w);
+        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_HEIGHT=%d\n",    mpctx->sh_video->disp_h);
+        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_FPS=%5.3f\n",    mpctx->sh_video->fps);
         mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_VIDEO_ASPECT=%1.4f\n", mpctx->sh_video->aspect);
         video_start_pts = ds_get_next_pts(mpctx->d_video);
     }
@@ -536,8 +534,8 @@ static void print_file_properties(const MPContext *mpctx, const char *filename)
         else
             mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_AUDIO_FORMAT=%d\n", mpctx->sh_audio->format);
         mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_AUDIO_BITRATE=%d\n", mpctx->sh_audio->i_bps * 8);
-        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_AUDIO_RATE=%d\n", mpctx->sh_audio->samplerate);
-        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_AUDIO_NCH=%d\n", mpctx->sh_audio->channels);
+        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_AUDIO_RATE=%d\n",    mpctx->sh_audio->samplerate);
+        mp_msg(MSGT_IDENTIFY, MSGL_INFO, "ID_AUDIO_NCH=%d\n",     mpctx->sh_audio->channels);
         start_pts = ds_get_next_pts(mpctx->d_audio);
     }
     if (video_start_pts != MP_NOPTS_VALUE) {
@@ -586,7 +584,7 @@ void uninit_player(unsigned int mask)
             uninit_audio(mpctx->sh_audio);
 #ifdef CONFIG_GUI
         if (use_gui)
-            guiGetEvent(guiSetAfilter, (char *)NULL);
+            gui(GUI_SET_AFILTER, NULL);
 #endif
         mpctx->sh_audio      = NULL;
         mpctx->mixer.afilter = NULL;
@@ -792,7 +790,9 @@ void exit_player(enum exit_reason how)
 static void child_sighandler(int x)
 {
     pid_t pid;
-    while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) ;
+    do {
+        pid = waitpid(-1, NULL, WNOHANG);
+    } while (pid > 0);
 }
 
 #endif
@@ -1042,7 +1042,7 @@ static int playtree_add_playlist(play_tree_t *entry)
 #ifdef CONFIG_GUI
     if (use_gui) {
         if (entry) {
-            import_playtree_playlist_into_gui(entry, mconfig);
+            guiPlaylistAdd(entry, mconfig);
             play_tree_free_list(entry, 1);
         }
     } else
@@ -1050,23 +1050,20 @@ static int playtree_add_playlist(play_tree_t *entry)
     {
         if (!entry) {
             entry = mpctx->playtree_iter->tree;
-            if (play_tree_iter_step(mpctx->playtree_iter, 1, 0) != PLAY_TREE_ITER_ENTRY) {
+            if (play_tree_iter_step(mpctx->playtree_iter, 1, 0) != PLAY_TREE_ITER_ENTRY)
                 return PT_NEXT_ENTRY;
-            }
-            if (mpctx->playtree_iter->tree == entry) { // Loop with a single file
-                if (play_tree_iter_up_step(mpctx->playtree_iter, 1, 0) != PLAY_TREE_ITER_ENTRY) {
-                    return PT_NEXT_ENTRY;
-                }
-            }
+            // Loop with a single file
+            if (mpctx->playtree_iter->tree == entry &&
+                play_tree_iter_up_step(mpctx->playtree_iter, 1, 0) != PLAY_TREE_ITER_ENTRY)
+                return PT_NEXT_ENTRY;
             play_tree_remove(entry, 1, 1);
             return PT_NEXT_SRC;
         }
         play_tree_insert_entry(mpctx->playtree_iter->tree, entry);
         play_tree_set_params_from(entry, mpctx->playtree_iter->tree);
         entry = mpctx->playtree_iter->tree;
-        if (play_tree_iter_step(mpctx->playtree_iter, 1, 0) != PLAY_TREE_ITER_ENTRY) {
+        if (play_tree_iter_step(mpctx->playtree_iter, 1, 0) != PLAY_TREE_ITER_ENTRY)
             return PT_NEXT_ENTRY;
-        }
         play_tree_remove(entry, 1, 1);
     }
     return PT_NEXT_SRC;
@@ -1079,9 +1076,8 @@ void add_subtitles(char *filename, float fps, int noerr)
     ASS_Track *asst = 0;
 #endif
 
-    if (filename == NULL || mpctx->set_of_sub_size >= MAX_SUBTITLE_FILES) {
+    if (filename == NULL || mpctx->set_of_sub_size >= MAX_SUBTITLE_FILES)
         return;
-    }
 
     subd = sub_read_file(filename, fps);
 #ifdef CONFIG_ASS
@@ -1152,51 +1148,6 @@ void update_set_of_subtitles(void)
     } else if (mpctx->set_of_sub_size <= 0 && subdata != NULL) { // *subdata was added
         set_of_subtitles[mpctx->set_of_sub_pos = mpctx->set_of_sub_size] = subdata;
         ++mpctx->set_of_sub_size;
-    }
-}
-
-void init_vo_spudec(void)
-{
-    spudec_free(vo_spudec);
-    vo_spudec = NULL;
-
-    // we currently can't work without video stream
-    if (!mpctx->sh_video)
-        return;
-
-    if (spudec_ifo) {
-        unsigned int palette[16], width, height;
-        current_module = "spudec_init_vobsub";
-        if (vobsub_parse_ifo(NULL, spudec_ifo, palette, &width, &height, 1, -1, NULL) >= 0)
-            vo_spudec = spudec_new_scaled(palette, width, height, NULL, 0);
-    }
-
-#ifdef CONFIG_DVDREAD
-    if (vo_spudec == NULL && mpctx->stream->type == STREAMTYPE_DVD) {
-        current_module = "spudec_init_dvdread";
-        vo_spudec      = spudec_new_scaled(((dvd_priv_t *)(mpctx->stream->priv))->cur_pgc->palette,
-                                           mpctx->sh_video->disp_w, mpctx->sh_video->disp_h,
-                                           NULL, 0);
-    }
-#endif
-
-#ifdef CONFIG_DVDNAV
-    if (vo_spudec == NULL && mpctx->stream->type == STREAMTYPE_DVDNAV) {
-        unsigned int *palette = mp_dvdnav_get_spu_clut(mpctx->stream);
-        current_module = "spudec_init_dvdnav";
-        vo_spudec      = spudec_new_scaled(palette, mpctx->sh_video->disp_w, mpctx->sh_video->disp_h, NULL, 0);
-    }
-#endif
-
-    if (vo_spudec == NULL) {
-        sh_sub_t *sh = mpctx->d_sub->sh;
-        current_module = "spudec_init_normal";
-        vo_spudec      = spudec_new_scaled(NULL, mpctx->sh_video->disp_w, mpctx->sh_video->disp_h, sh->extradata, sh->extradata_len);
-        spudec_set_font_factor(vo_spudec, font_factor);
-    }
-
-    if (vo_spudec != NULL) {
-        mp_property_do("sub_forced_only", M_PROPERTY_SET, &forced_subs_only, mpctx);
     }
 }
 
@@ -1383,7 +1334,7 @@ static int build_afilter_chain(sh_audio_t *sh_audio, ao_data_t *ao_data)
     if (!sh_audio) {
 #ifdef CONFIG_GUI
         if (use_gui)
-            guiGetEvent(guiSetAfilter, (char *)NULL);
+            gui(GUI_SET_AFILTER, NULL);
 #endif
         mpctx->mixer.afilter = NULL;
         return 0;
@@ -1408,7 +1359,7 @@ static int build_afilter_chain(sh_audio_t *sh_audio, ao_data_t *ao_data)
     mpctx->mixer.afilter = sh_audio->afilter;
 #ifdef CONFIG_GUI
     if (use_gui)
-        guiGetEvent(guiSetAfilter, (char *)sh_audio->afilter);
+        gui(GUI_SET_AFILTER, sh_audio->afilter);
 #endif
     return result;
 }
@@ -1651,24 +1602,24 @@ static void update_osd_msg(void)
                 percentage_text[0] = 0;
 
             if (osd_fractions == 1) {
-                //print fractions as sub-second timestamp
+                // print fractions as sub-second timestamp
                 snprintf(fractions_text, sizeof(fractions_text), ".%02d",
                          (int)((mpctx->sh_video->pts - pts) * 100 + 0.5)
                          % 100);
             } else if (osd_fractions == 2) {
-                //print fractions by estimating the frame count within the
-                //second
+                // print fractions by estimating the frame count within the
+                // second
 
-                //rounding or cutting off numbers after the decimal point
-                //causes problems because of float's precision and movies,
-                //whose first frame is not exactly at timestamp 0. Therefore,
-                //we add 0.2 and cut off at the decimal point, which proved
-                //as good heuristic
+                // rounding or cutting off numbers after the decimal point
+                // causes problems because of float's precision and movies,
+                // whose first frame is not exactly at timestamp 0. Therefore,
+                // we add 0.2 and cut off at the decimal point, which proved
+                // as good heuristic
                 snprintf(fractions_text, sizeof(fractions_text), ".%02d",
                          (int)((mpctx->sh_video->pts - pts) *
                                mpctx->sh_video->fps + 0.2));
             } else {
-                //do not print fractions
+                // do not print fractions
                 fractions_text[0] = 0;
             }
 
@@ -1710,9 +1661,8 @@ void reinit_audio_chain(void)
     if (!(initialized_flags & INITIALIZED_ACODEC)) {
         current_module = "init_audio_codec";
         mp_msg(MSGT_CPLAYER, MSGL_INFO, "==========================================================================\n");
-        if (!init_best_audio_codec(mpctx->sh_audio, audio_codec_list, audio_fm_list)) {
+        if (!init_best_audio_codec(mpctx->sh_audio, audio_codec_list, audio_fm_list))
             goto init_error;
-        }
         initialized_flags |= INITIALIZED_ACODEC;
         mp_msg(MSGT_CPLAYER, MSGL_INFO, "==========================================================================\n");
     }
@@ -1802,6 +1752,15 @@ double playing_audio_pts(sh_audio_t *sh_audio, demux_stream_t *d_audio,
 {
     return written_audio_pts(sh_audio, d_audio) - playback_speed *
            audio_out->get_delay();
+}
+
+static int is_at_end(MPContext *mpctx, m_time_size_t *end_at, double pts)
+{
+    switch (end_at->type) {
+    case END_AT_TIME: return end_at->pos <= pts;
+    case END_AT_SIZE: return end_at->pos <= stream_tell(mpctx->stream);
+    }
+    return 0;
 }
 
 static int check_framedrop(double frame_time)
@@ -2027,7 +1986,7 @@ static mp_image_t *mp_dvdnav_restore_smpi(int *in_size,
     if (mpctx->stream->type != STREAMTYPE_DVDNAV)
         return decoded_frame;
 
-    // a change occured in dvdnav stream
+    // a change occurred in dvdnav stream
     if (mp_dvdnav_cell_has_changed(mpctx->stream, 0)) {
         mp_dvdnav_read_wait(mpctx->stream, 1, 1);
         mp_dvdnav_context_free(mpctx);
@@ -2074,12 +2033,17 @@ static void mp_dvdnav_save_smpi(int in_size,
         return;
 
     free(mpctx->nav_buffer);
+    mpctx->nav_buffer  = NULL;
+    mpctx->nav_start   = NULL;
+    mpctx->nav_in_size = -1;
 
+    if (in_size > 0)
     mpctx->nav_buffer  = malloc(in_size);
+    if (mpctx->nav_buffer) {
     mpctx->nav_start   = start;
-    mpctx->nav_in_size = mpctx->nav_buffer ? in_size : -1;
-    if (mpctx->nav_buffer)
+        mpctx->nav_in_size = in_size;
         memcpy(mpctx->nav_buffer, start, in_size);
+    }
 
     if (decoded_frame && mpctx->nav_smpi != decoded_frame)
         mpctx->nav_smpi = mp_dvdnav_copy_mpi(mpctx->nav_smpi, decoded_frame);
@@ -2263,11 +2227,11 @@ static int sleep_until_update(float *time_frame, float *aq_sleep_time)
 #ifdef CONFIG_NETWORKING
     if (udp_slave) {
         int udp_master_exited = udp_slave_sync(mpctx);
-        if (udp_master_exited) {
+        if (udp_master_exited > 0) {
             mp_msg(MSGT_CPLAYER, MSGL_INFO, MSGTR_MasterQuit);
             exit_player(EXIT_QUIT);
-        }
-        return 0;
+        } else if (udp_master_exited == 0)
+            return 0;
     }
 #endif /* CONFIG_NETWORKING */
 
@@ -2537,7 +2501,7 @@ static double update_video(int *blit_frame)
             sh_video->last_pts = sh_video->pts;
         else if (sh_video->last_pts > sh_video->pts) {
             // make a guess whether this is some kind of discontinuity
-            // we should jump along with or some wron timestamps we
+            // we should jump along with or some wrong timestamps we
             // should replace instead
             if (sh_video->pts < sh_video->last_pts - 20 * sh_video->frametime)
                 sh_video->last_pts = sh_video->pts;
@@ -2573,7 +2537,7 @@ static void pause_loop(void)
     }
 #ifdef CONFIG_GUI
     if (use_gui)
-        guiGetEvent(guiCEvent, (char *)guiSetPause);
+        gui(GUI_SET_STATE, (void *)GUI_PAUSE);
 #endif
     if (mpctx->video_out && mpctx->sh_video && vo_config_count)
         mpctx->video_out->control(VOCTRL_PAUSE, NULL);
@@ -2592,9 +2556,9 @@ static void pause_loop(void)
             mpctx->video_out->check_events();
 #ifdef CONFIG_GUI
         if (use_gui) {
-            guiEventHandling();
-            guiGetEvent(guiReDraw, NULL);
-            if (guiIntfStruct.Playing != 2 || (rel_seek_secs || abs_seek_pos))
+            gui(GUI_HANDLE_EVENTS, 0);
+            gui(GUI_REDRAW, 0);
+            if (guiInfo.Playing != GUI_PAUSE || (rel_seek_secs || abs_seek_pos))
                 break;
         }
 #endif
@@ -2637,10 +2601,10 @@ static void pause_loop(void)
     (void)GetRelativeTime(); // ignore time that passed during pause
 #ifdef CONFIG_GUI
     if (use_gui) {
-        if (guiIntfStruct.Playing == guiSetStop)
+        if (guiInfo.Playing == GUI_STOP)
             mpctx->eof = 1;
         else
-            guiGetEvent(guiCEvent, (char *)guiSetPlay);
+            gui(GUI_SET_STATE, (void *)GUI_PLAY);
     }
 #endif
 }
@@ -2659,9 +2623,8 @@ static void edl_loadfile(void)
 // Execute EDL command for the current position if one exists
 static void edl_update(MPContext *mpctx)
 {
-    if (!edl_records) {
+    if (!edl_records)
         return;
-    }
 
     if (!mpctx->sh_video) {
         mp_msg(MSGT_CPLAYER, MSGL_ERR, MSGTR_EdlNOsh_video);
@@ -2734,7 +2697,7 @@ static void edl_update(MPContext *mpctx)
 }
 
 // style & SEEK_ABSOLUTE == 0 means seek relative to current position, == 1 means absolute
-// style & SEEK_FACTOR == 0 means amount in seconds, == 2 means fraction of file length
+// style & SEEK_FACTOR   == 0 means amount in seconds, == 2 means fraction of file length
 // return -1 if seek failed (non-seekable stream?), 0 otherwise
 static int seek(MPContext *mpctx, double amount, int style)
 {
@@ -2797,10 +2760,7 @@ static int seek(MPContext *mpctx, double amount, int style)
 #ifndef DISABLE_MAIN
 int main(int argc, char *argv[])
 {
-// movie info:
-
-/* Flag indicating whether MPlayer should exit without playing anything. */
-    int opt_exit = 0;
+    int opt_exit = 0; // Flag indicating whether MPlayer should exit without playing anything.
     int i;
 
     int gui_no_filename = 0;
@@ -2837,9 +2797,9 @@ int main(int argc, char *argv[])
 #endif
 
     mpctx->playtree = m_config_parse_mp_command_line(mconfig, argc, argv);
-    if (mpctx->playtree == NULL)
+    if (mpctx->playtree == NULL) {
         opt_exit = 1;
-    else {
+    } else {
         mpctx->playtree = play_tree_cleanup(mpctx->playtree);
         if (mpctx->playtree) {
             mpctx->playtree_iter = play_tree_iter_new(mpctx->playtree, mconfig);
@@ -2895,7 +2855,7 @@ int main(int argc, char *argv[])
             play_tree_add_bpf(mpctx->playtree, cwd);
         }
         // Import initital playtree into GUI.
-        import_initial_playtree_into_gui(mpctx->playtree, mconfig, enqueue);
+        guiPlaylistInitialize(mpctx->playtree, mconfig, enqueue);
     }
 #endif /* CONFIG_GUI */
 
@@ -2960,18 +2920,14 @@ int main(int argc, char *argv[])
     if (opt_exit)
         exit_player(EXIT_NONE);
 
-    if (player_idle_mode && use_gui) {
-        mp_msg(MSGT_CPLAYER, MSGL_FATAL, MSGTR_NoIdleAndGui);
-        exit_player_with_rc(EXIT_NONE, 1);
-    }
-
-    if (!filename && !player_idle_mode) {
-        if (!use_gui) {
+    if (!filename) {
+        if (use_gui)
+            gui_no_filename = 1;
+        else if (!player_idle_mode) {
             // no file/vcd/dvd -> show HELP:
             mp_msg(MSGT_CPLAYER, MSGL_INFO, help_text);
             exit_player_with_rc(EXIT_NONE, 0);
-        } else
-            gui_no_filename = 1;
+        }
     }
 
     /* Display what configure line was used */
@@ -2979,7 +2935,7 @@ int main(int argc, char *argv[])
 
     // Many users forget to include command line in bugreports...
     if (mp_msg_test(MSGT_CPLAYER, MSGL_V)) {
-        mp_msg(MSGT_CPLAYER, MSGL_INFO, MSGTR_CommandLine);
+        mp_msg(MSGT_CPLAYER, MSGL_INFO, "CommandLine:");
         for (i = 1; i < argc; i++)
             mp_msg(MSGT_CPLAYER, MSGL_INFO, " '%s'", argv[i]);
         mp_msg(MSGT_CPLAYER, MSGL_INFO, "\n");
@@ -3007,12 +2963,12 @@ int main(int argc, char *argv[])
                 close(rtc_fd);
                 rtc_fd = -1;
             } else
-                mp_msg(MSGT_CPLAYER, MSGL_V, MSGTR_UsingRTCTiming, irqp);
+                mp_msg(MSGT_CPLAYER, MSGL_V, "Using Linux hardware RTC timing (%ldHz).\n", irqp);
         }
     }
 #ifdef CONFIG_GUI
-// breaks DGA and SVGAlib and VESA drivers:  --A'rpi
-// and now ? -- Pontscho
+    // breaks DGA and SVGAlib and VESA drivers:  --A'rpi
+    // and now ? -- Pontscho
     if (use_gui)
         setuid(getuid());           // strongly test, please check this.
 #endif
@@ -3028,7 +2984,7 @@ int main(int argc, char *argv[])
 
 // ========== Init keyboard FIFO (connection to libvo) ============
 
-// Init input system
+    // Init input system
     current_module = "init_input";
     mp_input_init();
     mp_input_add_key_fd(-1, 0, mplayer_get_key, NULL);
@@ -3036,22 +2992,22 @@ int main(int argc, char *argv[])
         mp_input_add_cmd_fd(0, USE_SELECT, MP_INPUT_SLAVE_CMD_FUNC, NULL);
     else if (!noconsolecontrols)
         mp_input_add_event_fd(0, getch2);
-// Set the libstream interrupt callback
+    // Set the libstream interrupt callback
     stream_set_interrupt_callback(mp_input_check_interrupt);
 
 #ifdef CONFIG_MENU
     if (use_menu) {
         if (menu_cfg && menu_init(mpctx, menu_cfg))
-            mp_msg(MSGT_CPLAYER, MSGL_V, MSGTR_MenuInitialized, menu_cfg);
+            mp_msg(MSGT_CPLAYER, MSGL_V, "Menu initialized: %s\n", menu_cfg);
         else {
             menu_cfg = get_path("menu.conf");
             if (menu_init(mpctx, menu_cfg))
-                mp_msg(MSGT_CPLAYER, MSGL_V, MSGTR_MenuInitialized, menu_cfg);
+                mp_msg(MSGT_CPLAYER, MSGL_V, "Menu initialized: %s\n", menu_cfg);
             else {
                 if (menu_init(mpctx, MPLAYER_CONFDIR "/menu.conf"))
-                    mp_msg(MSGT_CPLAYER, MSGL_V, MSGTR_MenuInitialized, MPLAYER_CONFDIR "/menu.conf");
+                    mp_msg(MSGT_CPLAYER, MSGL_V,  "Menu initialized: %s\n", MPLAYER_CONFDIR "/menu.conf");
                 else {
-                    mp_msg(MSGT_CPLAYER, MSGL_ERR, MSGTR_MenuInitFailed);
+                    mp_msg(MSGT_CPLAYER, MSGL_ERR, "Menu init failed.\n");
                     use_menu = 0;
                 }
             }
@@ -3095,8 +3051,8 @@ int main(int argc, char *argv[])
 #ifdef CONFIG_GUI
     if (use_gui) {
         guiInit();
-        guiGetEvent(guiSetContext, mpctx);
-        guiGetEvent(guiCEvent, (char *)((gui_no_filename) ? 0 : 1));
+        gui(GUI_SET_CONTEXT, mpctx);
+        gui(GUI_SET_STATE, (void *)(gui_no_filename ? GUI_STOP : GUI_PLAY));
     }
 #endif
 
@@ -3119,8 +3075,8 @@ play_next_file:
     if (audio_driver_list)
         load_per_output_config(mconfig, PROFILE_CFG_AO, audio_driver_list[0]);
 
-// We must enable getch2 here to be able to interrupt network connection
-// or cache filling
+    // We must enable getch2 here to be able to interrupt network connection
+    // or cache filling
     if (!noconsolecontrols && !slave_mode) {
         if (initialized_flags & INITIALIZED_GETCH2)
             mp_msg(MSGT_CPLAYER, MSGL_WARN, MSGTR_Getch2InitializedTwice);
@@ -3134,21 +3090,21 @@ play_next_file:
 #ifdef CONFIG_GUI
     if (use_gui) {
         mpctx->file_format = DEMUXER_TYPE_UNKNOWN;
-        guiGetEvent(guiSetDefaults, 0);
-        while (guiIntfStruct.Playing != 1) {
+        gui(GUI_SET_FILE, 0);
+        while (guiInfo.Playing != GUI_PLAY) {
             mp_cmd_t *cmd;
             usec_sleep(20000);
-            guiEventHandling();
-            guiGetEvent(guiReDraw, NULL);
+            gui(GUI_HANDLE_EVENTS, 0);
+            gui(GUI_REDRAW, 0);
             if ((cmd = mp_input_get_cmd(0, 0, 0)) != NULL) {
-                guiGetEvent(guiIEvent, (char *)cmd->id);
+                gui(GUI_RUN_COMMAND, (void *)cmd->id);
                 mp_cmd_free(cmd);
             }
         }
-        guiGetEvent(guiSetParameters, NULL);
-        if (guiIntfStruct.StreamType == STREAMTYPE_STREAM) {
+        gui(GUI_PREPARE, 0);
+        if (guiInfo.StreamType == STREAMTYPE_STREAM) {
             play_tree_t *entry = play_tree_new();
-            play_tree_add_file(entry, guiIntfStruct.Filename);
+            play_tree_add_file(entry, guiInfo.Filename);
             if (mpctx->playtree)
                 play_tree_free_list(mpctx->playtree->child, 1);
             else
@@ -3288,7 +3244,7 @@ play_next_file:
 
 #ifdef CONFIG_GUI
     if (use_gui)
-        guiGetEvent(guiSetStream, (char *)mpctx->stream);
+        gui(GUI_SET_STREAM, mpctx->stream);
 #endif
 
     if (mpctx->file_format == DEMUXER_TYPE_PLAYLIST) {
@@ -3397,8 +3353,7 @@ goto_enable_cache:
 
     mpctx->demuxer = demux_open(mpctx->stream, mpctx->file_format, audio_id, video_id, dvdsub_id, filename);
 
-// HACK to get MOV Reference Files working
-
+    // HACK to get MOV Reference Files working
     if (mpctx->demuxer && mpctx->demuxer->type == DEMUXER_TYPE_PLAYLIST) {
         unsigned char *playlist_entry;
         play_tree_t *list = NULL, *entry = NULL;
@@ -3486,22 +3441,19 @@ goto_enable_cache:
         int tmp = ts_prog;
         mp_property_do("switch_program", M_PROPERTY_SET, &tmp, mpctx);
     }
-// select audio stream
+    // select audio stream
     select_audio(mpctx->demuxer, audio_id, audio_lang);
 
-// DUMP STREAMS:
+    // DUMP STREAMS:
     if ((stream_dump_type) && (stream_dump_type < 4)) {
         FILE *f;
         demux_stream_t *ds = NULL;
         current_module = "dump";
         // select stream to dump
         switch (stream_dump_type) {
-        case 1: ds = mpctx->d_audio;
-            break;
-        case 2: ds = mpctx->d_video;
-            break;
-        case 3: ds = mpctx->d_sub;
-            break;
+        case 1: ds = mpctx->d_audio; break;
+        case 2: ds = mpctx->d_video; break;
+        case 3: ds = mpctx->d_sub;   break;
         }
         if (!ds) {
             mp_msg(MSGT_CPLAYER, MSGL_FATAL, MSGTR_DumpSelectedStreamMissing);
@@ -3595,19 +3547,19 @@ goto_enable_cache:
         goto goto_next_file; // exit_player(MSGTR_Exit_error);
     }
 
-/* display clip info */
+    /* display clip info */
     demux_info_print(mpctx->demuxer);
 
 //================== Read SUBTITLES (DVD & TEXT) ==========================
     if (vo_spudec == NULL &&
         (mpctx->stream->type == STREAMTYPE_DVD || mpctx->stream->type == STREAMTYPE_DVDNAV)) {
-        init_vo_spudec();
+        init_vo_spudec(mpctx->stream, mpctx->sh_video, mpctx->d_sub ? mpctx->d_sub->sh : NULL);
     }
 
     if (1 || mpctx->sh_video) {
-// after reading video params we should load subtitles because
-// we know fps so now we can adjust subtitle time to ~6 seconds AST
-// check .sub
+        // after reading video params we should load subtitles because
+        // we know fps so now we can adjust subtitle time to ~6 seconds AST
+        // check .sub
         double fps = mpctx->sh_video ? mpctx->sh_video->fps : 25;
         current_module = "read_subtitles_file";
         load_subtitles(filename, fps, add_subtitles);
@@ -3617,22 +3569,15 @@ goto_enable_cache:
         initialized_flags |= INITIALIZED_SUBS;
     }
 
-    if (select_subtitle(mpctx)) {
-        if (subdata)
-            switch (stream_dump_type) {
-            case 3: list_sub_file(subdata);
-                break;
-            case 4: dump_mpsub(subdata, mpctx->sh_video->fps);
-                break;
-            case 6: dump_srt(subdata, mpctx->sh_video->fps);
-                break;
-            case 7: dump_microdvd(subdata, mpctx->sh_video->fps);
-                break;
-            case 8: dump_jacosub(subdata, mpctx->sh_video->fps);
-                break;
-            case 9: dump_sami(subdata, mpctx->sh_video->fps);
-                break;
-            }
+    if (select_subtitle(mpctx) && subdata) {
+        switch (stream_dump_type) {
+        case 3: list_sub_file(subdata);                       break;
+        case 4: dump_mpsub(subdata,    mpctx->sh_video->fps); break;
+        case 6: dump_srt(subdata,      mpctx->sh_video->fps); break;
+        case 7: dump_microdvd(subdata, mpctx->sh_video->fps); break;
+        case 8: dump_jacosub(subdata,  mpctx->sh_video->fps); break;
+        case 9: dump_sami(subdata,     mpctx->sh_video->fps); break;
+        }
     }
 
     print_file_properties(mpctx, filename);
@@ -3669,7 +3614,7 @@ goto_enable_cache:
         free(msg);
     }
 
-// Disable the term OSD in verbose mode
+    // Disable the term OSD in verbose mode
     if (verbose)
         term_osd = 0;
 
@@ -3677,8 +3622,8 @@ goto_enable_cache:
         mpctx->num_buffered_frames = 0;
         mpctx->framestep_found     = 0;
 
-// Make sure old OSD does not stay around,
-// e.g. with -fixed-vo and same-resolution files
+        // Make sure old OSD does not stay around,
+        // e.g. with -fixed-vo and same-resolution files
         clear_osd_msgs();
         update_osd_msg();
 
@@ -3723,7 +3668,7 @@ goto_enable_cache:
         if (!mpctx->sh_video && !mpctx->sh_audio)
             goto goto_next_file;
 
-//if(demuxer->file_format!=DEMUXER_TYPE_AVI) pts_from_bps=0; // it must be 0 for mpeg/asf!
+        //if(demuxer->file_format!=DEMUXER_TYPE_AVI) pts_from_bps=0; // it must be 0 for mpeg/asf!
         if (force_fps && mpctx->sh_video) {
             vo_fps = mpctx->sh_video->fps = force_fps;
             mpctx->sh_video->frametime = 1.0f / mpctx->sh_video->fps;
@@ -3732,23 +3677,14 @@ goto_enable_cache:
 
 #ifdef CONFIG_GUI
         if (use_gui) {
-            if (mpctx->sh_audio)
-                guiIntfStruct.AudioType = mpctx->sh_audio->channels;
-            else
-                guiIntfStruct.AudioType = 0;
-            if (!mpctx->sh_video && mpctx->sh_audio)
-                guiGetEvent(guiSetAudioOnly, (char *)1);
-            else
-                guiGetEvent(guiSetAudioOnly, (char *)0);
-            guiGetEvent(guiSetFileFormat, (char *)mpctx->demuxer->file_format);
-            if (guiGetEvent(guiSetValues, (char *)mpctx->sh_video))
+            if (!gui(GUI_SET_VIDEO, mpctx->sh_video))
                 goto goto_next_file;
-            guiGetEvent(guiSetDemuxer, (char *)mpctx->demuxer);
+            gui(GUI_SET_AUDIO, mpctx->sh_audio);
         }
 #endif
 
         mp_input_set_section(NULL);
-//TODO: add desired (stream-based) sections here
+        //TODO: add desired (stream-based) sections here
         if (mpctx->stream->type == STREAMTYPE_TV)
             mp_input_set_section("tv");
         if (mpctx->stream->type == STREAMTYPE_DVDNAV)
@@ -3818,14 +3754,13 @@ goto_enable_cache:
                 double a_pos = 0;
                 // sh_audio can be NULL due to video stream switching
                 // TODO: handle this better
-                if ((!quiet || end_at.type == END_AT_TIME) && mpctx->sh_audio)
+                if (mpctx->sh_audio)
                     a_pos = playing_audio_pts(mpctx->sh_audio, mpctx->d_audio, mpctx->audio_out);
 
                 if (!quiet)
                     print_status(a_pos, 0, 0);
 
-                if (end_at.type == END_AT_TIME && end_at.pos < a_pos ||
-                    end_at.type == END_AT_SIZE && end_at.pos < stream_tell(mpctx->stream))
+                if (is_at_end(mpctx, &end_at, a_pos))
                     mpctx->eof = PT_NEXT_ENTRY;
                 update_subtitles(NULL, a_pos, mpctx->d_sub, 0);
                 update_osd_msg();
@@ -3877,7 +3812,7 @@ goto_enable_cache:
 
 #ifdef CONFIG_GUI
                 if (use_gui)
-                    guiEventHandling();
+                    gui(GUI_HANDLE_EVENTS, 0);
 #endif
 
                 current_module = "vo_check_events";
@@ -3922,20 +3857,20 @@ goto_enable_cache:
 
 //============================ Auto QUALITY ============================
 
-/*Output quality adjustments:*/
+                /*Output quality adjustments:*/
                 if (auto_quality > 0) {
                     current_module = "autoq";
-//  float total=0.000001f * (GetTimer()-aq_total_time);
-//  if(output_quality<auto_quality && aq_sleep_time>0.05f*total)
+                    //float total=0.000001f * (GetTimer()-aq_total_time);
+                    //if(output_quality<auto_quality && aq_sleep_time>0.05f*total)
                     if (output_quality < auto_quality && aq_sleep_time > 0)
                         ++output_quality;
                     else
-//  if(output_quality>0 && aq_sleep_time<-0.05f*total)
+                    //if(output_quality>0 && aq_sleep_time<-0.05f*total)
                     if (output_quality > 1 && aq_sleep_time < 0)
                         --output_quality;
                     else if (output_quality > 0 && aq_sleep_time < -0.050f) // 50ms
                         output_quality = 0;
-//  printf("total: %8.6f  sleep: %8.6f  q: %d\n",(0.000001f*aq_total_time),aq_sleep_time,output_quality);
+                    //printf("total: %8.6f  sleep: %8.6f  q: %d\n",(0.000001f*aq_total_time),aq_sleep_time,output_quality);
                     set_video_quality(mpctx->sh_video, output_quality);
                 }
 
@@ -3945,9 +3880,8 @@ goto_enable_cache:
                         mpctx->eof = PT_NEXT_ENTRY;
                 }
 
-                if (!frame_time_remaining &&
-                    ((end_at.type == END_AT_TIME && mpctx->sh_video->pts >= end_at.pos) ||
-                     (end_at.type == END_AT_SIZE && stream_tell(mpctx->stream) >= end_at.pos)))
+                if (!frame_time_remaining && is_at_end(mpctx, &end_at,
+                                                       mpctx->sh_video->pts))
                     mpctx->eof = PT_NEXT_ENTRY;
             } // end if(mpctx->sh_video)
 
@@ -3984,7 +3918,7 @@ goto_enable_cache:
                 pause_loop();
             }
 
-// handle -sstep
+            // handle -sstep
             if (step_sec > 0) {
                 mpctx->osd_function = OSD_FFW;
                 rel_seek_secs      += step_sec;
@@ -4049,30 +3983,30 @@ goto_enable_cache:
 
 #ifdef CONFIG_GUI
             if (use_gui) {
-                guiEventHandling();
+                gui(GUI_HANDLE_EVENTS, 0);
                 if (mpctx->demuxer->file_format == DEMUXER_TYPE_AVI && mpctx->sh_video && mpctx->sh_video->video.dwLength > 2) {
                     // get pos from frame number / total frames
-                    guiIntfStruct.Position = (float)mpctx->d_video->pack_no * 100.0f / mpctx->sh_video->video.dwLength;
+                    guiInfo.Position = (float)mpctx->d_video->pack_no * 100.0f / mpctx->sh_video->video.dwLength;
                 } else {
-                    guiIntfStruct.Position = demuxer_get_percent_pos(mpctx->demuxer);
+                    guiInfo.Position = demuxer_get_percent_pos(mpctx->demuxer);
                 }
                 if (mpctx->sh_video)
-                    guiIntfStruct.TimeSec = mpctx->sh_video->pts;
+                    guiInfo.TimeSec = mpctx->sh_video->pts;
                 else if (mpctx->sh_audio)
-                    guiIntfStruct.TimeSec = playing_audio_pts(mpctx->sh_audio, mpctx->d_audio, mpctx->audio_out);
-                guiIntfStruct.LengthInSec = demuxer_get_time_length(mpctx->demuxer);
-                guiGetEvent(guiReDraw, NULL);
-                guiGetEvent(guiSetVolume, NULL);
-                if (guiIntfStruct.Playing == 0)
+                    guiInfo.TimeSec = playing_audio_pts(mpctx->sh_audio, mpctx->d_audio, mpctx->audio_out);
+                guiInfo.LengthInSec = demuxer_get_time_length(mpctx->demuxer);
+                gui(GUI_SET_MIXER, 0);
+                gui(GUI_REDRAW, 0);
+                if (guiInfo.Playing == GUI_STOP)
                     break;                  // STOP
-                if (guiIntfStruct.Playing == 2)
+                if (guiInfo.Playing == GUI_PAUSE)
                     mpctx->osd_function = OSD_PAUSE;
-                if (guiIntfStruct.DiskChanged || guiIntfStruct.NewPlay)
+                if (guiInfo.DiskChanged || guiInfo.NewPlay)
                     goto goto_next_file;
 #ifdef CONFIG_DVDREAD
                 if (mpctx->stream->type == STREAMTYPE_DVD) {
                     dvd_priv_t *dvdp = mpctx->stream->priv;
-                    guiIntfStruct.DVD.current_chapter = dvd_chapter_from_cell(dvdp, guiIntfStruct.DVD.current_title - 1, dvdp->cur_cell) + 1;
+                    guiInfo.DVD.current_chapter = dvd_chapter_from_cell(dvdp, guiInfo.DVD.current_title - 1, dvdp->cur_cell) + 1;
                 }
 #endif
             }
@@ -4106,9 +4040,9 @@ goto_next_file:  // don't jump here after ao/vo/getch initialization!
                total_time_usage - tot, total_time_usage);
         if (total_time_usage > 0.0)
             mp_msg(MSGT_CPLAYER, MSGL_INFO, "BENCHMARK%%: VC:%8.4f%% VO:%8.4f%% A:%8.4f%% Sys:%8.4f%% = %8.4f%%\n",
-                   100.0 * video_time_usage / total_time_usage,
-                   100.0 * vout_time_usage / total_time_usage,
-                   100.0 * audio_time_usage / total_time_usage,
+                   100.0 * video_time_usage         / total_time_usage,
+                   100.0 * vout_time_usage          / total_time_usage,
+                   100.0 * audio_time_usage         / total_time_usage,
                    100.0 * (total_time_usage - tot) / total_time_usage,
                    100.0);
         if (total_frame_cnt && frame_dropping)
@@ -4121,7 +4055,7 @@ goto_next_file:  // don't jump here after ao/vo/getch initialization!
                    (total_time_usage > 0.5) ? (total_frame_cnt / total_time_usage) : 0);
     }
 
-// time to uninit all, except global stuff:
+    // time to uninit all, except global stuff:
     uninit_player(INITIALIZED_ALL - (INITIALIZED_GUI + INITIALIZED_INPUT + (fixed_vo ? INITIALIZED_VO : 0)));
 
     if (mpctx->eof == PT_NEXT_ENTRY || mpctx->eof == PT_PREV_ENTRY) {
@@ -4167,13 +4101,17 @@ goto_next_file:  // don't jump here after ao/vo/getch initialization!
 #ifdef CONFIG_GUI
     if (use_gui && !mpctx->playtree_iter) {
 #ifdef CONFIG_DVDREAD
-        if (!guiIntfStruct.DiskChanged)
+        if (!guiInfo.DiskChanged)
 #endif
-        mplEnd();
+        gui(GUI_END_FILE, 0);
     }
 #endif
 
-    if (use_gui || mpctx->playtree_iter != NULL || player_idle_mode) {
+    if (
+#ifdef CONFIG_GUI
+        (use_gui && guiInfo.Playing) ||
+#endif
+                                        mpctx->playtree_iter != NULL || player_idle_mode) {
         if (!mpctx->playtree_iter)
             filename = NULL;
         mpctx->eof = 0;
@@ -4181,7 +4119,6 @@ goto_next_file:  // don't jump here after ao/vo/getch initialization!
     }
 
     exit_player_with_rc(EXIT_EOF, 0);
-
     return 1;
 }
 

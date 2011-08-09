@@ -570,7 +570,8 @@ static void vo_x11_putkey_ext(int keysym)
 
 static const struct mp_keymap keymap[] = {
     // special keys
-    {wsEscape, KEY_ESC}, {wsBackSpace, KEY_BS}, {wsTab, KEY_TAB}, {wsEnter, KEY_ENTER},
+    {wsPause, KEY_PAUSE}, {wsEscape, KEY_ESC}, {wsBackSpace, KEY_BS},
+    {wsTab, KEY_TAB}, {wsEnter, KEY_ENTER},
 
     // cursor keys
     {wsLeft, KEY_LEFT}, {wsRight, KEY_RIGHT}, {wsUp, KEY_UP}, {wsDown, KEY_DOWN},
@@ -820,7 +821,7 @@ int vo_x11_check_events(Display * mydisplay)
 #ifdef CONFIG_GUI
         if (use_gui)
         {
-            guiGetEvent(0, (char *) &Event);
+            gui(GUI_HANDLE_X_EVENT, &Event);
             if (vo_window != Event.xany.window)
                 continue;
         }

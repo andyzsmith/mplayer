@@ -103,7 +103,6 @@
 int vo_doublebuffering=0;
 int vo_directrendering=0;
 int vo_config_count=1;
-int forced_subs_only=0;
 
 //--------------------------
 
@@ -120,7 +119,6 @@ int dvdsub_id=-1;
 int vobsub_id=-1;
 char* audio_lang=NULL;
 char* dvdsub_lang=NULL;
-static char* spudec_ifo=NULL;
 
 static char** audio_codec_list=NULL;  // override audio codec
 static char** video_codec_list=NULL;  // override video codec
@@ -158,7 +156,7 @@ float playback_speed=1.0;
 static int ovfr=0; // set to 1 if we should encode VFR
 
 static int force_srate=0;
-static int audio_output_format=0;
+static int audio_output_format=AF_FORMAT_UNKNOWN;
 
 char *vobsub_out=NULL;
 unsigned int vobsub_out_index=0;
@@ -229,7 +227,7 @@ m_config_t* mconfig;
 
 static int cfg_inc_verbose(m_option_t *conf){ ++verbose; return 0;}
 
-static int cfg_include(m_option_t *conf, char *filename){
+static int cfg_include(m_option_t *conf, const char *filename){
 	return m_config_parse_config_file(mconfig, filename);
 }
 
@@ -780,6 +778,9 @@ if(sh_audio && (out_audio_codec || seek_to_sec || !sh_audio->wf || playback_spee
     }
   }
 
+  if (vobsub_name)
+    vo_vobsub = vobsub_open(vobsub_name, spudec_ifo, 1, &vo_spudec);
+
 // set up video encoder:
 
 if (!curfile) { // curfile is non zero when a second file is opened
@@ -809,20 +810,8 @@ if (vobsub_out) {
     }
 #endif
 }
-else {
-if (spudec_ifo) {
-  unsigned int palette[16], width, height;
-  if (vobsub_parse_ifo(NULL,spudec_ifo, palette, &width, &height, 1, -1, NULL) >= 0)
-    vo_spudec=spudec_new_scaled(palette, sh_video->disp_w, sh_video->disp_h, NULL, 0);
-}
-#ifdef CONFIG_DVDREAD
-if (vo_spudec==NULL) {
-vo_spudec=spudec_new_scaled(stream->type==STREAMTYPE_DVD?((dvd_priv_t *)(stream->priv))->cur_pgc->palette:NULL,
-                           sh_video->disp_w, sh_video->disp_h, NULL, 0);
-}
-#endif
-if (vo_spudec)
-  spudec_set_forced_subs_only(vo_spudec, forced_subs_only);
+else if (!vo_spudec) {
+init_vo_spudec(stream, sh_video, d_dvdsub ? d_dvdsub->sh : NULL);
 }
 
 ostream = open_output_stream(out_filename, 0);
@@ -847,7 +836,7 @@ muxer->audio_delay_fix = audio_delay_fix;
 
 mux_v=muxer_new_stream(muxer,MUXER_TYPE_VIDEO);
 
-mux_v->buffer_size=0x200000; // 2MB
+mux_v->buffer_size=0x800000; // 8MB
 mux_v->buffer=malloc(mux_v->buffer_size);
 
 mux_v->source=sh_video;
@@ -1073,6 +1062,7 @@ if(!init_audio_filters(sh_audio,
 
 aparams.channels = ao_data.channels;
 aparams.sample_rate = ao_data.samplerate;
+aparams.sample_format = ao_data.format;
 aparams.audio_preload = 1000 * audio_preload;
 if(mux_a->codec != ACODEC_COPY) {
     aencoder = new_audio_encoder(mux_a, &aparams);
@@ -1084,6 +1074,9 @@ if(mux_a->codec != ACODEC_COPY) {
       mp_msg(MSGT_CPLAYER,MSGL_FATAL,MSGTR_NoMatchingFilter);
       mencoder_exit(1,NULL);
     }
+    ao_data.format = aencoder->input_format;
+    ao_data.channels = aparams.channels;
+    ao_data.samplerate = aparams.sample_rate;
 }
 switch(mux_a->codec){
 case ACODEC_COPY:
@@ -1479,7 +1472,8 @@ default:
                       ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE);
     void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
                                        drop_frame, ovfr ? sh_video->pts : MP_NOPTS_VALUE, NULL);
-    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, ovfr ? sh_video->pts : MP_NOPTS_VALUE);}
+    // NOTE: v_muxer_time is not really correct, but it allows -ass to work mostly
+    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, ovfr ? sh_video->pts : v_muxer_time);}
     v_muxer_time = adjusted_muxer_time(mux_v); // update after muxing
 
     if (sh_video->vf_initialized < 0) mencoder_exit(1, NULL);

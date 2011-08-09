@@ -1075,7 +1075,7 @@ static int mp_property_fullscreen(m_option_t *prop, int action, void *arg,
     case M_PROPERTY_STEP_DOWN:
 #ifdef CONFIG_GUI
         if (use_gui)
-            guiGetEvent(guiIEvent, (char *) MP_CMD_VO_FULLSCREEN);
+            gui(GUI_RUN_COMMAND, (void *) MP_CMD_VO_FULLSCREEN);
         else
 #endif
         if (vo_config_count)
@@ -1624,7 +1624,7 @@ static int mp_property_sub(m_option_t *prop, int action, void *arg,
             if (d_sub->sh && d_sub->id >= 0) {
                 sh_sub_t *sh = d_sub->sh;
                 if (sh->type == 'v')
-                    init_vo_spudec();
+                    init_vo_spudec(mpctx->stream, mpctx->sh_video, sh);
 #ifdef CONFIG_ASS
                 else if (ass_enabled)
                     ass_track = sh->ass_track;
@@ -2558,7 +2558,7 @@ static struct mp_eosd_source overlay_source = {
 static void overlay_add(char *file, int id, int x, int y, unsigned col)
 {
     FILE *f;
-    unsigned w, h, bpp, maxval;
+    int w, h, bpp, maxval;
     uint8_t *data;
     struct mp_eosd_image *img;
 
@@ -2801,10 +2801,10 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
                     int i = 0;
                     if (n > 0)
                         for (i = 0; i < n; i++)
-                            mplNext();
+                            gui(GUI_RUN_COMMAND, (void *)MP_CMD_PLAY_TREE_STEP);
                     else
                         for (i = 0; i < -1 * n; i++)
-                            mplPrev();
+                            gui(GUI_RUN_COMMAND, (void *)-MP_CMD_PLAY_TREE_STEP);
                 } else
 #endif
                 {
@@ -2963,6 +2963,12 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
             break;
 
         case MP_CMD_STOP:
+#ifdef CONFIG_GUI
+            // playtree_iter isn't used by the GUI
+            if (use_gui)
+                gui(GUI_RUN_COMMAND, (void *)MP_CMD_STOP);
+            else
+#endif
             // Go back to the starting point.
             while (play_tree_iter_up_step
                    (mpctx->playtree_iter, 0, 1) != PLAY_TREE_ITER_END)

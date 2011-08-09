@@ -65,6 +65,7 @@ static void *ThreadProc(void *s);
 
 #include "stream.h"
 #include "cache2.h"
+#include "mp_global.h"
 
 typedef struct {
   // constats:
@@ -92,6 +93,7 @@ typedef struct {
   volatile int control_res;
   volatile off_t control_new_pos;
   volatile double stream_time_length;
+  volatile double stream_time_pos;
 } cache_vars_t;
 
 static int min_fill=0;
@@ -261,17 +263,22 @@ static int cache_execute_control(cache_vars_t *s) {
   int quit = s->control == -2;
   if (quit || !s->stream->control) {
     s->stream_time_length = 0;
+    s->stream_time_pos = MP_NOPTS_VALUE;
     s->control_new_pos = 0;
     s->control_res = STREAM_UNSUPPORTED;
     s->control = -1;
     return !quit;
   }
   if (GetTimerMS() - last > 99) {
-    double len;
+    double len, pos;
     if (s->stream->control(s->stream, STREAM_CTRL_GET_TIME_LENGTH, &len) == STREAM_OK)
       s->stream_time_length = len;
     else
       s->stream_time_length = 0;
+    if (s->stream->control(s->stream, STREAM_CTRL_GET_CURRENT_TIME, &pos) == STREAM_OK)
+      s->stream_time_pos = pos;
+    else
+      s->stream_time_pos = MP_NOPTS_VALUE;
     last = GetTimerMS();
   }
   if (s->control == -1) return 1;
@@ -361,6 +368,7 @@ void cache_uninit(stream_t *s) {
   s->cache_data = NULL;
 }
 
+#if FORKED_CACHE
 static void exit_sighandler(int x){
   // close stream
   exit(0);
@@ -368,6 +376,7 @@ static void exit_sighandler(int x){
 
 static void dummy_sighandler(int x) {
 }
+#endif
 
 /**
  * Main loop of the cache process or thread.
@@ -375,8 +384,7 @@ static void dummy_sighandler(int x) {
 static void cache_mainloop(cache_vars_t *s) {
     int sleep_count = 0;
 #if FORKED_CACHE
-    struct sigaction sa = { 0 };
-    sa.sa_handler = SIG_IGN;
+    struct sigaction sa = { .sa_handler = SIG_IGN };
     sigaction(SIGUSR1, &sa, NULL);
 #endif
     do {
@@ -583,11 +591,13 @@ int cache_do_control(stream_t *stream, int cmd, void *arg) {
       s->control_uint_arg = *(unsigned *)arg;
       s->control = cmd;
       break;
-// the core might call these every frame, they are too slow for this...
+    // the core might call these every frame, so cache them...
     case STREAM_CTRL_GET_TIME_LENGTH:
-//    case STREAM_CTRL_GET_CURRENT_TIME:
       *(double *)arg = s->stream_time_length;
       return s->stream_time_length ? STREAM_OK : STREAM_UNSUPPORTED;
+    case STREAM_CTRL_GET_CURRENT_TIME:
+      *(double *)arg = s->stream_time_pos;
+      return s->stream_time_pos != MP_NOPTS_VALUE ? STREAM_OK : STREAM_UNSUPPORTED;
     case STREAM_CTRL_GET_NUM_CHAPTERS:
     case STREAM_CTRL_GET_CURRENT_CHAPTER:
     case STREAM_CTRL_GET_ASPECT_RATIO:
@@ -608,6 +618,8 @@ int cache_do_control(stream_t *stream, int cmd, void *arg) {
       return STREAM_UNSUPPORTED;
     }
   }
+  if (s->control_res != STREAM_OK)
+    return s->control_res;
   switch (cmd) {
     case STREAM_CTRL_GET_TIME_LENGTH:
     case STREAM_CTRL_GET_CURRENT_TIME:
@@ -623,8 +635,7 @@ int cache_do_control(stream_t *stream, int cmd, void *arg) {
     case STREAM_CTRL_SEEK_TO_CHAPTER:
     case STREAM_CTRL_SEEK_TO_TIME:
     case STREAM_CTRL_SET_ANGLE:
-      if (s->control_res != STREAM_UNSUPPORTED)
-          stream->pos = s->read_filepos = s->control_new_pos;
+      stream->pos = s->read_filepos = s->control_new_pos;
       break;
   }
   return s->control_res;

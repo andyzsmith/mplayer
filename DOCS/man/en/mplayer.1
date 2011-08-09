@@ -497,8 +497,10 @@ specific one is '~/\:.mplayer/\:config'.
 The configuration file for MEncoder is 'mencoder.conf' in your configuration
 directory (e.g.\& /etc/\:mplayer or /usr/\:local/\:etc/\:mplayer), the
 user specific one is '~/\:.mplayer/\:mencoder.conf'.
-User specific options override system-wide options and options given on the
-command line override either.
+User specific options override system-wide options (in case of
+.BR gmplayer ,
+gui.conf options override user specific options) and options given on the
+command line override all.
 The syntax of the configuration files is 'option=<value>', everything after
 a '#' is considered a comment.
 Options that work without values can be enabled by setting them to 'yes'
@@ -755,7 +757,7 @@ Override the standard search path and use the specified file
 instead of the builtin codecs.conf.
 .
 .TP
-.B \-include <configuration file>
+.B \-include <configuration file> (also see \-gui-include)
 Specify configuration file to be parsed after the default ones.
 .
 .TP
@@ -1033,6 +1035,10 @@ Only works as the first argument on the command line.
 Does not work as a config-file option.
 .
 .TP
+.B \-gui-include <GUI configuration file> (also see \-include) (GUI only)
+Specify a GUI configuration file to be parsed after the default gui.conf.
+.
+.TP
 .B \-h, \-help, \-\-help
 Show short summary of options.
 .
@@ -1085,6 +1091,11 @@ The wrapper script TOOLS/\:midentify.sh suppresses the other MPlayer output and
 Makes MPlayer wait idly instead of quitting when there is no file to play.
 Mostly useful in slave mode where MPlayer can be controlled
 through input commands.
+.br
+For
+.B gmplayer
+\-idle is the default, \-noidle will quit the GUI after all files have been
+played.
 .
 .TP
 .B \-input <commands>
@@ -1656,7 +1667,7 @@ Stop at given time or byte position.
 .I NOTE:
 Byte position may not be accurate, as it can only stop at a frame boundary.
 When used in conjunction with \-ss option, \-endpos time will shift forward by
-seconds specified with \-ss.
+seconds specified with \-ss if not a byte position.
 .sp 1
 .I EXAMPLE:
 .PD 0
@@ -1667,7 +1678,9 @@ Stop at 56 seconds.
 Stop at 1 hour 10 minutes.
 .IPs "\-ss 10 \-endpos 56"
 Stop at 1 minute 6 seconds.
-.IPs "\-endpos 100mb"
+.IPs "mplayer \-endpos 100mb"
+Stop playback after reading 100MB of the input file.
+.IPs "mencoder \-endpos 100mb"
 Encode only 100 MB.
 .RE
 .PD 1
@@ -3467,7 +3480,7 @@ Places the window at the bottom right corner of the screen.
 .PD 1
 .
 .TP
-.B \-guiwid <window ID> (also see \-wid) (GUI only)
+.B \-gui-wid <window ID> (also see \-wid) (GUI only)
 This tells the GUI to also use an X11 window and stick itself to the bottom
 of the video, which is useful to embed a mini-GUI in a browser (with the
 MPlayer plugin for instance).
@@ -3617,7 +3630,7 @@ the new display mode.
 Enables VBI for the vesa, dfbmga and svga video output drivers.
 .
 .TP
-.B \-wid <window ID> (also see \-guiwid) (X11, OpenGL and DirectX only)
+.B \-wid <window ID> (also see \-gui-wid) (X11, OpenGL and DirectX only)
 This tells MPlayer to attach to an existing window.
 Useful to embed MPlayer in a browser (e.g.\& the plugger extension).
 This option fills the given window completely, thus aspect scaling,
@@ -4221,21 +4234,22 @@ Do not do any conversion.
 Select the scaling function to use for luminance scaling.
 Only valid for yuv modes 2, 3, 4 and 6.
 .RSss
-0: Use simple linear filtering (default).
-.br
-1: Use bicubic B-spline filtering (better quality).
+.IPs 0
+Use simple linear filtering (default).
+.IPs 1
+Use bicubic B-spline filtering (better quality).
 Needs one additional texture unit.
 Older cards will not be able to handle this for chroma at least in fullscreen mode.
-.br
-2: Use cubic filtering in horizontal, linear filtering in vertical direction.
+.IPs 2
+Use cubic filtering in horizontal, linear filtering in vertical direction.
 Works on a few more cards than method 1.
-.br
-3: Same as 1 but does not use a lookup texture.
+.IPs 3
+Same as 1 but does not use a lookup texture.
 Might be faster on some cards.
-.br
-4: Use experimental unsharp masking with 3x3 support and a default strength of 0.5 (see filter-strength).
-.br
-5: Use experimental unsharp masking with 5x5 support and a default strength of 0.5 (see filter-strength).
+.IPs 4
+Use experimental unsharp masking with 3x3 support and a default strength of 0.5 (see filter-strength).
+.IPs 5
+Use experimental unsharp masking with 5x5 support and a default strength of 0.5 (see filter-strength).
 .RE
 .IPs cscale=<n>
 Select the scaling function to use for chrominance scaling.
@@ -4244,16 +4258,17 @@ For details see lscale.
 Set the effect strength for the lscale/cscale filters that support it.
 .IPs stereo=<value>
 Select a method for stereo display.
-You may have to use -aspect to fix the aspect value.
+You may have to use \-aspect to fix the aspect value.
 Experimental, do not expect too much from it.
 .RSss
-0: Normal 2D display
-.br
-1: left-right split input to full-color red-cyan stereo.
-.br
-2: left-right split input to full-color red-cyan stereo.
-.br
-3: left-right split input to quadbuffered stereo.
+.IPs 0
+normal 2D display
+.IPs 1
+Convert side by side input to full-color red-cyan stereo.
+.IPs 2
+Convert side by side input to full-color green-magenta stereo.
+.IPs 3
+Convert side by side input to quadbuffered stereo.
 Only supported by very few OpenGL cards.
 .RE
 .RE
@@ -4779,8 +4794,8 @@ Output video into an animated MNG file using 24 bpp RGB images
 with lossless compression.
 .PD 0
 .RSs
-.IPs <output>
-Specify the output filename (mandatory).
+.IPs output=<filename>
+Specify the output filename (default: out.mng).
 .REss
 .PD 1
 .RS
@@ -4789,7 +4804,7 @@ Specify the output filename (mandatory).
 .RE
 .PD 0
 .RSs
-mplayer video.mkv \-vo mng:output.mng
+mplayer video.mkv \-vo mng:output=test.mng
 .RE
 .PD 1
 .
@@ -7828,6 +7843,14 @@ side by side parallel (left eye left, right eye right)
 .RS
 side by side crosseye (right eye left, left eye right)
 .RE
+.B sbs2l or side_by_side_half_width_left_first
+.RS
+side by side with half width resolution (left eye left, right eye right)
+.RE
+.B sbs2r or side_by_side_half_width_right_first
+.RS
+side by side with half width resolution (right eye left, left eye right)
+.RE
 .B abl or above_below_left_first
 .RS
 above-below (left eye above, right eye below)
@@ -7896,6 +7919,14 @@ right eye)
 anaglyph yellow/blue colored (yellow filter on left eye, blue filter on right
 eye)
 .RE
+.B irl or interleave_rows_left_first
+.RS
+Interleaved rows (left eye has top row, right eye starts on next row)
+.RE
+.B irr or interleave_rows_right_first
+.RS
+Interleaved rows (right eye has top row, left eye starts on next row)
+.RE
 .B ml or mono_left
 .RS
 mono output (left eye only)
@@ -7905,6 +7936,13 @@ mono output (left eye only)
 mono output (right eye only)
 .RE
 .RE
+.I NOTE:
+To use either of the interleaved-rows output formats to display
+full-screen on a row-interleaved 3D display, you will need to scale the
+video to the correct height first using the "scale" filter, if it is not
+already the right height.  Typically, that is 1080 rows (so use e.g.
+"-vf scale=1440:1080,stereo3d=sbsl:irl" for a 720p side-by-side encoded
+movie).
 .RE
 .PD 1
 .
@@ -10731,7 +10769,7 @@ Controls the decision performed by b_adapt.
 A higher b_bias produces more B-frames (default: 0).
 .
 .TP
-.B (no)b_pyramid
+.B b_pyramid=<normal|strict|none>
 Allows B-frames to be used as references for predicting other frames.
 For example, consider 3 consecutive B-frames: I0 B1 B2 B3 P4.
 Without this option, B-frames follow the same pattern as MPEG-[124].
@@ -10746,6 +10784,17 @@ However, this is an experimental option: it is not fully tuned and
 may not always help.
 Requires bframes >= 2.
 Disadvantage: increases decoding delay to 2 frames.
+.PD 0
+.RSs
+.IPs normal
+Allow B-frames as references as described above (not Blu-ray compatible).
+.IPs strict
+Disallow P-frames referencing B-frames. Gives worse compression, but is
+required for Blu-ray compatibility.
+.IPs "none\ "
+Disable using B-frames as references.
+.RE
+.PD 1
 .
 .TP
 .B (no)deblock
