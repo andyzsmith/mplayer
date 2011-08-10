@@ -44,7 +44,6 @@
 #include "libmpcodecs/dec_audio.h"
 #include "libmpcodecs/dec_video.h"
 #include "libmpcodecs/dec_teletext.h"
-#include "libmpcodecs/vd_ffmpeg.h"
 
 #ifdef CONFIG_ASS
 #include "libass/ass.h"
@@ -56,6 +55,7 @@
 #if MP_INPUT_BUFFER_PADDING_SIZE < FF_INPUT_BUFFER_PADDING_SIZE
 #error MP_INPUT_BUFFER_PADDING_SIZE is too small!
 #endif
+#include "av_helpers.h"
 #endif
 
 // This is quite experimental, in particular it will mess up the pts values
@@ -477,6 +477,9 @@ static void allocate_parser(AVCodecContext **avctx, AVCodecParserContext **parse
     init_avcodec();
 
     switch (format) {
+    case MKTAG('M', 'P', '4', 'A'):
+        codec_id = CODEC_ID_AAC;
+        break;
     case MKTAG('M', 'P', '4', 'L'):
         codec_id = CODEC_ID_AAC_LATM;
         break;
