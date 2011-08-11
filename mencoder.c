@@ -1473,7 +1473,7 @@ default:
     void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
                                        drop_frame, ovfr ? sh_video->pts : MP_NOPTS_VALUE, NULL);
     // NOTE: v_muxer_time is not really correct, but it allows -ass to work mostly
-    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, ovfr ? sh_video->pts : v_muxer_time);}
+    blit_frame = decoded_frame && filter_video(sh_video, decoded_frame, ovfr ? sh_video->pts : MP_NOPTS_VALUE);}
     v_muxer_time = adjusted_muxer_time(mux_v); // update after muxing
 
     if (sh_video->vf_initialized < 0) mencoder_exit(1, NULL);
