@@ -108,17 +108,24 @@ static void guiInfoMediumClear (int what)
   if (what & CLEAR_FILE)
   {
     nfree(guiInfo.Filename);
-    nfree(guiInfo.Subtitlename);
-    nfree(guiInfo.AudioFile);
+    nfree(guiInfo.SubtitleFilename);
+    nfree(guiInfo.AudioFilename);
     listSet(gtkDelPl, NULL);
   }
 
 #ifdef CONFIG_DVDREAD
-  if (what & CLEAR_DVD) memset(&guiInfo.DVD, 0, sizeof(guiDVDStruct));
+  if (what & CLEAR_DVD)
+  {
+    guiInfo.AudioStreams = 0;
+    guiInfo.Subtitles = 0;
+    guiInfo.Tracks = 0;
+    guiInfo.Chapters = 0;
+    guiInfo.Angles = 0;
+  }
 #endif
 
 #ifdef CONFIG_VCD
-  if (what & CLEAR_VCD) guiInfo.VCDTracks = 0;
+  if (what & CLEAR_VCD) guiInfo.Tracks = 0;
 #endif
 }
 
@@ -137,8 +144,8 @@ void uiEventHandling( int msg,float param )
         break;
 
    case evPlayNetwork:
-        nfree( guiInfo.Subtitlename );
-	nfree( guiInfo.AudioFile );
+        nfree( guiInfo.SubtitleFilename );
+	nfree( guiInfo.AudioFilename );
 	guiInfo.StreamType=STREAMTYPE_STREAM;
         goto play;
    case evSetURL:
@@ -169,9 +176,9 @@ void uiEventHandling( int msg,float param )
 #endif
 #ifdef CONFIG_DVDREAD
    case evPlayDVD:
-        guiInfo.DVD.current_title=1;
-        guiInfo.DVD.current_chapter=1;
-        guiInfo.DVD.current_angle=1;
+        guiInfo.Track=1;
+        guiInfo.Chapter=1;
+        guiInfo.Angle=1;
 play_dvd_2:
  	guiInfoMediumClear( CLEAR_ALL - CLEAR_DVD );
         guiInfo.StreamType=STREAMTYPE_DVD;
@@ -195,6 +202,9 @@ play:
 	  case STREAMTYPE_STREAM:
 	  case STREAMTYPE_FILE:
 	       guiInfoMediumClear( CLEAR_ALL - CLEAR_FILE );
+	       if ( !guiInfo.Track )
+	         guiInfo.Track=1;
+	       guiInfo.NewPlay=GUI_FILE_NEW;
 	       break;
 #ifdef CONFIG_VCD
           case STREAMTYPE_VCD:
@@ -205,7 +215,7 @@ play:
 	        {
 		 if ( !guiInfo.Track )
                    guiInfo.Track=2;
-                 guiInfo.DiskChanged=1;
+                 guiInfo.NewPlay=GUI_FILE_SAME;
 		}
 	       break;
 #endif
@@ -216,15 +226,11 @@ play:
 	       uiSetFileName( NULL,dvd_device,STREAMTYPE_DVD );
 	       if ( guiInfo.Playing != GUI_PAUSE )
 	        {
-		 guiInfo.Title=guiInfo.DVD.current_title;
-		 guiInfo.Chapter=guiInfo.DVD.current_chapter;
-		 guiInfo.Angle=guiInfo.DVD.current_angle;
-                 guiInfo.DiskChanged=1;
+                 guiInfo.NewPlay=GUI_FILE_SAME;
 		}
                break;
 #endif
          }
-	guiInfo.NewPlay=1;
         uiPlay();
         break;
 #ifdef CONFIG_DVDREAD
@@ -237,13 +243,13 @@ play:
         goto play_dvd_2;
         break;
    case evSetDVDChapter:
-        guiInfo.DVD.current_chapter=iparam;
+        guiInfo.Chapter=iparam;
         goto play_dvd_2;
         break;
    case evSetDVDTitle:
-        guiInfo.DVD.current_title=iparam;
-	guiInfo.DVD.current_chapter=1;
-	guiInfo.DVD.current_angle=1;
+        guiInfo.Track=iparam;
+	guiInfo.Chapter=1;
+	guiInfo.Angle=1;
         goto play_dvd_2;
         break;
 #endif
@@ -257,7 +263,7 @@ NoPause:
    case evStop:
 	guiInfo.Playing=GUI_STOP;
 	uiState();
-	guiInfo.MovieWindow=True;
+	guiInfo.VideoWindow=True;
 	break;
 
    case evLoadPlay:
@@ -269,7 +275,7 @@ NoPause:
         break;
    case evLoadSubtitle:  gtkShow( evLoadSubtitle,NULL );  break;
    case evDropSubtitle:
-	nfree( guiInfo.Subtitlename );
+	nfree( guiInfo.SubtitleFilename );
 	mplayerLoadSubtitle( NULL );
 	break;
    case evLoadAudioFile: gtkShow( evLoadAudioFile,NULL ); break;
@@ -333,10 +339,10 @@ set_volume:
            {
             uiFullScreen();
            }
-          wsResizeWindow( &guiApp.subWindow, guiInfo.MovieWidth / 2, guiInfo.MovieHeight / 2 );
+          wsResizeWindow( &guiApp.subWindow, guiInfo.VideoWidth / 2, guiInfo.VideoHeight / 2 );
           wsMoveWindow( &guiApp.subWindow, False,
-                        ( wsMaxX - guiInfo.MovieWidth/2  )/2 + wsOrgX,
-                        ( wsMaxY - guiInfo.MovieHeight/2 )/2 + wsOrgY  );
+                        ( wsMaxX - guiInfo.VideoWidth/2  )/2 + wsOrgX,
+                        ( wsMaxY - guiInfo.VideoHeight/2 )/2 + wsOrgY  );
          }
         break;
    case evDoubleSize:
@@ -347,10 +353,10 @@ set_volume:
            {
             uiFullScreen();
            }
-          wsResizeWindow( &guiApp.subWindow, guiInfo.MovieWidth * 2, guiInfo.MovieHeight * 2 );
+          wsResizeWindow( &guiApp.subWindow, guiInfo.VideoWidth * 2, guiInfo.VideoHeight * 2 );
           wsMoveWindow( &guiApp.subWindow, False,
-                        ( wsMaxX - guiInfo.MovieWidth*2  )/2 + wsOrgX,
-                        ( wsMaxY - guiInfo.MovieHeight*2 )/2 + wsOrgY  );
+                        ( wsMaxX - guiInfo.VideoWidth*2  )/2 + wsOrgX,
+                        ( wsMaxY - guiInfo.VideoHeight*2 )/2 + wsOrgY  );
          }
         break;
    case evNormalSize:
@@ -361,10 +367,10 @@ set_volume:
            {
             uiFullScreen();
            }
-          wsResizeWindow( &guiApp.subWindow, guiInfo.MovieWidth, guiInfo.MovieHeight );
+          wsResizeWindow( &guiApp.subWindow, guiInfo.VideoWidth, guiInfo.VideoHeight );
           wsMoveWindow( &guiApp.subWindow, False,
-                        ( wsMaxX - guiInfo.MovieWidth  )/2 + wsOrgX,
-                        ( wsMaxY - guiInfo.MovieHeight )/2 + wsOrgY  );
+                        ( wsMaxX - guiInfo.VideoWidth  )/2 + wsOrgX,
+                        ( wsMaxY - guiInfo.VideoHeight )/2 + wsOrgY  );
 	  break;
          } else if ( !guiApp.subWindow.isFullScreen ) break;
    case evFullScreen:
@@ -388,7 +394,7 @@ set_volume:
 	if ( guiInfo.StreamType == STREAMTYPE_DVD || guiInfo.StreamType == STREAMTYPE_VCD ) goto play_dvd_2;
 	 else
 #endif
-	 guiInfo.NewPlay=1;
+	 guiInfo.NewPlay=GUI_FILE_NEW;
 	break;
 
 // --- timer events
@@ -657,8 +663,8 @@ void uiDandDHandler(int num,char** files)
     uiEventHandling( evPlay,0 );
   }
   if (subtitles) {
-    nfree(guiInfo.Subtitlename);
-    guiInfo.Subtitlename = subtitles;
-    mplayerLoadSubtitle(guiInfo.Subtitlename);
+    nfree(guiInfo.SubtitleFilename);
+    guiInfo.SubtitleFilename = subtitles;
+    mplayerLoadSubtitle(guiInfo.SubtitleFilename);
   }
 }

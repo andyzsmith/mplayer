@@ -145,24 +145,6 @@ int enable_mouse_movements;
 float start_volume = -1;
 double start_pts   = MP_NOPTS_VALUE;
 char *heartbeat_cmd;
-
-m_config_t *mconfig;
-
-//**************************************************************************//
-//             Config file
-//**************************************************************************//
-
-static int cfg_inc_verbose(m_option_t *conf)
-{
-    ++verbose;
-    return 0;
-}
-
-static int cfg_include(m_option_t *conf, const char *filename)
-{
-    return m_config_parse_config_file(mconfig, filename);
-}
-
 static int max_framesize;
 
 int noconsolecontrols;
@@ -2038,9 +2020,9 @@ static void mp_dvdnav_save_smpi(int in_size,
     mpctx->nav_in_size = -1;
 
     if (in_size > 0)
-    mpctx->nav_buffer  = malloc(in_size);
+        mpctx->nav_buffer = malloc(in_size);
     if (mpctx->nav_buffer) {
-    mpctx->nav_start   = start;
+        mpctx->nav_start   = start;
         mpctx->nav_in_size = in_size;
         memcpy(mpctx->nav_buffer, start, in_size);
     }
@@ -2763,8 +2745,6 @@ int main(int argc, char *argv[])
     int opt_exit = 0; // Flag indicating whether MPlayer should exit without playing anything.
     int i;
 
-    int gui_no_filename = 0;
-
     common_preinit();
 
     // Create the config context and register the options
@@ -2920,14 +2900,10 @@ int main(int argc, char *argv[])
     if (opt_exit)
         exit_player(EXIT_NONE);
 
-    if (!filename) {
-        if (use_gui)
-            gui_no_filename = 1;
-        else if (!player_idle_mode) {
-            // no file/vcd/dvd -> show HELP:
-            mp_msg(MSGT_CPLAYER, MSGL_INFO, help_text);
-            exit_player_with_rc(EXIT_NONE, 0);
-        }
+    if (!filename && !player_idle_mode && !use_gui) {
+        // no file/vcd/dvd -> show HELP:
+        mp_msg(MSGT_CPLAYER, MSGL_INFO, help_text);
+        exit_player_with_rc(EXIT_NONE, 0);
     }
 
     /* Display what configure line was used */
@@ -3052,7 +3028,7 @@ int main(int argc, char *argv[])
     if (use_gui) {
         guiInit();
         gui(GUI_SET_CONTEXT, mpctx);
-        gui(GUI_SET_STATE, (void *)(gui_no_filename ? GUI_STOP : GUI_PLAY));
+        gui(GUI_SET_STATE, (void *)(filename ? GUI_PLAY : GUI_STOP));
     }
 #endif
 
@@ -3991,22 +3967,22 @@ goto_enable_cache:
                     guiInfo.Position = demuxer_get_percent_pos(mpctx->demuxer);
                 }
                 if (mpctx->sh_video)
-                    guiInfo.TimeSec = mpctx->sh_video->pts;
+                    guiInfo.ElapsedTime = mpctx->sh_video->pts;
                 else if (mpctx->sh_audio)
-                    guiInfo.TimeSec = playing_audio_pts(mpctx->sh_audio, mpctx->d_audio, mpctx->audio_out);
-                guiInfo.LengthInSec = demuxer_get_time_length(mpctx->demuxer);
+                    guiInfo.ElapsedTime = playing_audio_pts(mpctx->sh_audio, mpctx->d_audio, mpctx->audio_out);
+                guiInfo.RunningTime = demuxer_get_time_length(mpctx->demuxer);
                 gui(GUI_SET_MIXER, 0);
                 gui(GUI_REDRAW, 0);
                 if (guiInfo.Playing == GUI_STOP)
                     break;                  // STOP
                 if (guiInfo.Playing == GUI_PAUSE)
                     mpctx->osd_function = OSD_PAUSE;
-                if (guiInfo.DiskChanged || guiInfo.NewPlay)
+                if (guiInfo.NewPlay)
                     goto goto_next_file;
 #ifdef CONFIG_DVDREAD
                 if (mpctx->stream->type == STREAMTYPE_DVD) {
                     dvd_priv_t *dvdp = mpctx->stream->priv;
-                    guiInfo.DVD.current_chapter = dvd_chapter_from_cell(dvdp, guiInfo.DVD.current_title - 1, dvdp->cur_cell) + 1;
+                    guiInfo.Chapter = dvd_chapter_from_cell(dvdp, guiInfo.Track - 1, dvdp->cur_cell) + 1;
                 }
 #endif
             }
@@ -4099,12 +4075,9 @@ goto_next_file:  // don't jump here after ao/vo/getch initialization!
     }
 
 #ifdef CONFIG_GUI
-    if (use_gui && !mpctx->playtree_iter) {
-#ifdef CONFIG_DVDREAD
-        if (!guiInfo.DiskChanged)
-#endif
-        gui(GUI_END_FILE, 0);
-    }
+    if (use_gui)
+        if (guiInfo.NewPlay != GUI_FILE_SAME)
+            gui(GUI_END_FILE, 0);
 #endif
 
     if (

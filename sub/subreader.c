@@ -263,9 +263,9 @@ static subtitle *sub_read_line_sami(stream_t* st, subtitle *current, int utf16) 
 }
 
 
-static char *sub_readtext(char *source, char **dest) {
+static const char *sub_readtext(const char *source, char **dest) {
     int len=0;
-    char *p=source;
+    const char *p=source;
 
 //    printf("src=%p  dest=%p  \n",source,dest);
 
@@ -285,11 +285,26 @@ static char *sub_readtext(char *source, char **dest) {
     else return NULL;  // last text field
 }
 
+static subtitle *set_multiline_text(subtitle *current, const char *text, int start)
+{
+    int i = start;
+    while ((text = sub_readtext(text, current->text + i))) {
+        if (current->text[i] == ERR) return ERR;
+        i++;
+        if (i >= SUB_MAX_TEXT) {
+            mp_msg(MSGT_SUBREADER, MSGL_WARN, "Too many lines in a subtitle\n");
+            current->lines = i;
+            return current;
+        }
+    }
+    current->lines = i + 1;
+    return current;
+}
+
 static subtitle *sub_read_line_microdvd(stream_t *st,subtitle *current, int utf16) {
     char line[LINE_LEN+1];
     char line2[LINE_LEN+1];
-    char *p, *next;
-    int i;
+    char *p;
 
     do {
 	if (!stream_read_line (st, line, LINE_LEN, utf16)) return NULL;
@@ -308,22 +323,12 @@ static subtitle *sub_read_line_microdvd(stream_t *st,subtitle *current, int utf1
 #endif
         p = line2;
 
-    next=p, i=0;
-    while ((next =sub_readtext (next, &(current->text[i])))) {
-        if (current->text[i]==ERR) {return ERR;}
-	i++;
-	if (i>=SUB_MAX_TEXT) { mp_msg(MSGT_SUBREADER,MSGL_WARN,"Too many lines in a subtitle\n");current->lines=i;return current;}
-    }
-    current->lines= ++i;
-
-    return current;
+    return set_multiline_text(current, p, 0);
 }
 
 static subtitle *sub_read_line_mpl2(stream_t *st,subtitle *current, int utf16) {
     char line[LINE_LEN+1];
     char line2[LINE_LEN+1];
-    char *p, *next;
-    int i;
 
     do {
 	if (!stream_read_line (st, line, LINE_LEN, utf16)) return NULL;
@@ -332,17 +337,8 @@ static subtitle *sub_read_line_mpl2(stream_t *st,subtitle *current, int utf16) {
 		      &(current->start), &(current->end), line2) < 3));
     current->start *= 10;
     current->end *= 10;
-    p=line2;
 
-    next=p, i=0;
-    while ((next =sub_readtext (next, &(current->text[i])))) {
-        if (current->text[i]==ERR) {return ERR;}
-	i++;
-	if (i>=SUB_MAX_TEXT) { mp_msg(MSGT_SUBREADER,MSGL_WARN,"Too many lines in a subtitle\n");current->lines=i;return current;}
-    }
-    current->lines= ++i;
-
-    return current;
+    return set_multiline_text(current, line2, 0);
 }
 
 static subtitle *sub_read_line_subrip(stream_t* st, subtitle *current, int utf16) {
@@ -525,8 +521,8 @@ static subtitle *sub_read_line_subviewer2(stream_t *st,subtitle *current, int ut
 static subtitle *sub_read_line_vplayer(stream_t *st,subtitle *current, int utf16) {
 	char line[LINE_LEN+1];
 	int a1,a2,a3;
-	char *p=NULL, *next,separator;
-	int i,len,plen;
+	char *p=NULL, separator;
+	int len,plen;
 
 	while (!current->text[0]) {
 		if (!stream_read_line (st, line, LINE_LEN, utf16)) return NULL;
@@ -553,19 +549,40 @@ static subtitle *sub_read_line_vplayer(stream_t *st,subtitle *current, int utf16
                 // colon! look, what simple it can be:
                 p = &line[ plen ];
 
- 		i=0;
 		if (*p!='|') {
 			//
-			next = p,i=0;
-			while ((next =sub_readtext (next, &(current->text[i])))) {
-				if (current->text[i]==ERR) {return ERR;}
-				i++;
-				if (i>=SUB_MAX_TEXT) { mp_msg(MSGT_SUBREADER,MSGL_WARN,"Too many lines in a subtitle\n");current->lines=i;return current;}
-			}
-			current->lines=i+1;
+                        return set_multiline_text(current, p, 0);
 		}
 	}
 	return current;
+}
+
+static subtitle *sub_read_line_google(stream_t *st, subtitle *current, int utf16)
+{
+    uint8_t part[LINE_LEN+1];
+    uint8_t *p;
+    double start, duration;
+    do {
+        if (!stream_read_until(st, part, LINE_LEN, '>', utf16)) return NULL;
+    } while (sscanf(part, "<text start=\"%lf\" dur=\"%lf\"", &start, &duration) != 2);
+
+    current->start = start * 100;
+    current->end = current->start + duration * 100;
+
+    // find start of end tag
+    if (!stream_read_until(st, part, LINE_LEN, '<', utf16)) return NULL;
+
+    // discard end tag opening
+    p = strchr(part, '<');
+    if (p) *p = 0;
+
+    // This is the actual text.
+    if (set_multiline_text(current, part, 0) == ERR)
+        return ERR;
+
+    // discard rest of closing tag
+    if (!stream_read_until(st, part, LINE_LEN, '>', utf16)) return NULL;
+    return current;
 }
 
 static subtitle *sub_read_line_rt(stream_t *st,subtitle *current, int utf16) {
@@ -575,7 +592,7 @@ static subtitle *sub_read_line_rt(stream_t *st,subtitle *current, int utf16) {
     char line[LINE_LEN+1];
     int a1,a2,a3,a4,b1,b2,b3,b4;
     char *p=NULL,*next=NULL;
-    int i,len,plen;
+    int len,plen;
 
     while (!current->text[0]) {
 	if (!stream_read_line (st, line, LINE_LEN, utf16)) return NULL;
@@ -602,18 +619,13 @@ static subtitle *sub_read_line_rt(stream_t *st,subtitle *current, int utf16) {
 	current->end   = b1*360000+b2*6000+b3*100+b4/10;
 	if (b1 == 0 && b2 == 0 && b3 == 0 && b4 == 0)
 	  current->end = current->start+200;
-	p=line;	p+=plen;i=0;
+	p=line;	p+=plen;
 	// TODO: I don't know what kind of convention is here for marking multiline subs, maybe <br/> like in xml?
 	next = strstr(line,"<clear/>");
 	if(next && strlen(next)>8){
-	  next+=8;i=0;
-	  while ((next =sub_readtext (next, &(current->text[i])))) {
-		if (current->text[i]==ERR) {return ERR;}
-		i++;
-		if (i>=SUB_MAX_TEXT) { mp_msg(MSGT_SUBREADER,MSGL_WARN,"Too many lines in a subtitle\n");current->lines=i;return current;}
-	  }
+	  next+=8;
+          return set_multiline_text(current, next, 0);
 	}
-			current->lines=i+1;
     }
     return current;
 }
@@ -805,9 +817,8 @@ subtitle *previous_aqt_sub = NULL;
 
 static subtitle *sub_read_line_aqt(stream_t *st,subtitle *current, int utf16) {
     char line[LINE_LEN+1];
-    char *next;
-    int i;
 
+retry:
     while (1) {
     // try to locate next subtitle
         if (!stream_read_line (st, line, LINE_LEN, utf16))
@@ -817,6 +828,7 @@ static subtitle *sub_read_line_aqt(stream_t *st,subtitle *current, int utf16) {
     }
 
 #ifdef CONFIG_SORTSUB
+    if (!previous_sub_end)
     previous_sub_end = (current->start) ? current->start - 1 : 0;
 #else
     if (previous_aqt_sub != NULL)
@@ -835,22 +847,15 @@ static subtitle *sub_read_line_aqt(stream_t *st,subtitle *current, int utf16) {
     if (!stream_read_line (st, line, LINE_LEN, utf16))
 	return current;
 
-    next = line,i=1;
-    while ((next =sub_readtext (next, &(current->text[i])))) {
-	if (current->text[i]==ERR) {return ERR;}
-	i++;
-	if (i>=SUB_MAX_TEXT) { mp_msg(MSGT_SUBREADER,MSGL_WARN,"Too many lines in a subtitle\n");current->lines=i;return current;}
-	}
-    current->lines=i+1;
+    if (set_multiline_text(current, line, 1) == ERR)
+        return ERR;
 
     if (!strlen(current->text[0]) && !strlen(current->text[1])) {
-#ifdef CONFIG_SORTSUB
-	previous_sub_end = 0;
-#else
+#ifndef CONFIG_SORTSUB
 	// void subtitle -> end of previous marked and exit
 	previous_aqt_sub = NULL;
 #endif
-	return NULL;
+	goto retry;
 	}
 
     return current;
@@ -863,9 +868,9 @@ subtitle *previous_subrip09_sub = NULL;
 static subtitle *sub_read_line_subrip09(stream_t *st,subtitle *current, int utf16) {
     char line[LINE_LEN+1];
     int a1,a2,a3;
-    char * next=NULL;
-    int i,len;
+    int len;
 
+retry:
     while (1) {
     // try to locate next subtitle
         if (!stream_read_line (st, line, LINE_LEN, utf16))
@@ -877,6 +882,7 @@ static subtitle *sub_read_line_subrip09(stream_t *st,subtitle *current, int utf1
     current->start = a1*360000+a2*6000+a3*100;
 
 #ifdef CONFIG_SORTSUB
+    if (!previous_sub_end)
     previous_sub_end = (current->start) ? current->start - 1 : 0;
 #else
     if (previous_subrip09_sub != NULL)
@@ -888,25 +894,17 @@ static subtitle *sub_read_line_subrip09(stream_t *st,subtitle *current, int utf1
     if (!stream_read_line (st, line, LINE_LEN, utf16))
 	return NULL;
 
-    next = line,i=0;
-
     current->text[0]=""; // just to be sure that string is clear
 
-    while ((next =sub_readtext (next, &(current->text[i])))) {
-	if (current->text[i]==ERR) {return ERR;}
-	i++;
-	if (i>=SUB_MAX_TEXT) { mp_msg(MSGT_SUBREADER,MSGL_WARN,"Too many lines in a subtitle\n");current->lines=i;return current;}
-	}
-    current->lines=i+1;
+    if (set_multiline_text(current, line, 0) == ERR)
+        return ERR;
 
-    if (!strlen(current->text[0]) && (i==0)) {
-#ifdef CONFIG_SORTSUB
-	previous_sub_end = 0;
-#else
+    if (!strlen(current->text[0]) && current->lines <= 1) {
+#ifndef CONFIG_SORTSUB
 	// void subtitle -> end of previous marked and exit
 	previous_subrip09_sub = NULL;
 #endif
-	return NULL;
+	goto retry;
 	}
 
     return current;
@@ -1149,6 +1147,8 @@ static int sub_autodetect (stream_t* st, int *uses_time, int utf16) {
 		{*uses_time=0; return SUB_AQTITLE;}
 	if (sscanf (line, "[%d:%d:%d]", &i, &i, &i)==3)
 		{*uses_time=1;return SUB_SUBRIP09;}
+	if (strstr (line, "<?xml version=\"1.0\" encoding=\"utf-8\" ?><transcript>"))
+		{*uses_time=1; return SUB_GOOGLE;}
     }
 
     return SUB_INVALID;  // too many bad lines
@@ -1451,7 +1451,8 @@ sub_data* sub_read_file (const char *filename, float fps) {
 	    { sub_read_line_subviewer2, NULL, "subviewer 2.0" },
 	    { sub_read_line_subrip09, NULL, "subrip 0.9" },
 	    { sub_read_line_jacosub, NULL, "jacosub" },
-	    { sub_read_line_mpl2, NULL, "mpl2" }
+	    { sub_read_line_mpl2, NULL, "mpl2" },
+	    { sub_read_line_google, NULL, "google" },
     };
     const struct subreader *srp;
 

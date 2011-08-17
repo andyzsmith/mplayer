@@ -37,6 +37,7 @@ extern int use_gui;             // this is defined in mplayer.c
 
 #define GMPlayer "gmplayer"
 
+// gui() instructions
 enum {
     GUI_END_FILE,
     GUI_HANDLE_EVENTS,
@@ -55,10 +56,16 @@ enum {
     GUI_SET_VIDEO
 };
 
+// Playing states
 #define GUI_STOP  0
 #define GUI_PLAY  1
 #define GUI_PAUSE 2
 
+// NewPlay reasons
+#define GUI_FILE_SAME 1
+#define GUI_FILE_NEW  2
+
+// mplayer() instructions
 enum {
     MPLAYER_EXIT_GUI,
     MPLAYER_SET_AUTO_QUALITY,
@@ -80,59 +87,52 @@ enum {
 };
 
 typedef struct {
-    int titles;
-    int chapters;
-    int angles;
-    int current_chapter;
-    int current_title;
-    int current_angle;
-    int nr_of_audio_channels;
-    stream_language_t audio_streams[32];
-    int nr_of_subtitles;
-    stream_language_t subtitles[32];
-} guiDVDStruct;
-
-typedef struct {
     MPContext *mpcontext;
     sh_video_t *sh_video;
     af_stream_t *afilter;
 
-    int DiskChanged;
-    int NewPlay;
+    int VideoWidth;
+    int VideoHeight;
+    int VideoWindow;
+
+    int StreamType;           // public, read access by MPlayer
+    int AudioChannels;
 
 #ifdef CONFIG_DVDREAD
-    guiDVDStruct DVD;
-    int Title;
+    int AudioStreams;
+    stream_language_t AudioStream[32];
+
+    int Subtitles;
+    stream_language_t Subtitle[32];
+#endif
+
+    char *Filename;           // public, read access by MPlayer
+    char *AudioFilename;
+    char *SubtitleFilename;
+
+#if defined(CONFIG_VCD) || defined(CONFIG_DVDREAD)
+    int Tracks;
+#endif
+
+    int Track;                // public, read access by MPlayer
+
+#ifdef CONFIG_DVDREAD
+    int Chapters;
+    int Chapter;              // public, write access by MPlayer
+    int Angles;
     int Angle;
-    int Chapter;
 #endif
 
-#ifdef CONFIG_VCD
-    int VCDTracks;
-#endif
+    int Playing;              // public, read access by MPlayer
 
-    int Playing;
-    float Position;
-
-    int MovieWidth;
-    int MovieHeight;
-    int MovieWindow;
+    int RunningTime;          // public, write access by MPlayer
+    int ElapsedTime;          // public, write access by MPlayer
+    float Position;           // public, write access by MPlayer
 
     float Volume;
     float Balance;
 
-    int Track;
-    int AudioChannels;
-    int StreamType;
-    int TimeSec;
-    int LengthInSec;
-
-    char *Filename;
-    int FilenameChanged;
-
-    char *Subtitlename;
-
-    char *AudioFile;
+    int NewPlay;              // public, read access by MPlayer
 } guiInterface_t;
 
 extern guiInterface_t guiInfo;

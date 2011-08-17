@@ -57,8 +57,8 @@
 #endif
 
 guiInterface_t guiInfo = {
+    .VideoWindow = True,
     .StreamType  = STREAMTYPE_DUMMY,
-    .MovieWindow = True,
     .Balance     = 50.0f
 };
 
@@ -273,7 +273,7 @@ void guiInit(void)
         uiSetFileName(plCurrent->path, plCurrent->name, STREAMTYPE_FILE);
 
     if (subdata)
-        setdup(&guiInfo.Subtitlename, subdata->filename);
+        setdup(&guiInfo.SubtitleFilename, subdata->filename);
 
     mplayerLoadFont();
 
@@ -382,15 +382,16 @@ int gui(int what, void *data)
 
     case GUI_SET_FILE:
 
-// if ( guiInfo.Playing == 1 && guiInfo.FilenameChanged )
-        if (guiInfo.FilenameChanged) {
+// if ( guiInfo.Playing == 1 && guiInfo.NewPlay == GUI_FILE_NEW )
+        if (guiInfo.NewPlay == GUI_FILE_NEW) {
+            dvd_title = 0;
             audio_id  = -1;
             video_id  = -1;
             dvdsub_id = -1;
             vobsub_id = -1;
+
             stream_cache_size = -1;
             autosync  = 0;
-            dvd_title = 0;
             force_fps = 0;
         }
 
@@ -400,7 +401,7 @@ int gui(int what, void *data)
         break;
 
     case GUI_HANDLE_EVENTS:
-        if (!guiInfo.Playing || !guiInfo.MovieWindow)
+        if (!guiInfo.Playing || !guiInfo.VideoWindow)
             wsHandleEvents();
         gtkEventHandling();
         break;
@@ -457,7 +458,7 @@ int gui(int what, void *data)
         {
             char tmp[512];
 
-            sprintf(tmp, "dvd://%d", guiInfo.Title);
+            sprintf(tmp, "dvd://%d", guiInfo.Track);
             setdup(&guiInfo.Filename, tmp);
         }
 
@@ -497,12 +498,12 @@ int gui(int what, void *data)
         {
             int i = 0;
 
-            guiInfo.MovieWindow = True;
+            guiInfo.VideoWindow = True;
 
             while (video_out_drivers[i++]) {
                 if (video_out_drivers[i - 1]->control(VOCTRL_GUISUPPORT, NULL) == VO_TRUE) {
                     if ((video_driver_list && !gstrcmp(video_driver_list[0], (char *)video_out_drivers[i - 1]->info->short_name)) && (video_out_drivers[i - 1]->control(VOCTRL_GUI_NOWINDOW, NULL) == VO_TRUE)) {
-                        guiInfo.MovieWindow = False;
+                        guiInfo.VideoWindow = False;
                         break;
                     }
                 }
@@ -606,7 +607,7 @@ int gui(int what, void *data)
 
         // subtitle
 
-// subdata->filename=gstrdup( guiInfo.Subtitlename );
+// subdata->filename=gstrdup( guiInfo.SubtitleFilename );
         stream_dump_type = 0;
 
         if (gtkSubDumpMPSub)
@@ -626,15 +627,13 @@ int gui(int what, void *data)
         if (gtkAutoSyncOn)
             autosync = gtkAutoSync;
 
-        if (guiInfo.AudioFile)
-            audio_stream = gstrdup(guiInfo.AudioFile);
-        else if (guiInfo.FilenameChanged)
+        if (guiInfo.AudioFilename)
+            audio_stream = gstrdup(guiInfo.AudioFilename);
+        else if (guiInfo.NewPlay == GUI_FILE_NEW)
             nfree(audio_stream);
 
 // audio_stream = NULL;
 
-        guiInfo.DiskChanged     = 0;
-        guiInfo.FilenameChanged = 0;
         guiInfo.NewPlay = 0;
 
 #ifdef CONFIG_ASS
@@ -655,24 +654,23 @@ int gui(int what, void *data)
 #ifdef CONFIG_DVDREAD
         case STREAMTYPE_DVD:
             dvd = stream->priv;
-            guiInfo.DVD.titles   = dvd->vmg_file->tt_srpt->nr_of_srpts;
-            guiInfo.DVD.chapters = dvd->vmg_file->tt_srpt->title[dvd_title].nr_of_ptts;
-            guiInfo.DVD.angles   = dvd->vmg_file->tt_srpt->title[dvd_title].nr_of_angles;
-            guiInfo.DVD.nr_of_audio_channels = dvd->nr_of_channels;
-            memcpy(guiInfo.DVD.audio_streams, dvd->audio_streams, sizeof(dvd->audio_streams));
-            guiInfo.DVD.nr_of_subtitles = dvd->nr_of_subtitles;
-            memcpy(guiInfo.DVD.subtitles, dvd->subtitles, sizeof(dvd->subtitles));
-            guiInfo.DVD.current_title   = dvd_title + 1;
-            guiInfo.DVD.current_chapter = dvd_chapter + 1;
-            guiInfo.DVD.current_angle   = dvd_angle + 1;
-            guiInfo.Track = dvd_title + 1;
+            guiInfo.Tracks       = dvd->vmg_file->tt_srpt->nr_of_srpts;
+            guiInfo.Chapters     = dvd->vmg_file->tt_srpt->title[dvd_title].nr_of_ptts;
+            guiInfo.Angles       = dvd->vmg_file->tt_srpt->title[dvd_title].nr_of_angles;
+            guiInfo.AudioStreams = dvd->nr_of_channels;
+            memcpy(guiInfo.AudioStream, dvd->audio_streams, sizeof(dvd->audio_streams));
+            guiInfo.Subtitles = dvd->nr_of_subtitles;
+            memcpy(guiInfo.Subtitle, dvd->subtitles, sizeof(dvd->subtitles));
+            guiInfo.Track   = dvd_title + 1;
+            guiInfo.Chapter = dvd_chapter + 1;
+            guiInfo.Angle   = dvd_angle + 1;
             break;
 #endif
 
 #ifdef CONFIG_VCD
         case STREAMTYPE_VCD:
-            guiInfo.VCDTracks = 0;
-            stream_control(stream, STREAM_CTRL_GET_NUM_CHAPTERS, &guiInfo.VCDTracks);
+            guiInfo.Tracks = 0;
+            stream_control(stream, STREAM_CTRL_GET_NUM_CHAPTERS, &guiInfo.Tracks);
             break;
 #endif
 
@@ -711,7 +709,7 @@ int gui(int what, void *data)
         guiInfo.AudioChannels = data ? ((sh_audio_t *)data)->channels : 0;
 
         if (data && !guiInfo.sh_video)
-            guiInfo.MovieWindow = False;
+            guiInfo.VideoWindow = False;
 
         gui(GUI_SET_MIXER, 0);
 
@@ -729,7 +727,7 @@ int gui(int what, void *data)
             }
         }
 
-        wsVisibleWindow(&guiApp.subWindow, (guiInfo.MovieWindow ? wsShowWindow : wsHideWindow));
+        wsVisibleWindow(&guiApp.subWindow, (guiInfo.VideoWindow ? wsShowWindow : wsHideWindow));
         break;
 
     case GUI_SET_MIXER:
@@ -765,8 +763,8 @@ int gui(int what, void *data)
             wsMoveWindow(&guiApp.subWindow, True, guiApp.sub.x, guiApp.sub.y);
         }
 
-        guiInfo.MovieWidth  = vo_dwidth;
-        guiInfo.MovieHeight = vo_dheight;
+        guiInfo.VideoWidth  = vo_dwidth;
+        guiInfo.VideoHeight = vo_dheight;
 
         if (guiWinID >= 0)
             wsMoveWindow(&guiApp.mainWindow, False, 0, vo_dheight);
@@ -789,23 +787,24 @@ int gui(int what, void *data)
         if (guiInfo.Playing && (next = listSet(gtkGetNextPlItem, NULL)) && (plLastPlayed != next)) {
             plLastPlayed = next;
             setddup(&guiInfo.Filename, next->path, next->name);
-            guiInfo.StreamType      = STREAMTYPE_FILE;
-            guiInfo.FilenameChanged = guiInfo.NewPlay = 1;
-            nfree(guiInfo.AudioFile);
-            nfree(guiInfo.Subtitlename);
+            guiInfo.StreamType = STREAMTYPE_FILE;
+            guiInfo.NewPlay    = GUI_FILE_NEW;
+            nfree(guiInfo.AudioFilename);
+            nfree(guiInfo.SubtitleFilename);
+            guiInfo.Track++;
         } else {
-            if (guiInfo.FilenameChanged || guiInfo.NewPlay)
+            if (guiInfo.NewPlay == GUI_FILE_NEW)
                 break;
 
-            guiInfo.TimeSec       = 0;
+            guiInfo.ElapsedTime   = 0;
             guiInfo.Position      = 0;
             guiInfo.AudioChannels = 0;
-            guiInfo.MovieWindow   = True;
+            guiInfo.VideoWindow   = True;
 
 #ifdef CONFIG_DVDREAD
-            guiInfo.DVD.current_title   = 1;
-            guiInfo.DVD.current_chapter = 1;
-            guiInfo.DVD.current_angle   = 1;
+            guiInfo.Track   = 1;
+            guiInfo.Chapter = 1;
+            guiInfo.Angle   = 1;
 #endif
 
             if (!guiApp.subWindow.isFullScreen && gtkShowVideoWindow) {
