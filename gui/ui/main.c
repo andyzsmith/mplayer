@@ -263,7 +263,6 @@ NoPause:
    case evStop:
 	guiInfo.Playing=GUI_STOP;
 	uiState();
-	guiInfo.VideoWindow=True;
 	break;
 
    case evLoadPlay:
@@ -332,50 +331,51 @@ set_volume:
          }
         break;
    case evHalfSize:
-        btnSet( evFullScreen,btnReleased );
-        if ( guiInfo.Playing )
+        if ( guiInfo.VideoWindow && guiInfo.Playing )
          {
           if ( guiApp.subWindow.isFullScreen )
            {
             uiFullScreen();
            }
           wsResizeWindow( &guiApp.subWindow, guiInfo.VideoWidth / 2, guiInfo.VideoHeight / 2 );
-          wsMoveWindow( &guiApp.subWindow, False,
-                        ( wsMaxX - guiInfo.VideoWidth/2  )/2 + wsOrgX,
-                        ( wsMaxY - guiInfo.VideoHeight/2 )/2 + wsOrgY  );
+          wsMoveWindow( &guiApp.subWindow, False, guiApp.sub.x, guiApp.sub.y );
+          btnSet( evFullScreen,btnReleased );
          }
         break;
    case evDoubleSize:
-    	btnSet( evFullScreen,btnReleased );
-        if ( guiInfo.Playing )
+        if ( guiInfo.VideoWindow && guiInfo.Playing )
          {
           if ( guiApp.subWindow.isFullScreen )
            {
             uiFullScreen();
            }
           wsResizeWindow( &guiApp.subWindow, guiInfo.VideoWidth * 2, guiInfo.VideoHeight * 2 );
-          wsMoveWindow( &guiApp.subWindow, False,
-                        ( wsMaxX - guiInfo.VideoWidth*2  )/2 + wsOrgX,
-                        ( wsMaxY - guiInfo.VideoHeight*2 )/2 + wsOrgY  );
+          wsMoveWindowWithin( &guiApp.subWindow, False, guiApp.sub.x, guiApp.sub.y );
+          btnSet( evFullScreen,btnReleased );
          }
         break;
    case evNormalSize:
-	btnSet( evFullScreen,btnReleased );
-        if ( guiInfo.Playing )
+        if ( guiInfo.VideoWindow && guiInfo.Playing )
          {
           if ( guiApp.subWindow.isFullScreen )
            {
             uiFullScreen();
            }
           wsResizeWindow( &guiApp.subWindow, guiInfo.VideoWidth, guiInfo.VideoHeight );
-          wsMoveWindow( &guiApp.subWindow, False,
-                        ( wsMaxX - guiInfo.VideoWidth  )/2 + wsOrgX,
-                        ( wsMaxY - guiInfo.VideoHeight )/2 + wsOrgY  );
+          wsMoveWindow( &guiApp.subWindow, False, guiApp.sub.x, guiApp.sub.y );
+          btnSet( evFullScreen,btnReleased );
 	  break;
          } else if ( !guiApp.subWindow.isFullScreen ) break;
    case evFullScreen:
-        if ( !guiInfo.Playing && !gtkShowVideoWindow ) break;
-        uiFullScreen();
+        if ( guiInfo.VideoWindow && guiInfo.Playing )
+         {
+          uiFullScreen();
+          if ( !guiApp.subWindow.isFullScreen )
+           {
+            wsResizeWindow( &guiApp.subWindow, guiInfo.VideoWidth, guiInfo.VideoHeight );
+            wsMoveWindow( &guiApp.subWindow, False, guiApp.sub.x, guiApp.sub.y );
+           }
+         }
 	if ( guiApp.subWindow.isFullScreen ) btnSet( evFullScreen,btnPressed );
 	 else btnSet( evFullScreen,btnReleased );
         break;
@@ -519,7 +519,7 @@ rollerhandled:
           switch ( itemtype )
            {
             case itPLMButton:
-                 wsMoveWindow( &guiApp.mainWindow,False,RX - abs( sx ),RY - abs( sy ) );
+                 wsMoveWindow( &guiApp.mainWindow,True,RX - abs( sx ),RY - abs( sy ) );
                  uiMainRender=0;
                  break;
             case itPRMButton:
@@ -580,7 +580,7 @@ void uiMainKeyHandle( int KeyCode,int Type,int Key )
       case wsXF86Next:         msg=evNext; break;
       case wsXF86Media:        msg=evLoad; break;
       case wsEscape:
-    	    if ( guiApp.subWindow.isFullScreen )
+    	    if ( guiInfo.VideoWindow && guiInfo.Playing && guiApp.subWindow.isFullScreen )
 	     {
 	      uiEventHandling( evNormalSize,0 );
 	      return;

@@ -63,8 +63,6 @@ extern int stop_xscreensaver;
 
 int vo_init( void );
 void vo_uninit( void );
-void vo_hidecursor ( Display* , Window );
-void vo_showcursor( Display *disp, Window win );
 void vo_x11_decoration( Display * vo_Display,Window w,int d );
 void vo_x11_classhint( Display * display,Window window,const char *name );
 void vo_x11_nofs_sizepos(int x, int y, int width, int height);
@@ -90,7 +88,7 @@ void vo_x11_clearwindow_part(Display *mDisplay, Window vo_window,
 void vo_x11_clearwindow( Display *mDisplay, Window vo_window );
 void vo_x11_ontop(void);
 void vo_x11_border(void);
-void vo_x11_ewmh_fullscreen( int action );
+void vo_x11_ewmh_fullscreen( Window win, int action );
 
 #endif
 
