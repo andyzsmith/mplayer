@@ -44,11 +44,7 @@
 #include "libmpcodecs/dec_audio.h"
 #include "libmpcodecs/dec_video.h"
 #include "libmpcodecs/dec_teletext.h"
-
-#ifdef CONFIG_ASS
-#include "libass/ass.h"
 #include "sub/ass_mp.h"
-#endif
 
 #ifdef CONFIG_FFMPEG
 #include "libavcodec/avcodec.h"
