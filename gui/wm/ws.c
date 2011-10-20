@@ -46,6 +46,7 @@
 #include "help_mp.h"
 #include "mplayer.h"
 #include "mpbswap.h"
+#include "osdep/timer.h"
 #include "ws.h"
 #include "wsxdnd.h"
 
@@ -64,6 +65,11 @@
 
 #include <sys/ipc.h>
 #include <sys/shm.h>
+
+#define MOUSEHIDE_DELAY 1000   // in milliseconds
+
+static wsTWindow *mouse_win;
+static unsigned int mouse_time;
 
 typedef struct {
     unsigned long flags;
@@ -636,6 +642,17 @@ void wsDestroyWindow(wsTWindow *win)
 #endif
 }
 
+/**
+ * @brief Handle automatic hiding of the cursor.
+ */
+void wsAutohideCursor(void)
+{
+    if (mouse_win && (GetTimerMS() - mouse_time >= MOUSEHIDE_DELAY)) {
+        wsVisibleMouse(mouse_win, wsHideMouseCursor);
+        mouse_win = NULL;
+    }
+}
+
 // ----------------------------------------------------------------------------------------------
 //   Handle events.
 // ----------------------------------------------------------------------------------------------
@@ -839,14 +856,29 @@ keypressed:
                 }
             }
         }
+        if (wsWindowList[l]->wsCursor != None) {
+            wsVisibleMouse(wsWindowList[l], wsShowMouseCursor);
+            mouse_win  = wsWindowList[l];
+            mouse_time = GetTimerMS();
+        }
         goto buttonreleased;
 
     case ButtonRelease:
         i = Event->xbutton.button + 128;
+        if (wsWindowList[l]->wsCursor != None) {
+            wsVisibleMouse(wsWindowList[l], wsShowMouseCursor);
+            mouse_win  = wsWindowList[l];
+            mouse_time = GetTimerMS();
+        }
         goto buttonreleased;
 
     case ButtonPress:
         i = Event->xbutton.button;
+        if (wsWindowList[l]->wsCursor != None) {
+            wsVisibleMouse(wsWindowList[l], wsShowMouseCursor);
+            mouse_win  = wsWindowList[l];
+            mouse_time = GetTimerMS();
+        }
         goto buttonreleased;
 
     case EnterNotify:
@@ -1157,6 +1189,9 @@ void wsResizeWindow(wsTWindow *win, int sx, int sy)
 
     if (win->ReSize)
         win->ReSize(win->X, win->Y, win->Width, win->Height);
+
+    if (vo_wm_type == 0)
+        XMapWindow(wsDisplay, win->WindowID);
 }
 
 // ----------------------------------------------------------------------------------------------

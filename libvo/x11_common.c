@@ -28,8 +28,6 @@
 #include "libavutil/common.h"
 #include "x11_common.h"
 
-#ifdef X11_FULLSCREEN
-
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
@@ -186,8 +184,8 @@ static void vo_hidecursor(Display * disp, Window win)
     Colormap colormap;
     static char bm_no_data[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-    if (WinID == 0)
-        return;                 // do not hide if playing on the root window
+    if (WinID >= 0)
+        return;        // do not hide if attached to an existing window
 
     colormap = DefaultColormap(disp, DefaultScreen(disp));
     if ( !XAllocNamedColor(disp, colormap, "black", &black, &dummy) )
@@ -205,8 +203,8 @@ static void vo_hidecursor(Display * disp, Window win)
 
 static void vo_showcursor(Display * disp, Window win)
 {
-    if (WinID == 0)
-        return;
+    if (WinID >= 0)
+        return;        // do not show if attached to an existing window
     XDefineCursor(disp, win, 0);
 }
 
@@ -1687,8 +1685,6 @@ void vo_vm_close(void)
     }
 }
 #endif
-
-#endif                          /* X11_FULLSCREEN */
 
 
 /*
