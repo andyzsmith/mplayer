@@ -70,8 +70,6 @@ static const m_option_t gui_opts[] =
     {   "ao_extra_stereo", &gtkAOExtraStereo, CONF_TYPE_FLAG, 0, 0, 1, NULL },
     {   "ao_extra_stereo_coefficient", &gtkAOExtraStereoMul, CONF_TYPE_FLOAT, CONF_RANGE, -10, 10, NULL },
     {   "delay", &audio_delay, CONF_TYPE_FLOAT, CONF_RANGE, -100.0, 100.0, NULL},
-    {   "dvd_device", &dvd_device, CONF_TYPE_STRING, 0, 0, 0, NULL },
-    {   "cdrom_device", &cdrom_device, CONF_TYPE_STRING, 0, 0, 0, NULL },
     {   "osd_level", &osd_level, CONF_TYPE_INT, CONF_RANGE, 0, 3, NULL },
     {   "cache", &gtkCacheOn, CONF_TYPE_FLAG, 0, 0, 1, NULL },
     {   "cache_size", &gtkCacheSize, CONF_TYPE_INT, CONF_RANGE, -1, 65535, NULL },
@@ -92,7 +90,7 @@ int cfg_gui_include(m_option_t *conf, const char *filename)
 {
     (void)conf;
 
-    return m_config_parse_config_file(gui_conf, filename);
+    return m_config_parse_config_file(gui_conf, filename, 0);
 }
 
 int cfg_read(void)
@@ -105,7 +103,7 @@ int cfg_read(void)
     mp_msg(MSGT_GPLAYER, MSGL_V, "[GUI] [cfg] reading config file: %s\n", cfg);
     gui_conf = m_config_new();
     m_config_register_options(gui_conf, gui_opts);
-    if (m_config_parse_config_file(gui_conf, cfg) < 0)
+    if (m_config_parse_config_file(gui_conf, cfg, 1) < 0)
         mp_msg(MSGT_GPLAYER, MSGL_FATAL, MSGTR_ConfigFileError);
     free(cfg);
     return 0;

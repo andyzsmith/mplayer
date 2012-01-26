@@ -239,7 +239,7 @@ static edl_record_ptr edl_records = NULL; ///< EDL entries memory area
 static edl_record_ptr next_edl_record = NULL; ///< only for traversing edl_records
 static short edl_muted; ///< Stores whether EDL is currently in muted mode.
 static short edl_seeking; ///< When non-zero, stream is seekable.
-static short edl_seek_type; ///< When non-zero, frames are discarded instead of seeking.
+static int edl_seek_type; ///< When non-zero, frames are discarded instead of seeking.
 
 /* This header requires all the global variable declarations. */
 #include "cfg-mencoder.h"
@@ -260,14 +260,14 @@ static void parse_cfgfiles( m_config_t* conf )
 {
   char *conffile;
   if (!disable_system_conf &&
-      m_config_parse_config_file(conf, MPLAYER_CONFDIR "/mencoder.conf") < 0)
+      m_config_parse_config_file(conf, MPLAYER_CONFDIR "/mencoder.conf", 1) < 0)
     mencoder_exit(1,MSGTR_ConfigFileError);
 
   if (!disable_user_conf) {
     if ((conffile = get_path("mencoder.conf")) == NULL) {
       mp_msg(MSGT_CPLAYER,MSGL_ERR,MSGTR_GetpathProblem);
     } else {
-      if (m_config_parse_config_file(conf, conffile) < 0)
+      if (m_config_parse_config_file(conf, conffile, 1) < 0)
         mencoder_exit(1,MSGTR_ConfigFileError);
       free(conffile);
     }
@@ -639,6 +639,16 @@ play_next_file:
 	mp_msg(MSGT_CPLAYER, MSGL_FATAL, MSGTR_MissingFilename);
 	mencoder_exit(1,NULL);
   }
+
+  if (vobsub_name)
+    vo_vobsub = vobsub_open(vobsub_name, spudec_ifo, 1, &vo_spudec);
+#ifdef CONFIG_ASS
+  // must be before demuxer open, since the settings are
+  // used in generating the ASSTrack
+  if (ass_enabled && ass_library)
+    ass_mp_reset_config(ass_library);
+#endif
+
   stream=open_stream(filename,0,&file_format);
 
   if(!stream){
@@ -769,9 +779,6 @@ if(sh_audio && (out_audio_codec || seek_to_sec || !sh_audio->wf || playback_spee
         playback_speed = (float)new_srate / (float)sh_audio->samplerate;
     }
   }
-
-  if (vobsub_name)
-    vo_vobsub = vobsub_open(vobsub_name, spudec_ifo, 1, &vo_spudec);
 
 // set up video encoder:
 

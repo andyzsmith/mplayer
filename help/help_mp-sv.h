@@ -99,7 +99,6 @@ static const char help_text[]=
 #define MSGTR_Playing "Spelar %s.\n"
 #define MSGTR_NoSound "Audio: inget ljud\n"
 #define MSGTR_FPSforced "FPS forcerad att vara %5.3f  (ftime: %5.3f).\n"
-    "För att få bäst prestanda, omkompilera med '--disable-runtime-cpudetection'.\n"
 #define MSGTR_AvailableVideoOutputDrivers "Tillgängliga video-ut-drivrutiner:\n"
 #define MSGTR_AvailableAudioOutputDrivers "Tillgängliga audio-ut-drivrutiner:\n"
 #define MSGTR_AvailableAudioCodecs "Tillgängliga audiocodec:\n"
@@ -621,7 +620,7 @@ static const char help_text[]=
 #define MSGTR_MENU_AudioLanguages "Audiospråk"
 #define MSGTR_MENU_SubtitleLanguages "Textningsspråk"
 #define MSGTR_MENU_SkinBrowser "Skinläsare"
-#define MSGTR_MENU_Exit "Avsluta..."
+#define MSGTR_MENU_Exit "Avsluta"
 #define MSGTR_MENU_Mute "Dämpa"
 #define MSGTR_MENU_Original "Orginal"
 #define MSGTR_MENU_AspectRatio "Aspect ratio" // FIXME translate?
@@ -876,35 +875,11 @@ static const char help_text[]=
 
 // ao_sun.c
 #define MSGTR_AO_SUN_RtscSetinfoFailed "[AO SUN] rtsc: SETINFO misslyckades.\n"
+#define MSGTR_AO_SUN_RtscWriteFailed "[AO SUN] rtsc: skrivning misslyckades."
 #define MSGTR_AO_SUN_CantOpenAudioDev "[AO SUN] Kan inte öppna audioenhet %s, %s  -> inget ljud.\n"
 #define MSGTR_AO_SUN_UnsupSampleRate "[AO SUN] audio_setup: ditt kort hanterar inte %d kanaler, %s, %d Hz samplerate.\n" // FIXME samplerate
 #define MSGTR_AO_SUN_CantUseSelect "[AO SUN]\n   ***  Din ljudkortsenhet hanterar inte select()  ***\nKompilera om med '#undef HAVE_AUDIO_SELECT' i config.h !\n\n"
 #define MSGTR_AO_SUN_CantReopenReset "[AO SUN]\nFatalt fel: *** KAN INTE ÅTERÖPPNA / ÅTERSTÄLLA AUDIOENHET (%s) ***\n"
-
-// ao_alsa5.c
-#define MSGTR_AO_ALSA5_InitInfo "[AO ALSA5] alsa-init: önskat format: %d Hz, %d kanaler, %s\n"
-#define MSGTR_AO_ALSA5_SoundCardNotFound "[AO ALSA5] alsa-init: inga ljudkort funna.\n"
-#define MSGTR_AO_ALSA5_InvalidFormatReq "[AO ALSA5] alsa-init: icke godkänt format (%s) önskat - ut deaktiverat.\n" // FIXME output -> ut here?
-#define MSGTR_AO_ALSA5_PlayBackError "[AO ALSA5] alsa-init: uppspelningsöppningsfel: %s\n"
-#define MSGTR_AO_ALSA5_PcmInfoError "[AO ALSA5] alsa-init: pcm-infofel: %s\n"
-#define MSGTR_AO_ALSA5_SoundcardsFound "[AO ALSA5] alsa-init: %d ljurtkort funna, använder: %s\n"
-#define MSGTR_AO_ALSA5_PcmChanInfoError "[AO ALSA5] alsa-init: pcm-kanalinfofel: %s\n"
-#define MSGTR_AO_ALSA5_CantSetParms "[AO ALSA5] alsa-init: fel vid sättning av parametrarna: %s\n" // FIXME setting?
-#define MSGTR_AO_ALSA5_CantSetChan "[AO ALSA5] alsa-init: fel vid initiering av kanal: %s\n"
-#define MSGTR_AO_ALSA5_ChanPrepareError "[AO ALSA5] alsa-init: kanalprepareringsfel: %s\n"
-#define MSGTR_AO_ALSA5_DrainError "[AO ALSA5] alsa-uninit: uppspelningslänsningsfel: %s\n" // FIXME drain -> länsning?
-#define MSGTR_AO_ALSA5_FlushError "[AO ALSA5] alsa-uninit: uppspelningsspolningsfel: %s\n" // FIXME flush -> spolning?
-#define MSGTR_AO_ALSA5_PcmCloseError "[AO ALSA5] alsa-uninit: pcm-stängningsfel: %s\n"
-#define MSGTR_AO_ALSA5_ResetDrainError "[AO ALSA5] alsa-reset: uppspelningslänsningsfel: %s\n"
-#define MSGTR_AO_ALSA5_ResetFlushError "[AO ALSA5] alsa-reset: uppspelningsspolningsfel: %s\n"
-#define MSGTR_AO_ALSA5_ResetChanPrepareError "[AO ALSA5] alsa-reset: kanalprepareringsfel: %s\n"
-#define MSGTR_AO_ALSA5_PauseDrainError "[AO ALSA5] alsa-pause: uppspelningslänsningsfel: %s\n"
-#define MSGTR_AO_ALSA5_PauseFlushError "[AO ALSA5] alsa-pause: uppspelningsspolningsfel: %s\n"
-#define MSGTR_AO_ALSA5_ResumePrepareError "[AO ALSA5] alsa-resume: kanalprepareringsfel: %s\n"
-#define MSGTR_AO_ALSA5_Underrun "[AO ALSA5] alsa-play: alsa underrun, återställer ström.\n" // FIXME underun - translate?
-#define MSGTR_AO_ALSA5_PlaybackPrepareError "[AO ALSA5] alsa-play: uppspelningsprepareringsfel: %s\n"
-#define MSGTR_AO_ALSA5_WriteErrorAfterReset "[AO ALSA5] alsa-play: skrivfel efter återställning: %s - ger upp.\n"
-#define MSGTR_AO_ALSA5_OutPutError "[AO ALSA5] alsa-play: utfel: %s\n" // FIXME output -> ut her?
 
 // ao_plugin.c
 

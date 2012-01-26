@@ -61,11 +61,9 @@ static void set_defaults(void)
 
 static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
-    HWND btn, label, edit1, edit2, edit3, updown1, updown2, track1, track2;
+    HWND btn, label, edit1, edit2, updown1, updown2, track1, track2;
     static HWND vo_driver, ao_driver, prio;
     int i = 0, j = 0;
-    char dvddevice[MAX_PATH];
-    char cdromdevice[MAX_PATH];
     char procprio[11];
     float x = 10.0, y = 100.0, stereopos, delaypos;
     stereopos = gtkAOExtraStereoMul * x;
@@ -76,58 +74,44 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
         case WM_CREATE:
         {
             /* video and audio drivers */
-            label = CreateWindow("static", "Video Driver:",
-                                 WS_CHILD | WS_VISIBLE,
-                                 10, 13, 70, 15, hwnd,
+            label = CreateWindow("static", acp(MSGTR_PREFERENCES_Video),
+                                 WS_CHILD | WS_VISIBLE | SS_RIGHT,
+                                 10, 14, 60, 15, hwnd,
                                  NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
                                  NULL);
             SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            label = CreateWindow("static", "Audio Driver:",
-                                 WS_CHILD | WS_VISIBLE,
-                                 190, 13, 70, 15, hwnd,
+            label = CreateWindow("static", acp(MSGTR_PREFERENCES_Audio),
+                                 WS_CHILD | WS_VISIBLE | SS_RIGHT,
+                                 205, 14, 60, 15, hwnd,
                                  NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
                                  NULL);
             SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            label = CreateWindow("static", "Extra stereo coefficient:",
-                                 WS_CHILD | WS_VISIBLE,
-                                 10, 148, 115, 15, hwnd,
+            label = CreateWindow("static", acp(MSGTR_PREFERENCES_Coefficient),
+                                 WS_CHILD | WS_VISIBLE | SS_RIGHT,
+                                 10, 148, 140, 15, hwnd,
                                  NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
                                  NULL);
             SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            label = CreateWindow("static", "Audio delay:",
-                                 WS_CHILD | WS_VISIBLE,
-                                 36, 187, 115, 15, hwnd,
+            label = CreateWindow("static", acp(MSGTR_PREFERENCES_AudioDelay),
+                                 WS_CHILD | WS_VISIBLE | SS_RIGHT,
+                                 10, 187, 140, 15, hwnd,
                                  NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
                                  NULL);
             SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            label = CreateWindow("static", "OSD level:",
+            label = CreateWindow("static", acp(MSGTR_PREFERENCES_FRAME_OSD_Level),
                                  WS_CHILD | WS_VISIBLE,
                                  10, 286, 115, 15, hwnd,
                                  NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
                                  NULL);
             SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            label = CreateWindow("static", "DVD device:",
-                                 WS_CHILD | WS_VISIBLE,
-                                 80, 385, 115, 15, hwnd,
-                                 NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
-                                 NULL);
-            SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
-
-            label = CreateWindow("static", "CD device:",
-                                 WS_CHILD | WS_VISIBLE,
-                                 202, 385, 115, 15, hwnd,
-                                 NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
-                                 NULL);
-            SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
-
-            label = CreateWindow("static", "Priority:",
-                                 WS_CHILD | WS_VISIBLE,
-                                 217, 286, 115, 15, hwnd,
+            label = CreateWindow("static", acp(MSGTR_PREFERENCES_Priority),
+                                 WS_CHILD | WS_VISIBLE | SS_RIGHT,
+                                 200, 286, 100, 15, hwnd,
                                  NULL, ((LPCREATESTRUCT) lParam) -> hInstance,
                                  NULL);
             SendMessage(label, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
@@ -147,7 +131,7 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                                      CBS_NOINTEGRALHEIGHT | CBS_HASSTRINGS |
                                      WS_CHILD | WS_VISIBLE |
                                      WS_VSCROLL | WS_TABSTOP,
-                                     260, 10, 100, 160, hwnd,
+                                     275, 10, 100, 160, hwnd,
                                      (HMENU) ID_AO_DRIVER,
                                      ((LPCREATESTRUCT) lParam) -> hInstance,
                                      NULL);
@@ -157,69 +141,69 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                                 CBS_NOINTEGRALHEIGHT | CBS_HASSTRINGS |
                                 WS_CHILD | WS_VISIBLE |
                                 WS_VSCROLL | WS_TABSTOP,
-                                260, 282, 100, 160, hwnd,
+                                310, 282, 100, 160, hwnd,
                                 (HMENU) ID_PRIO,
                                 ((LPCREATESTRUCT) lParam) -> hInstance,
                                 NULL);
 
             /* checkboxes */
-            btn = CreateWindow("button", "Enable double buffering",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_DoubleBuffer),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               25, 35, 150, 25,
+                               10, 35, 160, 25,
                                hwnd, (HMENU) ID_DOUBLE,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Enable direct rendering",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_DirectRender),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               25, 57, 150, 25,
+                               10, 57, 160, 25,
                                hwnd, (HMENU) ID_DIRECT,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Enable framedropping",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_FrameDrop),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               25, 79, 150, 25,
+                               10, 79, 160, 25,
                                hwnd, (HMENU) ID_FRAMEDROP,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Quit after playing",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_NoIdle),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               25, 101, 150, 25,
+                               10, 101, 225, 25,
                                hwnd, (HMENU) ID_IDLE,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Normalize sound",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_NormalizeSound),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               205, 35, 150, 25,
+                               220, 35, 160, 25,
                                hwnd, (HMENU) ID_NORMALIZE,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Enable software mixer",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_SoftwareMixer),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               205, 57, 150, 25,
+                               220, 57, 160, 25,
                                hwnd, (HMENU) ID_SOFTMIX,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Enable extra stereo",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_ExtraStereo),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               205, 79, 150, 25,
+                               220, 79, 160, 25,
                                hwnd, (HMENU) ID_EXTRASTEREO,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Enable cache",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_Cache),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
                                10, 222, 90, 25,
                                hwnd, (HMENU) ID_CACHE,
@@ -227,74 +211,74 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Enable autosync",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_AutoSync),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               192, 222, 100, 25, hwnd,
+                               240, 222, 110, 25, hwnd,
                                (HMENU) ID_AUTOSYNC,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Display videos in the sub window (DirectX only)",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_VideoInSubwin),
                                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-                               85, 249, 250, 25,
+                               10, 249, 250, 25,
                                hwnd, (HMENU) ID_SUBWINDOW,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
             /* osd level */
-            btn = CreateWindow("button", "Subtitles only",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_OSD_LEVEL0),
                                WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON,
-                               95, 282, 100, 25, hwnd,
+                               15, 297, 200, 25, hwnd,
                                (HMENU) ID_NONE,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Volume and seek",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_OSD_LEVEL1),
                                WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON,
-                               95, 302, 180, 25, hwnd,
+                               15, 317, 395, 25, hwnd,
                                (HMENU) ID_OSD1,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Volume, seek, timer and percentage",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_OSD_LEVEL2),
                                WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON,
-                               95, 322, 250, 25, hwnd,
+                               15, 337, 395, 25, hwnd,
                                (HMENU) ID_OSD2,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Volume, seek, timer, percentage and total time",
+            btn = CreateWindow("button", acp(MSGTR_PREFERENCES_OSD_LEVEL3),
                                WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON,
-                               95, 342, 250, 25, hwnd,
+                               15, 357, 395, 25, hwnd,
                                (HMENU) ID_OSD3,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Apply",
+            btn = CreateWindow("button", acp(MSGTR_Ok),
                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                               199, 417, 80, 25, hwnd,
+                               248, 417, 80, 25, hwnd,
                                (HMENU) ID_APPLY,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Cancel",
+            btn = CreateWindow("button", acp(MSGTR_Cancel),
                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                               285, 417, 80, 25, hwnd,
+                               334, 417, 80, 25, hwnd,
                                (HMENU) ID_CANCEL,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
             SendMessage(btn, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
-            btn = CreateWindow("button", "Defaults",
+            btn = CreateWindow("button", acp(MSGTR_Default),
                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                               4, 417, 80, 25, hwnd,
+                               5, 417, 80, 25, hwnd,
                                (HMENU) ID_DEFAULTS,
                                ((LPCREATESTRUCT) lParam) -> hInstance,
                                NULL);
@@ -305,7 +289,7 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                                   WS_CHILD | WS_VISIBLE | WS_TABSTOP |
                                   WS_DISABLED | TBS_HORZ |
                                   TBS_BOTTOM | TBS_NOTICKS,
-                                  120, 142, 245, 35, hwnd,
+                                  165, 142, 245, 35, hwnd,
                                   (HMENU) ID_TRACKBAR1,
                                   ((LPCREATESTRUCT) lParam) -> hInstance,
                                   NULL);
@@ -316,7 +300,7 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                                   WS_CHILD | WS_VISIBLE | WS_TABSTOP |
                                   WS_DISABLED | TBS_HORZ |
                                   TBS_BOTTOM | TBS_NOTICKS,
-                                  120, 182, 245, 35, hwnd,
+                                  165, 182, 245, 35, hwnd,
                                   (HMENU) ID_TRACKBAR2,
                                   ((LPCREATESTRUCT) lParam) -> hInstance,
                                   NULL);
@@ -345,7 +329,7 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
             edit2 = CreateWindowEx(WS_EX_CLIENTEDGE, "edit", "autosync",
                                    WS_CHILD | WS_VISIBLE | WS_DISABLED |
                                    ES_LEFT | ES_AUTOHSCROLL,
-                                   300, 225, 40, 20, hwnd,
+                                   355, 225, 40, 20, hwnd,
                                    (HMENU) ID_EDIT2,
                                    ((LPCREATESTRUCT) lParam) -> hInstance,
                                    NULL);
@@ -354,30 +338,11 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
             updown2 = CreateUpDownControl(WS_CHILD | WS_VISIBLE |
                                           WS_DISABLED | UDS_SETBUDDYINT |
                                           UDS_ARROWKEYS | UDS_NOTHOUSANDS,
-                                          340, 225, 20, 20, hwnd,
+                                          395, 225, 20, 20, hwnd,
                                           ID_UPDOWN2,
                                           ((LPCREATESTRUCT) lParam) -> hInstance,
                                           (HWND)edit2, 0, 0, 0);
             SendDlgItemMessage(hwnd, ID_UPDOWN2, UDM_SETRANGE32, (WPARAM)0, (LPARAM)10000);
-
-            /* dvd and cd devices */
-            edit3 = CreateWindowEx(WS_EX_CLIENTEDGE, "edit", NULL,
-                                   WS_CHILD | WS_VISIBLE |
-                                   ES_LEFT | ES_AUTOHSCROLL,
-                                   145, 382, 20, 20, hwnd,
-                                   (HMENU) ID_DVDDEVICE,
-                                   ((LPCREATESTRUCT) lParam) -> hInstance,
-                                   NULL);
-            SendMessage(edit3, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
-
-            edit3 = CreateWindowEx(WS_EX_CLIENTEDGE, "edit", NULL,
-                                   WS_CHILD | WS_VISIBLE |
-                                   ES_LEFT| ES_AUTOHSCROLL,
-                                   260, 382, 20, 20, hwnd,
-                                   (HMENU) ID_CDDEVICE,
-                                   ((LPCREATESTRUCT) lParam) -> hInstance,
-                                   NULL);
-            SendMessage(edit3, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
             while(video_out_drivers[i])
             {
@@ -403,11 +368,11 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
             SendMessage(ao_driver, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
             /* priority list, i'm leaving out realtime for safety's sake */
-            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) "low");
-            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) "belownormal");
-            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) "normal");
-            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) "abovenormal");
-            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) "high");
+            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) acp(MSGTR_PREFERENCES_PriorityLow));
+            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) acp(MSGTR_PREFERENCES_PriorityNormalBelow));
+            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) acp(MSGTR_PREFERENCES_PriorityNormal));
+            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) acp(MSGTR_PREFERENCES_PriorityNormalAbove));
+            SendDlgItemMessage(hwnd, ID_PRIO, CB_INSERTSTRING, 0, (LPARAM) acp(MSGTR_PREFERENCES_PriorityHigh));
             SendMessage(prio, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
 
             /* set our preferences on what we already have */
@@ -475,14 +440,6 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                 SendDlgItemMessage(hwnd, ID_OSD2, BM_SETCHECK, 1, 0);
             else if(osd_level == 3)
                 SendDlgItemMessage(hwnd, ID_OSD3, BM_SETCHECK, 1, 0);
-
-            if(dvd_device)
-                SendDlgItemMessage(hwnd, ID_DVDDEVICE, WM_SETTEXT, 0, (LPARAM)dvd_device);
-            else SendDlgItemMessage(hwnd, ID_DVDDEVICE, WM_SETTEXT, 0, (LPARAM)"D:");
-
-            if(cdrom_device)
-                SendDlgItemMessage(hwnd, ID_CDDEVICE, WM_SETTEXT, 0, (LPARAM)cdrom_device);
-            else SendDlgItemMessage(hwnd, ID_CDDEVICE, WM_SETTEXT, 0, (LPARAM)"D:");
 
             if(proc_priority)
                 SendDlgItemMessage(hwnd, ID_PRIO, CB_SETCURSEL,
@@ -577,8 +534,6 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                     SendDlgItemMessage(hwnd, ID_OSD1, BM_SETCHECK, 1, 0);
                     SendDlgItemMessage(hwnd, ID_OSD2, BM_SETCHECK, 0, 0);
                     SendDlgItemMessage(hwnd, ID_OSD3, BM_SETCHECK, 0, 0);
-                    SendDlgItemMessage(hwnd, ID_DVDDEVICE, WM_SETTEXT, 0, (LPARAM)"D:");
-                    SendDlgItemMessage(hwnd, ID_CDDEVICE, WM_SETTEXT, 0, (LPARAM)"D:");
                     SendMessage(hwnd, WM_COMMAND, (WPARAM)ID_APPLY, 0);
                     break;
                 }
@@ -677,13 +632,7 @@ static LRESULT CALLBACK PrefsWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM
                     else if(SendDlgItemMessage(hwnd, ID_OSD3, BM_GETCHECK, 0, 0) == BST_CHECKED)
                         osd_level = 3;
 
-                    /* dvd and cd devices */
-                    SendDlgItemMessage(hwnd, ID_DVDDEVICE, WM_GETTEXT, MAX_PATH, (LPARAM)dvddevice);
-                    dvd_device = strdup(dvddevice);
-                    SendDlgItemMessage(hwnd, ID_CDDEVICE, WM_GETTEXT, MAX_PATH, (LPARAM)cdromdevice);
-                    cdrom_device = strdup(cdromdevice);
-
-                    MessageBox(hwnd, "You must restart MPlayer for the changes to take effect.", "MPlayer - Info:", MB_OK);
+                    MessageBox(hwnd, acp(MSGTR_PREFERENCES_Message), acp(MSGTR_MSGBOX_LABEL_Warning), MB_OK);
                     DestroyWindow(hwnd);
                     break;
                 }
@@ -700,7 +649,7 @@ void display_prefswindow(gui_t *gui)
     HINSTANCE hInstance = GetModuleHandle(NULL);
     WNDCLASS wc;
     int x, y;
-    if(FindWindow(NULL, "MPlayer - Preferences")) return;
+    if(FindWindow(NULL, acp(MSGTR_Preferences))) return;
     wc.style         = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc   = PrefsWndProc;
     wc.cbClsExtra    = 0;
@@ -709,17 +658,17 @@ void display_prefswindow(gui_t *gui)
     wc.hCursor       = LoadCursor(NULL,IDC_ARROW);
     wc.hIcon         = gui->icon;
     wc.hbrBackground = SOLID_GREY;
-    wc.lpszClassName = "MPlayer - Preferences";
+    wc.lpszClassName = acp(MSGTR_Preferences);
     wc.lpszMenuName  = NULL;
     RegisterClass(&wc);
-    x = (GetSystemMetrics(SM_CXSCREEN) / 2) - (375 / 2);
+    x = (GetSystemMetrics(SM_CXSCREEN) / 2) - (425 / 2);
     y = (GetSystemMetrics(SM_CYSCREEN) / 2) - (474 / 2);
-    hWnd = CreateWindow("MPlayer - Preferences",
-                        "MPlayer - Preferences",
+    hWnd = CreateWindow(acp(MSGTR_Preferences),
+                        acp(MSGTR_Preferences),
                         WS_POPUPWINDOW | WS_CAPTION,
                         x,
                         y,
-                        375,
+                        425,
                         474,
                         NULL,
                         NULL,

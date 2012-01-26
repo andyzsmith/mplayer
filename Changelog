@@ -8,6 +8,7 @@ MPlayer (1.0)
 
     Demuxers:
     * experimental support for using binary Quicktime codecs with -demuxer lavf.
+    * correct runtime and average bitrate for VBR (variable bitrate) MP3
 
     Filters:
     * delogo: allow to change the rectangle based on the time.
@@ -18,6 +19,9 @@ MPlayer (1.0)
     * experimental support for PGS (BluRay-compatible), DVB and XSUB subtitles.
     * experimental af_cmdline slave command to change e.g. audio equalizer options at runtime.
     * vo x11: don't hide or show cursor any more if attached to an existing window (-wid)
+
+    GUI:
+    * all skin messages available as slave commands (gui <message>)
 
     Ports:
     * Wine (see DOCS/tech/crosscompile.txt)

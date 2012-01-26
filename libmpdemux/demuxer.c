@@ -493,6 +493,7 @@ static void allocate_parser(AVCodecContext **avctx, AVCodecParserContext **parse
         //codec_id = CODEC_ID_DNET;
         break;
     case MKTAG('E', 'A', 'C', '3'):
+    case MKTAG('e', 'c', '-', '3'):
         codec_id = CODEC_ID_EAC3;
         break;
     case 0x2001:
@@ -1479,7 +1480,7 @@ double demuxer_get_time_length(demuxer_t *demuxer)
  *        0 otherwise
  * \return the current play time
  */
-int demuxer_get_current_time(demuxer_t *demuxer)
+double demuxer_get_current_time(demuxer_t *demuxer)
 {
     double get_time_ans = 0;
     sh_video_t *sh_video = demuxer->video->sh;
@@ -1487,7 +1488,7 @@ int demuxer_get_current_time(demuxer_t *demuxer)
         get_time_ans = demuxer->stream_pts;
     else if (sh_video)
         get_time_ans = sh_video->pts;
-    return (int) get_time_ans;
+    return get_time_ans;
 }
 
 int demuxer_get_percent_pos(demuxer_t *demuxer)

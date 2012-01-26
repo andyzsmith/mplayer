@@ -756,7 +756,7 @@ static const char help_text[]=
 #define MSGTR_NEMFMR "Sorry, nicht genug Speicher für Menü-Rendering."
 #define MSGTR_IDFGCVD "Sorry, es wurde kein GUI-kompatibler Ausgabetreiber gefunden.\n"
 #define MSGTR_NEEDLAVC "Sorry, du versuchst, Nicht-MPEG Dateien ohne erneute Encodierung abzuspielen.\nBitte aktiviere lavc in der DXR3/H+-Konfigurationsbox."
-#define MSGTR_ICONERROR "Icon '%s' wurde nicht gefunden oder das Format wird nicht unterstützt.\n"
+#define MSGTR_ICONERROR "Icon '%s' (Größe %d) wurde nicht gefunden oder das Format wird nicht unterstützt.\n"
 
 // --- skin loader error messages
 #define MSGTR_SKIN_ERRORMESSAGE "Fehler in Skin-Konfigurationsdatei in Zeile %d: %s"
@@ -788,6 +788,7 @@ static const char help_text[]=
 #define MSGTR_MENU_AboutMPlayer "Über MPlayer"
 #define MSGTR_MENU_Open "Öffnen..."
 #define MSGTR_MENU_PlayFile "Spiele Datei..."
+#define MSGTR_MENU_PlayCD "Spiele CD..."
 #define MSGTR_MENU_PlayVCD "Spiele VCD..."
 #define MSGTR_MENU_PlayDVD "Spiele DVD..."
 #define MSGTR_MENU_PlayURL "Spiele URL..."
@@ -805,9 +806,10 @@ static const char help_text[]=
 #define MSGTR_MENU_NormalSize "Normale Größe"
 #define MSGTR_MENU_DoubleSize "Doppelte Größe"
 #define MSGTR_MENU_FullScreen "Vollbild"
+#define MSGTR_MENU_CD "CD"
 #define MSGTR_MENU_DVD "DVD"
 #define MSGTR_MENU_VCD "VCD"
-#define MSGTR_MENU_PlayDisc "Öffne CD/DVD..."
+#define MSGTR_MENU_PlayDisc "Öffne Disc..."
 #define MSGTR_MENU_ShowDVDMenu "Zeige DVD Menü"
 #define MSGTR_MENU_Titles "Titel"
 #define MSGTR_MENU_Title "Titel %2d"
@@ -819,7 +821,7 @@ static const char help_text[]=
 #define MSGTR_MENU_PlayList MSGTR_PlayList
 #define MSGTR_MENU_SkinBrowser "Skinbrowser"
 #define MSGTR_MENU_Preferences MSGTR_Preferences
-#define MSGTR_MENU_Exit "Beenden..."
+#define MSGTR_MENU_Exit "Beenden"
 #define MSGTR_MENU_Mute "Stummschaltung"
 #define MSGTR_MENU_Original "Original"
 #define MSGTR_MENU_AspectRatio "Seitenverhältnis"
@@ -1005,6 +1007,33 @@ static const char help_text[]=
 #define MSGTR_WS_NotAFile "Dies scheint keine Datei zu sein...\n"
 #define MSGTR_WS_DDNothing "D&D: Nichts zurückgegeben!\n"
 
+// Win32 GUI
+#define MSGTR_Close "Schließen"
+#define MSGTR_Default "Standard"
+#define MSGTR_Down "Runter"
+#define MSGTR_Load "Laden"
+#define MSGTR_Save "Speichern"
+#define MSGTR_Up "Hoch"
+#define MSGTR_DirectorySelect "Wähle ein Verzeichnis ..."
+#define MSGTR_PlaylistSave "Speichere Wiedergabeliste ..."
+#define MSGTR_PlaylistSelect "Wähle Wiedergabeliste ..."
+#define MSGTR_SelectTitleChapter "Wähle Titel/Kapitel ..."
+#define MSGTR_MENU_DebugConsole "Debugging-Konsole"
+#define MSGTR_MENU_OnlineHelp "Online-Hilfe"
+#define MSGTR_MENU_PlayDirectory "Spiele ein Verzeichnis..."
+#define MSGTR_MENU_SeekBack "Springe zurück"
+#define MSGTR_MENU_SeekForw "Springe vor"
+#define MSGTR_MENU_ShowHide "Zeigen/Verbergen"
+#define MSGTR_MENU_SubtitlesOnOff "Untertitel-Anzeige ein/aus"
+#define MSGTR_PLAYLIST_AddFile "Datei hinzufügen..."
+#define MSGTR_PLAYLIST_AddURL "URL hinzufügen..."
+#define MSGTR_PREFERENCES_Priority "Priorität:"
+#define MSGTR_PREFERENCES_PriorityHigh "hoch"
+#define MSGTR_PREFERENCES_PriorityLow "niedrig"
+#define MSGTR_PREFERENCES_PriorityNormal "normal"
+#define MSGTR_PREFERENCES_PriorityNormalAbove "höher als normal"
+#define MSGTR_PREFERENCES_PriorityNormalBelow "niedriger als normal"
+#define MSGTR_PREFERENCES_VideoInSubwin "Video in Unterfenster anzeigen (nur DirectX)"
 
 
 // ======================= Videoausgabetreiber ========================
@@ -1164,37 +1193,13 @@ static const char help_text[]=
 
 // ao_sun.c
 #define MSGTR_AO_SUN_RtscSetinfoFailed "[AO SUN] rtsc: SETINFO fehlgeschlagen.\n"
+#define MSGTR_AO_SUN_RtscWriteFailed "[AO SUN] rtsc: Schreiben fehlgeschlagen.\n"
 #define MSGTR_AO_SUN_CantOpenAudioDev "[AO SUN] Kann Audiogerät %s nicht öffnen, %s  -> nosound.\n"
 #define MSGTR_AO_SUN_UnsupSampleRate "[AO SUN] audio_setup: Deine Karte unterstützt %d Kanäle nicht, %s, %d Hz Samplerate.\n"
 #define MSGTR_AO_SUN_CantUseSelect "[AO SUN]\n" \
 "   *** Dein Audiotreiber unterstützt select() NICHT ***\n" \
 "Kompiliere MPlayer mit #undef HAVE_AUDIO_SELECT in der Datei config.h !\n\n"
 #define MSGTR_AO_SUN_CantReopenReset "[AO SUN]\nKritischer Fehler: *** KANN AUDIO-GERÄT NICHT ERNEUT ÖFFNEN / ZURÜCKSETZEN *** %s\n"
-
-// ao_alsa5.c
-#define MSGTR_AO_ALSA5_InitInfo "[AO ALSA5] alsa-init: angefordertes Format: %d Hz, %d Kanäle, %s\n"
-#define MSGTR_AO_ALSA5_SoundCardNotFound "[AO ALSA5] alsa-init: Keine Soundkarten gefunden.\n"
-#define MSGTR_AO_ALSA5_InvalidFormatReq "[AO ALSA5] alsa-init: ungültiges Format (%s) angefordert - Ausgabe deaktiviert.\n"
-#define MSGTR_AO_ALSA5_PlayBackError "[AO ALSA5] alsa-init: Fehler beim Öffnen der Wiedergabe: %s\n"
-#define MSGTR_AO_ALSA5_PcmInfoError "[AO ALSA5] alsa-init: PCM-Informatationsfehler: %s\n"
-#define MSGTR_AO_ALSA5_SoundcardsFound "[AO ALSA5] alsa-init: %d Soundkarte(n) gefunden, benutze: %s\n"
-#define MSGTR_AO_ALSA5_PcmChanInfoError "[AO ALSA5] alsa-init: PCM-Kanal-Informationsfehler: %s\n"
-#define MSGTR_AO_ALSA5_CantSetParms "[AO ALSA5] alsa-init: Fehler beim Setzen der Parameter: %s\n"
-#define MSGTR_AO_ALSA5_CantSetChan "[AO ALSA5] alsa-init: Fehler beim Setzen des Kanals: %s\n"
-#define MSGTR_AO_ALSA5_ChanPrepareError "[AO ALSA5] alsa-init: Fehler beim Vorbereiten des Kanals: %s\n"
-#define MSGTR_AO_ALSA5_DrainError "[AO ALSA5] alsa-uninit: Fehler beim Ablauf der Wiedergabe: %s\n"
-#define MSGTR_AO_ALSA5_FlushError "[AO ALSA5] alsa-uninit: Wiedergabe-Flush-Fehler: %s\n"
-#define MSGTR_AO_ALSA5_PcmCloseError "[AO ALSA5] alsa-uninit: Fehler beim Schließen von PCM: %s\n"
-#define MSGTR_AO_ALSA5_ResetDrainError "[AO ALSA5] alsa-reset: Fehler beim Ablauf der Wiedergabe: %s\n"
-#define MSGTR_AO_ALSA5_ResetFlushError "[AO ALSA5] alsa-reset: Wiedergabe-Flush-Fehler: %s\n"
-#define MSGTR_AO_ALSA5_ResetChanPrepareError "[AO ALSA5] alsa-reset: Fehler beim Vorbereiten des Kanals: %s\n"
-#define MSGTR_AO_ALSA5_PauseDrainError "[AO ALSA5] alsa-pause: Fehler beim Ablauf der Wiedergabe: %s\n"
-#define MSGTR_AO_ALSA5_PauseFlushError "[AO ALSA5] alsa-pause: Wiedergabe-Flush-Fehler: %s\n"
-#define MSGTR_AO_ALSA5_ResumePrepareError "[AO ALSA5] alsa-resume: Fehler beim Vorbereiten des Kanals: %s\n"
-#define MSGTR_AO_ALSA5_Underrun "[AO ALSA5] alsa-play: Alsa-Underrun, setze Stream zurück.\n"
-#define MSGTR_AO_ALSA5_PlaybackPrepareError "[AO ALSA5] alsa-play: Fehler beim Vorbereiten der Wiedergabe: %s\n"
-#define MSGTR_AO_ALSA5_WriteErrorAfterReset "[AO ALSA5] alsa-play: Schreibfehler nach Rücksetzen: %s - gebe auf.\n"
-#define MSGTR_AO_ALSA5_OutPutError "[AO ALSA5] alsa-play: Ausgabefehler: %s\n"
 
 // ao_alsa.c
 #define MSGTR_AO_ALSA_InvalidMixerIndexDefaultingToZero "[AO_ALSA] Ungültiger Mixerindex. Verwende Standardwert 0.\n"
@@ -1322,10 +1327,10 @@ static const char help_text[]=
 // url.c
 #define MSGTR_MPDEMUX_URL_StringAlreadyEscaped "Zeichenkette scheint bereits im URL-Format %c%c1%c2 'escaped' zu sein.\n"
 
-// ai_alsa1x.c
-#define MSGTR_MPDEMUX_AIALSA1X_CannotSetSamplerate "Konnte Samplingrate nicht setzen.\n"
-#define MSGTR_MPDEMUX_AIALSA1X_CannotSetBufferTime "Konnte Pufferzeit nicht setzen.\n"
-#define MSGTR_MPDEMUX_AIALSA1X_CannotSetPeriodTime "Konnte Periode nicht setzen.\n"
+// ai_alsa.c
+#define MSGTR_MPDEMUX_AIALSA_CannotSetSamplerate "Konnte Samplingrate nicht setzen.\n"
+#define MSGTR_MPDEMUX_AIALSA_CannotSetBufferTime "Konnte Pufferzeit nicht setzen.\n"
+#define MSGTR_MPDEMUX_AIALSA_CannotSetPeriodTime "Konnte Periode nicht setzen.\n"
 
 // ai_alsa.c
 #define MSGTR_MPDEMUX_AIALSA_PcmBrokenConfig "Kaputte Konfiguration für diesen PCM-Kanal: Keine Konfiguration verfügbar.\n"

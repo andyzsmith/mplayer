@@ -47,10 +47,8 @@ int gtkCacheSize = 2048;
 
 int gtkVfPP;
 
-#ifdef CONFIG_DXR3
 int gtkVfLAVC;
 char *gtkDXR3Device;
-#endif
 
 int gtkAutoSyncOn;
 int gtkAutoSync;
@@ -60,25 +58,17 @@ int gtkAOSurround;
 int gtkAOExtraStereo;
 float gtkAOExtraStereoMul = 1.0f;
 
-#ifdef CONFIG_ALSA
 char *gtkAOALSAMixer;
 char *gtkAOALSAMixerChannel;
 char *gtkAOALSADevice;
-#endif
 
-#ifdef CONFIG_OSS_AUDIO
 char *gtkAOOSSMixer;
 char *gtkAOOSSMixerChannel;
 char *gtkAOOSSDevice;
-#endif
 
-#ifdef CONFIG_ESD
 char *gtkAOESDDevice;
-#endif
 
-#ifdef CONFIG_SDL
 char *gtkAOSDLDriver;
-#endif
 
 int gtkEnableAudioEqualizer;
 float gtkEquChannels[6][10];
@@ -86,9 +76,7 @@ float gtkEquChannels[6][10];
 int gtkSubDumpMPSub;
 int gtkSubDumpSrt;
 
-#ifdef CONFIG_ASS
 gtkASS_t gtkASS;
-#endif
 
 int gtkEnablePlayBar = 1;
 int gtkLoadFullscreen;
@@ -260,7 +248,7 @@ int cfg_gui_include(m_option_t *conf, const char *filename)
 {
     (void)conf;
 
-    return m_config_parse_config_file(gui_conf, filename);
+    return m_config_parse_config_file(gui_conf, filename, 0);
 }
 
 int cfg_read(void)
@@ -285,7 +273,7 @@ int cfg_read(void)
 
     m_config_register_options(gui_conf, gui_opts);
 
-    if (!disable_gui_conf && (m_config_parse_config_file(gui_conf, cfg) < 0)) {
+    if (!disable_gui_conf && (m_config_parse_config_file(gui_conf, cfg, 1) < 0)) {
         gmp_msg(MSGT_GPLAYER, MSGL_ERR, MSGTR_ConfigFileError);
 // mplayer(MPLAYER_EXIT_GUI, 1, 0);
     }

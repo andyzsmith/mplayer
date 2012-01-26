@@ -28,8 +28,6 @@
 #include <stdint.h>
 
 #include "config.h"
-#include "mp_msg.h"
-
 #include "video_out.h"
 #include "csputils.h"
 
@@ -40,6 +38,10 @@
 #ifdef CONFIG_GL_X11
 #include <X11/Xlib.h>
 #include <GL/glx.h>
+#include "x11_common.h"
+#endif
+#ifdef CONFIG_GL_EGL_X11
+#include <EGL/egl.h>
 #include "x11_common.h"
 #endif
 #include <GL/gl.h>
@@ -384,6 +386,7 @@ void glSetupYUVConversion(gl_conversion_params_t *params);
 void glEnableYUVConversion(GLenum target, int type);
 void glDisableYUVConversion(GLenum target, int type);
 
+#define GL_3D_SWAP           32
 #define GL_3D_RED_CYAN        1
 #define GL_3D_GREEN_MAGENTA   2
 #define GL_3D_QUADBUFFER      3
@@ -403,10 +406,12 @@ void glDisable3D(int type);
 /** \} */
 
 enum MPGLType {
-  GLTYPE_AUTO,
+  GLTYPE_AUTO = -1,
   GLTYPE_W32,
   GLTYPE_X11,
   GLTYPE_SDL,
+  GLTYPE_EGL_X11,
+  GLTYPE_COUNT
 };
 
 typedef struct MPGLContext {
@@ -423,6 +428,9 @@ typedef struct MPGLContext {
 #endif
 #ifdef CONFIG_GL_X11
     GLXContext x11;
+#endif
+#ifdef CONFIG_GL_EGL_X11
+    EGLContext egl;
 #endif
   } context;
   int (*setGlWindow)(struct MPGLContext *);
@@ -443,10 +451,7 @@ extern void (GLAPIENTRY *mpglEnd)(void);
 extern void (GLAPIENTRY *mpglViewport)(GLint, GLint, GLsizei, GLsizei);
 extern void (GLAPIENTRY *mpglMatrixMode)(GLenum);
 extern void (GLAPIENTRY *mpglLoadIdentity)(void);
-extern void (GLAPIENTRY *mpglTranslated)(double, double, double);
-extern void (GLAPIENTRY *mpglScaled)(double, double, double);
-extern void (GLAPIENTRY *mpglOrtho)(double, double, double, double, double, double);
-extern void (GLAPIENTRY *mpglFrustum)(double, double, double, double, double, double);
+extern void (GLAPIENTRY *mpglLoadMatrixf)(float *);
 extern void (GLAPIENTRY *mpglPushMatrix)(void);
 extern void (GLAPIENTRY *mpglPopMatrix)(void);
 extern void (GLAPIENTRY *mpglClear)(GLbitfield);
