@@ -16,8 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "cfg.h"
@@ -28,6 +28,7 @@
 #include "config.h"
 #include "help_mp.h"
 #include "libmpcodecs/vd.h"
+#include "libmpdemux/demuxer.h"
 #include "libvo/video_out.h"
 #include "libvo/x11_common.h"
 #include "mixer.h"
@@ -37,6 +38,8 @@
 #include "mplayer.h"
 #include "parser-cfg.h"
 #include "path.h"
+#include "stream/stream.h"
+#include "sub/ass_mp.h"
 #include "sub/font_load.h"
 #include "sub/sub.h"
 
@@ -223,27 +226,6 @@ static const m_option_t gui_opts[] = {
     { NULL,                          NULL,                     0,                     0,           0,     0,       NULL }
 };
 
-static char *gfgets(char *str, int size, FILE *f)
-{
-    char *s, c;
-
-    s = fgets(str, size, f);
-
-    if (s) {
-        c = s[strlen(s) - 1];
-
-        if (c == '\n' || c == '\r')
-            s[strlen(s) - 1] = 0;
-
-        c = s[strlen(s) - 1];
-
-        if (c == '\n' || c == '\r')
-            s[strlen(s) - 1] = 0;
-    }
-
-    return s;
-}
-
 int cfg_gui_include(m_option_t *conf, const char *filename)
 {
     (void)conf;
@@ -251,7 +233,7 @@ int cfg_gui_include(m_option_t *conf, const char *filename)
     return m_config_parse_config_file(gui_conf, filename, 0);
 }
 
-int cfg_read(void)
+void cfg_read(void)
 {
     char *cfg;
     FILE *f;
@@ -290,12 +272,12 @@ int cfg_read(void)
             char tmp[512];
             plItem *item;
 
-            if (gfgets(tmp, 512, f) == NULL)
+            if (fgetstr(tmp, 512, f) == NULL)
                 continue;
 
             item       = calloc(1, sizeof(plItem));
             item->path = strdup(tmp);
-            gfgets(tmp, 512, f);
+            fgetstr(tmp, 512, f);
             item->name = strdup(tmp);
             listSet(gtkAddPlItem, item);
         }
@@ -315,7 +297,7 @@ int cfg_read(void)
             char tmp[512];
             urlItem *item;
 
-            if (gfgets(tmp, 512, f) == NULL)
+            if (fgetstr(tmp, 512, f) == NULL)
                 continue;
 
             item      = calloc(1, sizeof(urlItem));
@@ -339,7 +321,7 @@ int cfg_read(void)
         while (!feof(f)) {
             char tmp[512];
 
-            if (gfgets(tmp, 512, f) == NULL)
+            if (fgetstr(tmp, 512, f) == NULL)
                 continue;
 
             fsHistory[i++] = gstrdup(tmp);
@@ -349,11 +331,9 @@ int cfg_read(void)
     }
 
     free(cfg);
-
-    return 0;
 }
 
-int cfg_write(void)
+void cfg_write(void)
 {
     char *cfg;
     FILE *f;
@@ -441,6 +421,4 @@ int cfg_write(void)
     }
 
     free(cfg);
-
-    return 0;
 }
