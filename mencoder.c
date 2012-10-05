@@ -233,6 +233,7 @@ typedef struct {
     int in_size;
     float frame_time;
     int already_read;
+    int flush;
 } s_frame_data;
 
 static edl_record_ptr edl_records = NULL; ///< EDL entries memory area
@@ -434,6 +435,11 @@ static int slowseek(float end_pts, demux_stream_t *d_video,
 
         if (!frame_data->already_read) { // when called after fixdelay, a frame is already read
             frame_data->in_size = video_read_frame(sh_video, &frame_data->frame_time, &frame_data->start, force_fps);
+            frame_data->flush = frame_data->in_size < 0 && d_video->eof;
+            if (frame_data->flush) {
+                frame_data->in_size = 0;
+                frame_data->start = NULL;
+            }
             if(frame_data->in_size<0) return 2;
             sh_video->timer += frame_data->frame_time;
         }
@@ -455,6 +461,8 @@ static int slowseek(float end_pts, demux_stream_t *d_video,
             void *decoded_frame = decode_video(sh_video, frame_data->start, frame_data->in_size, !softskip, MP_NOPTS_VALUE, NULL);
 	    if (decoded_frame)
 		filter_video(sh_video, decoded_frame, MP_NOPTS_VALUE);
+	    else if (frame_data->flush)
+		return 2;
         }
 
         if (print_info) mp_msg(MSGT_MENCODER, MSGL_STATUS,
@@ -679,7 +687,7 @@ if(stream->type==STREAMTYPE_DVDNAV){
 
   stream->start_pos+=seek_to_byte;
 
-  if(stream_cache_size>0) stream_enable_cache(stream,stream_cache_size*1024,0,0);
+  if(stream_cache_size>0) stream_enable_cache(stream,stream_cache_size*1024ull,0,0);
 
   if(demuxer2) audio_id=-2; /* do NOT read audio packets... */
 
@@ -1394,6 +1402,13 @@ if(sh_audio){
 
     if (!frame_data.already_read) {
         frame_data.in_size=video_read_frame(sh_video,&frame_data.frame_time,&frame_data.start,force_fps);
+        frame_data.flush = frame_data.in_size < 0 && d_video->eof &&
+                           mux_v->codec != VCODEC_COPY &&
+                           mux_v->codec != VCODEC_FRAMENO;
+        if (frame_data.flush) {
+            frame_data.in_size = 0;
+            frame_data.start = NULL;
+        }
         sh_video->timer+=frame_data.frame_time;
     }
     frame_data.frame_time /= playback_speed;
@@ -1475,6 +1490,8 @@ default:
                       ((vf_instance_t *)sh_video->vfilter)->control(sh_video->vfilter, VFCTRL_SKIP_NEXT_FRAME, 0) != CONTROL_TRUE);
     void *decoded_frame = decode_video(sh_video,frame_data.start,frame_data.in_size,
                                        drop_frame, ovfr ? sh_video->pts : MP_NOPTS_VALUE, NULL);
+    if (frame_data.flush && !decoded_frame)
+        at_eof = 1;
     if (did_seek && sh_video->pts != MP_NOPTS_VALUE) {
         did_seek = 0;
         sub_offset = sh_video->pts;

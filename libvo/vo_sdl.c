@@ -67,6 +67,7 @@
 #include "sub/sub.h"
 #include "aspect.h"
 #include "libmpcodecs/vfcap.h"
+#include "osdep/setenv.h"
 
 #ifdef CONFIG_X11
 #include <X11/Xlib.h>
@@ -232,6 +233,8 @@ static void expand_rect(SDL_Rect* rect, int x, int y, int w, int h)
 
 static void draw_alpha(int x0,int y0, int w,int h, unsigned char* src, unsigned char *srca, int stride){
 	struct sdl_priv_s *priv = &sdl_priv;
+    vo_draw_alpha_func draw = vo_get_draw_alpha(priv->format);
+    if (!draw) return;
 
     if(priv->osd_has_changed) {
         /* OSD did change. Store a bounding box of everything drawn into the OSD */
@@ -267,67 +270,25 @@ static void draw_alpha(int x0,int y0, int w,int h, unsigned char* src, unsigned 
             return;
     }
 
+	x0 *= pixel_stride(priv->format);
 	switch(priv->format) {
+		case IMGFMT_YUY2:
+        	case IMGFMT_YVYU:
+        	case IMGFMT_UYVY:
 		case IMGFMT_YV12:
 		case IMGFMT_I420:
         	case IMGFMT_IYUV:
-            vo_draw_alpha_yv12(w,h,src,srca,stride,((uint8_t *) *(priv->overlay->pixels))+priv->overlay->pitches[0]*y0+x0,priv->overlay->pitches[0]);
-		break;
-		case IMGFMT_YUY2:
-        	case IMGFMT_YVYU:
-                x0 *= 2;
-    			vo_draw_alpha_yuy2(w,h,src,srca,stride,((uint8_t *) *(priv->overlay->pixels))+priv->overlay->pitches[0]*y0+x0,priv->overlay->pitches[0]);
-		break;
-        	case IMGFMT_UYVY:
-                x0 *= 2;
-    			vo_draw_alpha_yuy2(w,h,src,srca,stride,((uint8_t *) *(priv->overlay->pixels))+priv->overlay->pitches[0]*y0+x0,priv->overlay->pitches[0]);
+            draw(w,h,src,srca,stride,((uint8_t *) *(priv->overlay->pixels))+priv->overlay->pitches[0]*y0+x0,priv->overlay->pitches[0]);
 		break;
 
 		default:
         if(priv->dblit) {
-            x0 *= priv->surface->format->BytesPerPixel;
-		switch(priv->format) {
-		case IMGFMT_RGB15:
-		case IMGFMT_BGR15:
-    			vo_draw_alpha_rgb15(w,h,src,srca,stride,((uint8_t *) priv->surface->pixels)+y0*priv->surface->pitch+x0,priv->surface->pitch);
-		break;
-		case IMGFMT_RGB16:
-		case IMGFMT_BGR16:
-    			vo_draw_alpha_rgb16(w,h,src,srca,stride,((uint8_t *) priv->surface->pixels)+y0*priv->surface->pitch+x0,priv->surface->pitch);
-		break;
-		case IMGFMT_RGB24:
-		case IMGFMT_BGR24:
-    			vo_draw_alpha_rgb24(w,h,src,srca,stride,((uint8_t *) priv->surface->pixels)+y0*priv->surface->pitch+x0,priv->surface->pitch);
-		break;
-		case IMGFMT_RGB32:
-		case IMGFMT_BGR32:
-    			vo_draw_alpha_rgb32(w,h,src,srca,stride,((uint8_t *) priv->surface->pixels)+y0*priv->surface->pitch+x0,priv->surface->pitch);
-		break;
-		}
+            draw(w,h,src,srca,stride,((uint8_t *) priv->surface->pixels)+y0*priv->surface->pitch+x0,priv->surface->pitch);
         }
 		else {
-            x0 *= priv->rgbsurface->format->BytesPerPixel;
-		switch(priv->format) {
-		case IMGFMT_RGB15:
-		case IMGFMT_BGR15:
-    			vo_draw_alpha_rgb15(w,h,src,srca,stride,((uint8_t *) priv->rgbsurface->pixels)+y0*priv->rgbsurface->pitch+x0,priv->rgbsurface->pitch);
-		break;
-		case IMGFMT_RGB16:
-		case IMGFMT_BGR16:
-    			vo_draw_alpha_rgb16(w,h,src,srca,stride,((uint8_t *) priv->rgbsurface->pixels)+y0*priv->rgbsurface->pitch+x0,priv->rgbsurface->pitch);
-		break;
-		case IMGFMT_RGB24:
-		case IMGFMT_BGR24:
-    			vo_draw_alpha_rgb24(w,h,src,srca,stride,((uint8_t *) priv->rgbsurface->pixels)+y0*priv->rgbsurface->pitch+x0,priv->rgbsurface->pitch);
-		break;
-		case IMGFMT_RGB32:
-		case IMGFMT_BGR32:
-    			vo_draw_alpha_rgb32(w,h,src,srca,stride,((uint8_t *) priv->rgbsurface->pixels)+y0*priv->rgbsurface->pitch+x0,priv->rgbsurface->pitch);
-		break;
+            draw(w,h,src,srca,stride,((uint8_t *) priv->rgbsurface->pixels)+y0*priv->rgbsurface->pitch+x0,priv->rgbsurface->pitch);
 		}
         }
-
-  	}
 }
 
 
@@ -529,7 +490,8 @@ static void set_fullmode (int mode) {
 		screen_surface_w = vo_screenwidth;
 		screen_surface_h = vo_screenheight;
 	}
-	else if (mode < 0) {
+	else {
+	if (mode < 0) {
         int i,j,imax;
 		mode = 0; // Default to the biggest mode avaible
 		if ( mp_msg_test(MSGT_VO,MSGL_V) ) for(i=0;priv->fullmodes[i];++i)
@@ -552,6 +514,7 @@ static void set_fullmode (int mode) {
 	}
        screen_surface_h = priv->fullmodes[mode]->h;
        screen_surface_w = priv->fullmodes[mode]->w;
+       }
 
 	aspect_save_screenres(screen_surface_w, screen_surface_h);
 

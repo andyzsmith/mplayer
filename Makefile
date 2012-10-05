@@ -70,6 +70,7 @@ SRCS_COMMON-$(FAAD)                  += libmpcodecs/ad_faad.c
 SRCS_COMMON-$(FASTMEMCPY)            += libvo/aclib.c
 SRCS_COMMON-$(FFMPEG)                += av_helpers.c                \
                                         av_opts.c                   \
+                                        libaf/af_lavcac3enc.c       \
                                         libaf/af_lavcresample.c     \
                                         libmpcodecs/ad_ffmpeg.c     \
                                         libmpcodecs/ad_spdif.c      \
@@ -77,7 +78,6 @@ SRCS_COMMON-$(FFMPEG)                += av_helpers.c                \
                                         libmpcodecs/vf_geq.c        \
                                         libmpcodecs/vf_lavc.c       \
                                         libmpcodecs/vf_lavcdeint.c  \
-                                        libmpcodecs/vf_pp.c         \
                                         libmpcodecs/vf_screenshot.c \
                                         libmpdemux/demux_lavf.c     \
                                         stream/stream_ffmpeg.c      \
@@ -86,8 +86,7 @@ SRCS_COMMON-$(FFMPEG)                += av_helpers.c                \
 SRCS_COMMON-$(CONFIG_VF_LAVFI)      +=  libmpcodecs/vf_lavfi.c
 
 # These filters use private headers and do not work with shared FFmpeg.
-SRCS_COMMON-$(FFMPEG_A)              += libaf/af_lavcac3enc.c    \
-                                        libmpcodecs/vf_fspp.c    \
+SRCS_COMMON-$(FFMPEG_A)              += libmpcodecs/vf_fspp.c    \
                                         libmpcodecs/vf_mcdeint.c \
                                         libmpcodecs/vf_qp.c      \
                                         libmpcodecs/vf_spp.c     \
@@ -210,6 +209,7 @@ SRCS_COMMON-$(NETWORKING)            += stream/stream_netstream.c \
                                         stream/realrtsp/xbuffer.c \
 
 SRCS_COMMON-$(PNG)                   += libmpcodecs/vd_mpng.c
+SRCS_COMMON-$(POSTPROC)              += libmpcodecs/vf_pp.c
 SRCS_COMMON-$(PRIORITY)              += osdep/priority.c
 SRCS_COMMON-$(PVR)                   += stream/stream_pvr.c
 SRCS_COMMON-$(QTX_CODECS)            += libmpcodecs/ad_qtaudio.c \
@@ -220,21 +220,6 @@ SRCS_COMMON-$(REAL_CODECS)           += libmpcodecs/ad_realaud.c \
                                         libmpcodecs/vd_realvid.c
 SRCS_COMMON-$(SPEEX)                 += libmpcodecs/ad_speex.c
 SRCS_COMMON-$(STREAM_CACHE)          += stream/cache2.c
-
-SRCS_COMMON-$(TREMOR_INTERNAL)       += tremor/bitwise.c \
-                                        tremor/block.c \
-                                        tremor/codebook.c \
-                                        tremor/floor0.c \
-                                        tremor/floor1.c \
-                                        tremor/framing.c \
-                                        tremor/info.c \
-                                        tremor/mapping0.c \
-                                        tremor/mdct.c \
-                                        tremor/registry.c \
-                                        tremor/res012.c \
-                                        tremor/sharedbook.c \
-                                        tremor/synthesis.c \
-                                        tremor/window.c \
 
 SRCS_COMMON-$(TV)                    += stream/stream_tv.c stream/tv.c \
                                         stream/frequencies.c stream/tvi_dummy.c
@@ -504,7 +489,7 @@ SRCS_MPLAYER-$(ARTS)         += libao2/ao_arts.c
 SRCS_MPLAYER-$(BL)           += libvo/vo_bl.c
 SRCS_MPLAYER-$(CACA)         += libvo/vo_caca.c
 SRCS_MPLAYER-$(COREAUDIO)    += libao2/ao_coreaudio.c
-SRCS_MPLAYER-$(COREVIDEO)    += libvo/vo_corevideo.m libvo/osx_common.c
+SRCS_MPLAYER-$(COREVIDEO)    += libvo/vo_corevideo.m libvo/osx_common.c libvo/osx_objc_common.m
 SRCS_MPLAYER-$(DART)         += libao2/ao_dart.c
 SRCS_MPLAYER-$(DGA)          += libvo/vo_dga.c
 SRCS_MPLAYER-$(DIRECT3D)     += libvo/vo_direct3d.c libvo/w32_common.c
@@ -518,10 +503,11 @@ SRCS_MPLAYER-$(FFMPEG)       += libvo/vo_png.c
 SRCS_MPLAYER-$(GGI)          += libvo/vo_ggi.c
 SRCS_MPLAYER-$(GIF)          += libvo/vo_gif89a.c
 SRCS_MPLAYER-$(GL)           += libvo/gl_common.c libvo/vo_gl.c \
-                                libvo/vo_gl2.c libvo/csputils.c
+                                libvo/csputils.c
+SRCS_MPLAYER-$(GL_OSX)       += libvo/osx_common.c libvo/osx_objc_common.m
 SRCS_MPLAYER-$(GL_SDL)       += libvo/sdl_common.c
-SRCS_MPLAYER-$(GL_WIN32)     += libvo/w32_common.c
-SRCS_MPLAYER-$(GL_X11)       += libvo/x11_common.c
+SRCS_MPLAYER-$(GL_WIN32)     += libvo/w32_common.c libvo/vo_gl_tiled.c
+SRCS_MPLAYER-$(GL_X11)       += libvo/x11_common.c libvo/vo_gl_tiled.c
 SRCS_MPLAYER-$(MATRIXVIEW)   += libvo/vo_matrixview.c libvo/matrixview.c
 SRCS_MPLAYER-$(GUI)          += gui/util/bitmap.c \
                                 gui/util/list.c \
@@ -546,7 +532,7 @@ SRCS_MPLAYER-$(GUI_GTK)      += gui/app.c \
                                 gui/ui/menu.c \
                                 gui/ui/playbar.c \
                                 gui/ui/render.c \
-                                gui/ui/sub.c \
+                                gui/ui/video.c \
                                 gui/ui/widgets.c \
                                 gui/util/cut.c \
                                 gui/wm/ws.c \
@@ -812,6 +798,9 @@ config.mak: configure
 	@echo "####### Please run ./configure again - it's changed! #######"
 	@echo "############################################################"
 
+checkhelp: help/help_mp*.h
+	help/help_check.sh $(CC) $^
+
 help_mp.h: help/help_mp-en.h $(HELP_FILE)
 	help/help_create.sh $(HELP_FILE) $(CHARSET)
 
@@ -971,10 +960,10 @@ clean:
 	-rm -rf tests/res
 	-rm -f $(call ADD_ALL_DIRS,/*.o /*.a /*.ho /*~)
 	-rm -f $(call ADD_ALL_EXESUFS,mplayer mencoder)
+	-rm -rf DOCS/tech/doxygen DOCS/HTML
 
 distclean: clean testsclean toolsclean driversclean dhahelperclean
 	-$(MAKE) -C ffmpeg $@
-	-rm -rf DOCS/tech/doxygen DOCS/HTML
 	-rm -f DOCS/xml/html-chunk.xsl DOCS/xml/html-single.xsl
 	-rm -f $(call ADD_ALL_DIRS,/*.d)
 	-rm -f config.* codecs.conf.h help_mp.h version.h TAGS tags
@@ -1172,7 +1161,7 @@ dhahelperclean:
 -include $(DEP_FILES) $(DRIVER_DEP_FILES) $(TESTS_DEP_FILES) $(TOOLS_DEP_FILES) $(DHAHELPER_DEP_FILES)
 
 .PHONY: all doxygen *install* *tools drivers dhahelper*
-.PHONY: checkheaders *clean tests check_checksums fatetest
+.PHONY: checkheaders *clean tests check_checksums fatetest checkhelp
 .PHONY: doc html-chunked* html-single* xmllint*
 
 # Disable suffix rules.  Most of the builtin rules are suffix rules,

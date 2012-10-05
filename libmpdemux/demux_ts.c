@@ -82,6 +82,7 @@ typedef enum
 	AUDIO_AAC_LATM	= mmioFOURCC('M', 'P', '4', 'L'),
 	AUDIO_TRUEHD	= mmioFOURCC('T', 'R', 'H', 'D'),
 	AUDIO_S302M     = mmioFOURCC('B', 'S', 'S', 'D'),
+	AUDIO_PCM_BR    = mmioFOURCC('B', 'P', 'C', 'M'),
 	SPU_DVD		= 0x3000000,
 	SPU_DVB		= 0x3000001,
 	SPU_TELETEXT	= 0x3000002,
@@ -258,6 +259,7 @@ static int IS_AUDIO(es_stream_type_t type)
 	case AUDIO_MP2:
 	case AUDIO_A52:
 	case AUDIO_LPCM_BE:
+	case AUDIO_PCM_BR:
 	case AUDIO_AAC:
 	case AUDIO_AAC_LATM:
 	case AUDIO_DTS:
@@ -334,7 +336,7 @@ try_fec:
 }
 
 static int parse_avc_sps(uint8_t *buf, int len, int *w, int *h);
-static inline uint8_t *pid_lang_from_pmt(ts_priv_t *priv, int pid);
+static uint8_t *pid_lang_from_pmt(ts_priv_t *priv, int pid);
 
 static void ts_add_stream(demuxer_t * demuxer, ES_stream_t *es)
 {
@@ -414,6 +416,8 @@ static void ts_add_stream(demuxer_t * demuxer, ES_stream_t *es)
 				sh->type = 'v'; break;
 			case SPU_PGS:
 				sh->type = 'p'; break;
+			case SPU_TELETEXT:
+				sh->type = 'd'; break;
         		}
 			priv->ts.streams[es->pid].id = priv->last_sid;
 			priv->ts.streams[es->pid].sh = sh;
@@ -526,7 +530,7 @@ static int ts_check_file(demuxer_t * demuxer)
 }
 
 
-static inline int32_t progid_idx_in_pmt(ts_priv_t *priv, uint16_t progid)
+static int32_t progid_idx_in_pmt(ts_priv_t *priv, uint16_t progid)
 {
 	int x;
 
@@ -543,7 +547,7 @@ static inline int32_t progid_idx_in_pmt(ts_priv_t *priv, uint16_t progid)
 }
 
 
-static inline int32_t progid_for_pid(ts_priv_t *priv, int pid, int32_t req)		//finds the first program listing a pid
+static int32_t progid_for_pid(ts_priv_t *priv, int pid, int32_t req)		//finds the first program listing a pid
 {
 	int i, j;
 	pmt_t *pmt;
@@ -573,7 +577,7 @@ static inline int32_t progid_for_pid(ts_priv_t *priv, int pid, int32_t req)		//f
 	return -1;
 }
 
-static inline int32_t prog_pcr_pid(ts_priv_t *priv, int progid)
+static int32_t prog_pcr_pid(ts_priv_t *priv, int progid)
 {
 	int i;
 
@@ -588,7 +592,7 @@ static inline int32_t prog_pcr_pid(ts_priv_t *priv, int progid)
 }
 
 
-static inline int pid_match_lang(ts_priv_t *priv, uint16_t pid, char *lang)
+static int pid_match_lang(ts_priv_t *priv, uint16_t pid, char *lang)
 {
 	uint16_t i, j;
 	pmt_t *pmt;
@@ -889,6 +893,8 @@ static off_t ts_detect_streams(demuxer_t *demuxer, tsdemux_init_t *param)
 		mp_msg(MSGT_DEMUXER, MSGL_INFO, "AUDIO DTS(pid=%d)", param->apid);
 	else if(param->atype == AUDIO_LPCM_BE)
 		mp_msg(MSGT_DEMUXER, MSGL_INFO, "AUDIO LPCM(pid=%d)", param->apid);
+	else if(param->atype == AUDIO_PCM_BR)
+		mp_msg(MSGT_DEMUXER, MSGL_INFO, "AUDIO PCMBR(pid=%d)", param->apid);
 	else if(param->atype == AUDIO_AAC)
 		mp_msg(MSGT_DEMUXER, MSGL_INFO, "AUDIO AAC(pid=%d)", param->apid);
 	else if(param->atype == AUDIO_AAC_LATM)
@@ -1658,7 +1664,7 @@ static void ts_dump_streams(ts_priv_t *priv)
 }
 
 
-static inline int32_t prog_idx_in_pat(ts_priv_t *priv, uint16_t progid)
+static int32_t prog_idx_in_pat(ts_priv_t *priv, uint16_t progid)
 {
 	int x;
 
@@ -1675,7 +1681,7 @@ static inline int32_t prog_idx_in_pat(ts_priv_t *priv, uint16_t progid)
 }
 
 
-static inline int32_t prog_id_in_pat(ts_priv_t *priv, uint16_t pid)
+static int32_t prog_id_in_pat(ts_priv_t *priv, uint16_t pid)
 {
 	int x;
 
@@ -1805,7 +1811,7 @@ static int parse_pat(ts_priv_t * priv, int is_start, unsigned char *buff, int si
 }
 
 
-static inline int32_t es_pid_in_pmt(pmt_t * pmt, uint16_t pid)
+static int32_t es_pid_in_pmt(pmt_t * pmt, uint16_t pid)
 {
 	uint16_t i;
 
@@ -2281,7 +2287,7 @@ static int parse_descriptors(struct pmt_es_t *es, uint8_t *ptr)
 		else if(ptr[j] == 0x56) // Teletext
 		{
 			if(descr_len >= 5) {
-				memcpy(es->lang, ptr+2, 3);
+				memcpy(es->lang, ptr+j+2, 3);
 				es->lang[3] = 0;
 			}
 			es->type = SPU_TELETEXT;
@@ -2558,6 +2564,9 @@ static int parse_pmt(ts_priv_t * priv, uint16_t progid, uint16_t pid, int is_sta
 			case 0x13:
 				pmt->es[idx].type = SL_SECTION;
 				break;
+			case 0x80:
+				pmt->es[idx].type = AUDIO_PCM_BR;
+				break;
 			case 0x81:
 				pmt->es[idx].type = AUDIO_A52;
 				break;
@@ -2641,7 +2650,7 @@ static pmt_t* pmt_of_pid(ts_priv_t *priv, int pid, mp4_decoder_config_t **mp4_de
 }
 
 
-static inline int32_t pid_type_from_pmt(ts_priv_t *priv, int pid)
+static int32_t pid_type_from_pmt(ts_priv_t *priv, int pid)
 {
 	int32_t pmt_idx, pid_idx, i, j;
 
@@ -2668,7 +2677,7 @@ static inline int32_t pid_type_from_pmt(ts_priv_t *priv, int pid)
 }
 
 
-static inline uint8_t *pid_lang_from_pmt(ts_priv_t *priv, int pid)
+static uint8_t *pid_lang_from_pmt(ts_priv_t *priv, int pid)
 {
 	int32_t pmt_idx, pid_idx, i, j;
 

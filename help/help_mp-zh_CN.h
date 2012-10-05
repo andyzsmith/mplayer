@@ -1,4 +1,4 @@
-// Synced with help_mp-en.h rev. 34719
+// Synced with help_mp-en.h rev. 35110
 //
 // Translated by JRaSH <jrash06@gmail.com>
 
@@ -557,6 +557,36 @@ static const char help_text[]=
 #define MSGTR_NoChapter "无章节"
 #define MSGTR_Chapter "章节 %d"
 #define MSGTR_NoFileLoaded "未载入文件"
+#define MSGTR_Filter_UTF8Subtitles "UTF-8 编码的字幕（*.utf, *.utf-8, *.utf8）"
+#define MSGTR_Filter_AllSubtitles "所有字幕文件"
+#define MSGTR_Filter_AllFiles "所有文件"
+#define MSGTR_Filter_TTF "True Type 字体文件（*.ttf）"
+#define MSGTR_Filter_Type1 "Type1 字体文件（*.pfb）"
+#define MSGTR_Filter_AllFonts "所有字体"
+#define MSGTR_Filter_FontFiles "字体文件（*.desc）"
+#define MSGTR_Filter_DDRawAudio "Dolby 数字音频文件 / PCM 音频文件（*.ac3, *.pcm）"
+#define MSGTR_Filter_MPEGAudio "MPEG 音频文件（*.mp2, *.mp3, *.mpga, *.m4a, *.aac, *.f4a）"
+#define MSGTR_Filter_MatroskaAudio "Matroska 音频文件（*.mka）"
+#define MSGTR_Filter_OGGAudio "Ogg 音频文件（*.oga, *.ogg, *.spx）"
+#define MSGTR_Filter_WAVAudio "WAV 音频文件（*.wav）"
+#define MSGTR_Filter_WMAAudio "Windows Media 音频文件（*.wma）"
+#define MSGTR_Filter_AllAudioFiles "所有音频文件"
+#define MSGTR_Filter_AllVideoFiles "所有视频文件"
+#define MSGTR_Filter_AVIFiles "AVI 文件"
+#define MSGTR_Filter_DivXFiles "DivX 文件"
+#define MSGTR_Filter_FlashVideo "Flash 视频文件"
+#define MSGTR_Filter_MP3Files "MP3 文件"
+#define MSGTR_Filter_MP4Files "MP4 文件"
+#define MSGTR_Filter_MPEGFiles "MPEG 文件"
+#define MSGTR_Filter_MP2TS "MPEG-2 传输流"
+#define MSGTR_Filter_MatroskaMedia "Matroska 媒体文件"
+#define MSGTR_Filter_OGGMedia "Ogg 媒体文件"
+#define MSGTR_Filter_QTMedia "QuickTime 媒体文件"
+#define MSGTR_Filter_RNMedia "RealNetworks 媒体文件"
+#define MSGTR_Filter_VideoCDImages "VCD/SVCD 镜像文件"
+#define MSGTR_Filter_WAVFiles "WAV 文件"
+#define MSGTR_Filter_WindowsMedia "Windows 媒体文件"
+#define MSGTR_Filter_Playlists "播放列表文件"
 
 // --- buttons ---
 #define MSGTR_Ok "确定"
@@ -849,7 +879,7 @@ static const char help_text[]=
 #define MSGTR_PREFERENCES_PriorityNormal "标准"
 #define MSGTR_PREFERENCES_PriorityNormalAbove "高于标准"
 #define MSGTR_PREFERENCES_PriorityNormalBelow "低于标准"
-#define MSGTR_PREFERENCES_VideoInSubwin "在子窗口中显示视频（仅用于 DirectX）"
+#define MSGTR_PREFERENCES_ShowInVideoWin "在视频窗口中显示（仅用于 DirectX）"
 
 
 // ======================= video output drivers ========================
@@ -1171,6 +1201,7 @@ static const char help_text[]=
 // old vo drivers that have been replaced
 #define MSGTR_VO_PGM_HasBeenReplaced "PGM 视频输出驱动已替换为 -vo pnm:pgmyuv。\n"
 #define MSGTR_VO_MD5_HasBeenReplaced "MD5 视频输出驱动已替换为 -vo md5sum。\n"
+#define MSGTR_VO_GL2_HasBeenRenamed "g12 视频输出驱动已更名为 -vo gl_tiled，但实际上应使用 -vo gl。\n"
 
 
 // ======================= audio output drivers ========================
@@ -1613,7 +1644,7 @@ static const char help_text[]=
 #define MSGTR_MovieAspectUndefined "电影宽高比未定义 - 没有使用预先放大功能。\n"
 
 // vd_dshow.c, vd_dmo.c
-#define MSGTR_DownloadCodecPackage "你需要升级/安装已编译编解码器包。\n请访问 http:\/\/www.mplayerhq.hu/dload.html\n"
+#define MSGTR_DownloadCodecPackage "你需要升级/安装已编译编解码器包。\n请访问 http://www.mplayerhq.hu/dload.html\n"
 
 // libmpcodecs/vd_dmo.c vd_dshow.c vd_vfw.c
 #define MSGTR_MPCODECS_CouldntAllocateImageForCinepakCodec "[VD_DMO] 无法为 cinepak 编解码器分配进程映像。\n"

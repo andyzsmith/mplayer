@@ -38,6 +38,7 @@
 #include "libmpcodecs/vf.h"
 #include "libmpcodecs/vd.h"
 #include "libvo/video_out.h"
+#include "libvo/aspect.h"
 #include "sub/font_load.h"
 #include "playtree.h"
 #include "libao2/audio_out.h"
@@ -75,24 +76,23 @@
 static void rescale_input_coordinates(int ix, int iy, double *dx, double *dy)
 {
     //remove the borders, if any, and rescale to the range [0,1],[0,1]
-    if (vo_fs) {                //we are in full-screen mode
-        if (vo_screenwidth > vo_dwidth) //there are borders along the x axis
-            ix -= (vo_screenwidth - vo_dwidth) / 2;
-        if (vo_screenheight > vo_dheight)       //there are borders along the y axis (usual way)
-            iy -= (vo_screenheight - vo_dheight) / 2;
-
-        if (ix < 0 || ix > vo_dwidth) {
-            *dx = *dy = -1.0;
-            return;
-        }                       //we are on one of the borders
-        if (iy < 0 || iy > vo_dheight) {
-            *dx = *dy = -1.0;
-            return;
-        }                       //we are on one of the borders
+    int w = vo_dwidth, h = vo_dheight;
+    if (aspect_scaling()) {
+        aspect(&w, &h, A_WINZOOM);
+        panscan_calc_windowed();
+        w += vo_panscan_x;
+        h += vo_panscan_y;
+        ix -= (vo_dwidth  - w) / 2;
+        iy -= (vo_dheight - h) / 2;
+    }
+    if (ix < 0 || ix > w || iy < 0 || iy > h) {
+        // ignore movements outside movie area
+        *dx = *dy = -1.0;
+        return;
     }
 
-    *dx = (double) ix / (double) vo_dwidth;
-    *dy = (double) iy / (double) vo_dheight;
+    *dx = (double) ix / (double) w;
+    *dy = (double) iy / (double) h;
 
     mp_msg(MSGT_CPLAYER, MSGL_V,
            "\r\nrescaled coordinates: %.3f, %.3f, screen (%d x %d), vodisplay: (%d, %d), fullscreen: %d\r\n",
@@ -910,30 +910,7 @@ static int mp_property_audio(m_option_t *prop, int action, void *arg,
             *(char **) arg = strdup(MSGTR_Disabled);
         else {
             char lang[40] = MSGTR_Unknown;
-            sh_audio_t* sh = mpctx->sh_audio;
-            if (sh && sh->lang)
-                av_strlcpy(lang, sh->lang, 40);
-            // TODO: use a proper STREAM_CTRL instead of this mess
-            else if (sh && mpctx->stream->type == STREAMTYPE_BD) {
-                const char *l = bd_lang_from_id(mpctx->stream, audio_id);
-                if (l)
-                    av_strlcpy(lang, l, sizeof(lang));
-            }
-#ifdef CONFIG_DVDREAD
-            else if (mpctx->stream->type == STREAMTYPE_DVD) {
-                int code = dvd_lang_from_aid(mpctx->stream, current_id);
-                if (code) {
-                    lang[0] = code >> 8;
-                    lang[1] = code;
-                    lang[2] = 0;
-                }
-            }
-#endif
-
-#ifdef CONFIG_DVDNAV
-            else if (mpctx->stream->type == STREAMTYPE_DVDNAV)
-                mp_dvdnav_lang_from_aid(mpctx->stream, current_id, lang);
-#endif
+            demuxer_audio_lang(mpctx->demuxer, current_id, lang, sizeof(lang));
             *(char **) arg = malloc(64);
             snprintf(*(char **) arg, 64, "(%d) %s", audio_id, lang);
         }
@@ -1497,36 +1474,6 @@ static int mp_property_sub(m_option_t *prop, int action, void *arg,
                      strlen(tmp) < 20 ? tmp : tmp + strlen(tmp) - 19);
             return M_PROPERTY_OK;
         }
-#ifdef CONFIG_DVDNAV
-        if (mpctx->stream->type == STREAMTYPE_DVDNAV) {
-            if (vo_spudec && dvdsub_id >= 0) {
-                unsigned char lang[3];
-                if (mp_dvdnav_lang_from_sid(mpctx->stream, dvdsub_id, lang)) {
-                    snprintf(*(char **) arg, 63, "(%d) %s", dvdsub_id, lang);
-                    return M_PROPERTY_OK;
-                }
-            }
-        }
-#endif
-
-        if (mpctx->stream->type == STREAMTYPE_BD
-            && d_sub && d_sub->sh && dvdsub_id >= 0) {
-            const char *lang = bd_lang_from_id(mpctx->stream, ((sh_sub_t*)d_sub->sh)->sid);
-            if (!lang) lang = MSGTR_Unknown;
-            snprintf(*(char **) arg, 63, "(%d) %s", dvdsub_id, lang);
-            return M_PROPERTY_OK;
-        }
-
-        if ((mpctx->demuxer->type == DEMUXER_TYPE_MATROSKA
-             || mpctx->demuxer->type == DEMUXER_TYPE_LAVF
-             || mpctx->demuxer->type == DEMUXER_TYPE_LAVF_PREFERRED
-             || mpctx->demuxer->type == DEMUXER_TYPE_OGG)
-             && d_sub && d_sub->sh && dvdsub_id >= 0) {
-            const char* lang = ((sh_sub_t*)d_sub->sh)->lang;
-            if (!lang) lang = MSGTR_Unknown;
-            snprintf(*(char **) arg, 63, "(%d) %s", dvdsub_id, lang);
-            return M_PROPERTY_OK;
-        }
 
         if (vo_vobsub && vobsub_id >= 0) {
             const char *language = MSGTR_Unknown;
@@ -1535,20 +1482,10 @@ static int mp_property_sub(m_option_t *prop, int action, void *arg,
                      vobsub_id, language ? language : MSGTR_Unknown);
             return M_PROPERTY_OK;
         }
-#ifdef CONFIG_DVDREAD
-        if (vo_spudec && mpctx->stream->type == STREAMTYPE_DVD
-            && dvdsub_id >= 0) {
-            char lang[3];
-            int code = dvd_lang_from_sid(mpctx->stream, dvdsub_id);
-            lang[0] = code >> 8;
-            lang[1] = code;
-            lang[2] = 0;
-            snprintf(*(char **) arg, 63, "(%d) %s", dvdsub_id, lang);
-            return M_PROPERTY_OK;
-        }
-#endif
         if (dvdsub_id >= 0) {
-            snprintf(*(char **) arg, 63, "(%d) %s", dvdsub_id, MSGTR_Unknown);
+            char lang[40] = MSGTR_Unknown;
+            demuxer_sub_lang(mpctx->demuxer, dvdsub_id, lang, sizeof(lang));
+            snprintf(*(char **) arg, 63, "(%d) %s", dvdsub_id, lang);
             return M_PROPERTY_OK;
         }
         snprintf(*(char **) arg, 63, MSGTR_Disabled);
@@ -3409,7 +3346,11 @@ int run_command(MPContext *mpctx, mp_cmd_t *cmd)
         case MP_CMD_RUN:
 #ifndef __MINGW32__
             if (!fork()) {
-                execl("/bin/sh", "sh", "-c", cmd->args[0].v.s, NULL);
+                char *exp_cmd = property_expand_string(mpctx, cmd->args[0].v.s);
+                if (exp_cmd) {
+                    execl("/bin/sh", "sh", "-c", exp_cmd, NULL);
+                    free(exp_cmd);
+                }
                 exit(0);
             }
 #endif

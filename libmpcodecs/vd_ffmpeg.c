@@ -61,6 +61,7 @@ typedef struct {
     enum PixelFormat pix_fmt;
     int do_slices;
     int do_dr1;
+    int nonref_dr; ///< allow dr only for non-reference frames
     int vo_initialized;
     int best_csp;
     int qp_stat[32];
@@ -131,7 +132,7 @@ const m_option_t lavc_decode_opts_conf[]={
     {"skiploopfilter", &lavc_param_skip_loop_filter_str , CONF_TYPE_STRING  , 0, 0, 0, NULL},
     {"skipidct"      , &lavc_param_skip_idct_str        , CONF_TYPE_STRING  , 0, 0, 0, NULL},
     {"skipframe"     , &lavc_param_skip_frame_str       , CONF_TYPE_STRING  , 0, 0, 0, NULL},
-    {"threads"       , &lavc_param_threads              , CONF_TYPE_INT     , CONF_RANGE, 1, 8, NULL},
+    {"threads"       , &lavc_param_threads              , CONF_TYPE_INT     , CONF_RANGE, 1, 16, NULL},
     {"bitexact"      , &lavc_param_bitexact             , CONF_TYPE_FLAG    , 0, 0, CODEC_FLAG_BITEXACT, NULL},
     {"o"             , &lavc_avopt                      , CONF_TYPE_STRING  , 0, 0, 0, NULL},
     {NULL, NULL, 0, 0, 0, 0, NULL}
@@ -196,6 +197,7 @@ static void set_format_params(struct AVCodecContext *avctx, enum PixelFormat fmt
         sh_video_t *sh     = avctx->opaque;
         vd_ffmpeg_ctx *ctx = sh->context;
         ctx->do_dr1    = 1;
+        ctx->nonref_dr = 0;
         ctx->do_slices = 1;
         // HACK: FFmpeg thread handling is a major mess and
         // hinders any attempt to decide on hwaccel after the
@@ -243,8 +245,9 @@ static int init(sh_video_t *sh){
     if(use_slices && (lavc_codec->capabilities&CODEC_CAP_DRAW_HORIZ_BAND) && !do_vis_debug)
         ctx->do_slices=1;
 
-    if(lavc_codec->capabilities&CODEC_CAP_DR1 && !do_vis_debug && lavc_codec->id != CODEC_ID_H264 && lavc_codec->id != CODEC_ID_INTERPLAY_VIDEO && lavc_codec->id != CODEC_ID_VP8 && lavc_codec->id != CODEC_ID_LAGARITH)
+    if(lavc_codec->capabilities&CODEC_CAP_DR1 && !do_vis_debug && lavc_codec->id != CODEC_ID_INTERPLAY_VIDEO && lavc_codec->id != CODEC_ID_VP8)
         ctx->do_dr1=1;
+    ctx->nonref_dr = lavc_codec->id == CODEC_ID_H264;
     ctx->ip_count= ctx->b_count= 0;
 
     ctx->pic = avcodec_alloc_frame();
@@ -560,6 +563,14 @@ static int get_buffer(AVCodecContext *avctx, AVFrame *pic){
         }
     }
 
+    if (ctx->nonref_dr) {
+        if (flags & MP_IMGFLAG_PRESERVE)
+            return avcodec_default_get_buffer(avctx, pic);
+        // Use NUMBERED since for e.g. TEMP vos assume there will
+        // be no other frames between the get_image and matching put_image.
+        type = MP_IMGTYPE_NUMBERED;
+    }
+
     if(init_vo(sh, avctx->pix_fmt) < 0){
         avctx->release_buffer= avcodec_default_release_buffer;
         avctx->get_buffer= avcodec_default_get_buffer;
@@ -570,8 +581,13 @@ static int get_buffer(AVCodecContext *avctx, AVFrame *pic){
     }
 
     if (IMGFMT_IS_HWACCEL(ctx->best_csp)) {
-        type =  MP_IMGTYPE_NUMBERED | (0xffff << 16);
-    } else
+        type =  MP_IMGTYPE_NUMBERED;
+    } else if (avctx->has_b_frames) {
+        // HACK/TODO: slices currently do not work properly with B-frames,
+        // causing out-of-order frames or crashes with e.g. -vf scale,unsharp
+        // or -vf screenshot,unsharp.
+        flags &= ~MP_IMGFLAG_DRAW_CALLBACK;
+    }
     if (type == MP_IMGTYPE_IP || type == MP_IMGTYPE_IPB) {
         if(ctx->b_count>1 || ctx->ip_count>2){
             mp_msg(MSGT_DECVIDEO, MSGL_WARN, MSGTR_MPCODECS_DRIFailure);
@@ -658,6 +674,10 @@ static int get_buffer(AVCodecContext *avctx, AVFrame *pic){
     pic->linesize[2]= mpi->stride[2];
     pic->linesize[3]= mpi->stride[3];
 
+    pic->width  = avctx->width;
+    pic->height = avctx->height;
+    pic->format = avctx->pix_fmt;
+
     pic->opaque = mpi;
 //printf("%X\n", (int)mpi->planes[0]);
 #if 0
@@ -677,24 +697,25 @@ static void release_buffer(struct AVCodecContext *avctx, AVFrame *pic){
     sh_video_t *sh = avctx->opaque;
     vd_ffmpeg_ctx *ctx = sh->context;
     int i;
+    if (pic->type != FF_BUFFER_TYPE_USER) {
+        avcodec_default_release_buffer(avctx, pic);
+        return;
+    }
 
 //printf("release buffer %d %d %d\n", mpi ? mpi->flags&MP_IMGFLAG_PRESERVE : -99, ctx->ip_count, ctx->b_count);
 
-    if(ctx->ip_count <= 2 && ctx->b_count<=1){
         if(mpi->flags&MP_IMGFLAG_PRESERVE)
             ctx->ip_count--;
         else
             ctx->b_count--;
-    }
 
     if (mpi) {
         // release mpi (in case MPI_IMGTYPE_NUMBERED is used, e.g. for VDPAU)
         mpi->usage_count--;
-    }
-
-    if(pic->type!=FF_BUFFER_TYPE_USER){
-        avcodec_default_release_buffer(avctx, pic);
-        return;
+        if (mpi->usage_count < 0) {
+            mp_msg(MSGT_DECVIDEO, MSGL_ERR, "Bad mp_image usage count, please report!\n");
+            mpi->usage_count = 0;
+        }
     }
 
     for(i=0; i<4; i++){
@@ -731,7 +752,7 @@ static mp_image_t *decode(sh_video_t *sh, void *data, int len, int flags){
     int dr1= ctx->do_dr1;
     AVPacket pkt;
 
-    if(len<=0) return NULL; // skipped frame
+    if(data && len<=0) return NULL; // skipped frame
 
 //ffmpeg interlace (mpeg2) bug have been fixed. no need of -noslices
     if (!dr1)
@@ -755,13 +776,14 @@ static mp_image_t *decode(sh_video_t *sh, void *data, int len, int flags){
             avctx->skip_idct = AVDISCARD_ALL;
     }
 
+    if (data)
     mp_msg(MSGT_DECVIDEO, MSGL_DBG2, "vd_ffmpeg data: %04x, %04x, %04x, %04x\n",
            ((int *)data)[0], ((int *)data)[1], ((int *)data)[2], ((int *)data)[3]);
     av_init_packet(&pkt);
     pkt.data = data;
     pkt.size = len;
-    // HACK: make PNGs decode normally instead of as CorePNG delta frames
-    pkt.flags = AV_PKT_FLAG_KEY;
+    // Necessary to decode e.g. CorePNG and ZeroCodec correctly
+    pkt.flags = (sh->ds->flags & 1) ? AV_PKT_FLAG_KEY : 0;
     if (!ctx->palette_sent && sh->bih && sh->bih->biBitCount <= 8) {
         /* Pass palette to codec */
         uint8_t *pal_data = (uint8_t *)(sh->bih+1);
@@ -787,7 +809,10 @@ static mp_image_t *decode(sh_video_t *sh, void *data, int len, int flags){
     pkt.size = 0;
     av_destruct_packet(&pkt);
 
-    dr1= ctx->do_dr1;
+    // even when we do dr we might actually get a buffer we had
+    // FFmpeg allocate - this mostly happens with nonref_dr.
+    // Ensure we treat it correctly.
+    dr1= ctx->do_dr1 && pic->type == FF_BUFFER_TYPE_USER;
     if(ret<0) mp_msg(MSGT_DECVIDEO, MSGL_WARN, "Error while decoding frame!\n");
 //printf("repeat: %d\n", pic->repeat_pict);
 //-- vstats generation
@@ -866,7 +891,8 @@ static mp_image_t *decode(sh_video_t *sh, void *data, int len, int flags){
 //--
 
     if(!got_picture) {
-	if (avctx->codec->id == CODEC_ID_H264)
+	if (avctx->codec->id == CODEC_ID_H264 &&
+	    skip_frame <= AVDISCARD_DEFAULT)
 	    return &mpi_no_picture; // H.264 first field only
 	else
 	    return NULL;    // skipped image

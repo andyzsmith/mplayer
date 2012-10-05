@@ -105,9 +105,13 @@ static int64_t mp_seek(void *opaque, int64_t pos, int whence) {
         pos += stream->end_pos;
     else if(whence == SEEK_SET)
         pos += stream->start_pos;
-    else if(whence == AVSEEK_SIZE && stream->end_pos > 0)
+    else if(whence == AVSEEK_SIZE && stream->end_pos > 0) {
+        off_t size;
+        stream_control(stream, STREAM_CTRL_GET_SIZE, &size);
+        if (size > stream->end_pos)
+            stream->end_pos = size;
         return stream->end_pos - stream->start_pos;
-    else
+    } else
         return -1;
 
     if(pos<0)
@@ -207,7 +211,16 @@ static int lavf_check_file(demuxer_t *demuxer){
     return DEMUXER_TYPE_LAVF;
 }
 
+/* Before adding anything to this list please stop and consider why.
+ * There are two good reasons
+ * 1) to reduce startup time when streaming these file types
+ * 2) workarounds around bugs in our native demuxers that are not reasonable to
+ *    fix
+ * For the case 2) that means the issue should be understood well
+ * enough to be able to decide that a fix is not reasonable.
+ */
 static const char * const preferred_list[] = {
+    "cdxl",
     "dxa",
     "flv",
     "gxf",
@@ -414,8 +427,8 @@ static void handle_stream(demuxer_t *demuxer, AVFormatContext *avfc, int i) {
         case AVMEDIA_TYPE_SUBTITLE:{
             sh_sub_t* sh_sub;
             char type;
-            /* only support text subtitles for now */
-            if(codec->codec_id == CODEC_ID_TEXT)
+            if(codec->codec_id == CODEC_ID_TEXT ||
+               codec->codec_id == AV_CODEC_ID_SUBRIP)
                 type = 't';
             else if(codec->codec_id == CODEC_ID_MOV_TEXT)
                 type = 'm';
@@ -431,6 +444,12 @@ static void handle_stream(demuxer_t *demuxer, AVFormatContext *avfc, int i) {
                 type = 'd';
             else if(codec->codec_id == CODEC_ID_HDMV_PGS_SUBTITLE)
                 type = 'p';
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(54, 14, 100)
+            else if(codec->codec_id == CODEC_ID_EIA_608)
+                type = 'c';
+#endif
+            else if(codec->codec_tag == MKTAG('c', '6', '0', '8'))
+                type = 'c';
             else
                 break;
             sh_sub = new_sh_sub_sid(demuxer, i, priv->sub_streams, lang ? lang->value : NULL);
@@ -641,10 +660,10 @@ static int demux_lavf_fill_buffer(demuxer_t *demux, demux_stream_t *dsds){
     if(ts != AV_NOPTS_VALUE){
         dp->pts=ts * av_q2d(priv->avfc->streams[id]->time_base);
         priv->last_pts= dp->pts * AV_TIME_BASE;
-        // always set endpts for subtitles, even if AV_PKT_FLAG_KEY is not set,
-        // otherwise they will stay on screen to long if e.g. ASS is demuxed from mkv
-        if((ds == demux->sub || (pkt.flags & AV_PKT_FLAG_KEY)) &&
-           pkt.convergence_duration > 0)
+        if(pkt.duration > 0)
+            dp->endpts = dp->pts + pkt.duration * av_q2d(priv->avfc->streams[id]->time_base);
+        /* subtitle durations are sometimes stored in convergence_duration */
+        if(ds == demux->sub && pkt.convergence_duration > 0)
             dp->endpts = dp->pts + pkt.convergence_duration * av_q2d(priv->avfc->streams[id]->time_base);
     }
     dp->pos=demux->filepos;
@@ -798,7 +817,7 @@ redo:
                             prog->aid = program->stream_index[i];
                         break;
                     case AVMEDIA_TYPE_SUBTITLE:
-                        if(prog->sid == -2 && priv->avfc->streams[program->stream_index[i]]->codec->codec_id == CODEC_ID_TEXT)
+                        if(prog->sid == -2)
                             prog->sid = program->stream_index[i];
                         break;
                 }

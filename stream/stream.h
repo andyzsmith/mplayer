@@ -99,7 +99,18 @@
 #define STREAM_CTRL_GET_ANGLE 10
 #define STREAM_CTRL_SET_ANGLE 11
 #define STREAM_CTRL_GET_NUM_TITLES 12
+#define STREAM_CTRL_GET_LANG 13
 
+enum stream_ctrl_type {
+	stream_ctrl_audio,
+	stream_ctrl_sub,
+};
+
+struct stream_lang_req {
+	enum stream_ctrl_type type;
+	int id;
+	char buf[40];
+};
 
 typedef enum {
 	streaming_stopped_e,
@@ -180,9 +191,9 @@ int stream_seek_long(stream_t *s, off_t pos);
 void stream_capture_do(stream_t *s);
 
 #ifdef CONFIG_STREAM_CACHE
-int stream_enable_cache(stream_t *stream,int size,int min,int prefill);
+int stream_enable_cache(stream_t *stream,int64_t size,int64_t min,int64_t prefill);
 int cache_stream_fill_buffer(stream_t *s);
-int cache_stream_seek_long(stream_t *s,off_t pos);
+int cache_stream_seek_long(stream_t *s,int64_t pos);
 #else
 // no cache, define wrappers:
 #define cache_stream_fill_buffer(x) stream_fill_buffer(x)

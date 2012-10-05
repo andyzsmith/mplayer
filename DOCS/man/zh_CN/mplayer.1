@@ -1,4 +1,4 @@
-.\" sync with en/mplayer.1 rev. 34708
+.\" sync with en/mplayer.1 rev. 35191
 .\" MPlayer (C) 2000-2012 MPlayer Team
 .\" This man page was/is translated by JRaSH<jrash06 at gmail.com>
 .
@@ -31,7 +31,7 @@
 .\" 标题
 .\" --------------------------------------------------------------------------
 .
-.TH MPlayer 1 "2012-02-12" "MPlayer 项目" "影视播放器"
+.TH MPlayer 1 "2012-03-03" "MPlayer 项目" "影视播放器"
 .
 .SH 名称
 mplayer  \- 影视播放器
@@ -533,6 +533,8 @@ flip=yes
 mf=type=png:fps=25
 # 怪异的负片图像好酷。
 vf=eq2=1.0:\-0.8
+# OSD 播放进度条垂直放置方式
+progbar-align=50
 .fi
 .PP
 .I "MENCODER 配置文件示例："
@@ -1019,7 +1021,7 @@ EDL 记录含有一些只对这个特定文件来说是正确的绝对数值。\
 强制使用单个固定的视频系统用于多个文件的播放\
 （一次初始化/终止操作用于所有文件）。\
 这样只打开一个窗口，将用于所有文件的播放。\
-目前以下驱动兼容 fixed-vo：gl、gl2、mga、svga、x11、xmga、\
+目前以下驱动兼容 fixed-vo：gl、gl_tiled、mga、svga、x11、xmga、\
 xv、xvidix 和 dfbmga。
 .
 .TP
@@ -1202,7 +1204,7 @@ mplayer \-heartbeat\-cmd "gnome\-screensaver\-command \-p" file
 指针移动事件。\
 选择 DVD 菜单中的按钮需要该选项。\
 支持基于 X11 的视频输出（x11、xv、xvmc等）\
-以及 gl、gl2、direct3d 和 corevideo 的视频输出
+以及 gl、gl_tiled、direct3d 和 corevideo 的视频输出
 .
 .TP
 .B \-noar
@@ -2067,7 +2069,8 @@ radio://1, radio://104.4, radio_set_channel 1
 .TP
 .B \-speed <0.01\-100>
 以所给的参数因子减慢或加快播放速度。\
-与 \-oac copy 一起使用时不能保证正常起作用。
+与 \-oac copy 一起使用时不能保证正常起作用。\
+添加 \-af scaletempo 参数可以在播放时突破 4 倍速度限制。
 .
 .TP
 .B \-srate <Hz>
@@ -2609,6 +2612,11 @@ FreeType 字体的默认路径为：~/.mplayer/\:subfont.ttf)。
 启用该项支持）。
 .
 .TP
+.B \-progbar\-align <0-100>
+指定播放进度条垂直方向放置方式\
+（0：置顶，100：置底，默认值为 50，即居中）。
+.
+.TP
 .B \-sid <代码>（也请参见 \-slang、\-vobsubid）
 显示由 <代码>（0\-31）指定的字幕流。\
 MPlayer 以详细输出模式（\-v）运行时，会打印可用的字幕代码。\
@@ -2743,8 +2751,10 @@ DVD/\:VOBsub 的抗锯齿/\:缩放模式。\
 .PD 1
 .
 .TP
-.B "\-subcc <1\-4>\ "
+.B "\-subcc <1\-8>\ "
 显示来自指定通道的 DVD 可隐藏字幕（DVD Closed Caption）。\
+值 5 至 8 用以选择从 EIA-708 数据中抽取兼容 EIA-608 数据流的\
+一种模式。\
 这些字幕
 .B 不
 是 VOB 字幕，而是为听力有障碍的人准备的特殊的 ASCII 字幕，\
@@ -3108,10 +3118,14 @@ Mac OS X 自带的音频输出驱动
 PulseAudio 音频输出驱动
 .PD 0
 .RSs
-.IPs "<主机>[:<输出泄漏值>]"
+.IPs "[<主机>[:<输出目标>[:broken_pause]]]"
 指定所使用的主机，并可指定所使用的输出泄漏值。\
 <主机> 字符串为空的话，则使用本地连接。指定“localhost”则使用网络传输\
-（很可能并非所希望的方式）。
+（很可能并非所希望的方式）。\
+还可以明确表明强制使用变通逻辑，以修复存在故障的暂停功能（broken_pause）。\
+（默认值：自动侦测）。\
+如果只需要启用该功能而不指定主机/输出目标，则\
+形式为 \-ao pulse:::broken_pause。
 .RE
 .PD 1
 .
@@ -3281,7 +3295,11 @@ IVTV 专用的 MPEG 音频输出驱动。\
 .
 .TP
 .B "\-dr \ \ \ "
-打开直接渲染功能（不是所有的编解码器和视频输出都支持）
+开启直接渲染功能（不是所有的编解码器和视频输出都支持）\
+在一系统上这能显著加快位块传输的速度，但在大多数情况下\
+差异非常小。\
+在某些情况下，尤其是当解码器不恰当地指定了所需的缓冲大小时，\
+该功能可能变得非常慢。
 .br
 .I 警告：
 可能导致 OSD/字幕功能异常！
@@ -3453,12 +3471,12 @@ x 和 y 指定的是从屏幕左上角到所显示图像的左上角\
 如果使用 \-wid 选项指定了外部窗口，\
 那么 x 和 y 坐标是相对于窗口而非\
 屏幕的左上角。\
-使用完全支持 \-xineramascreen 的视频输出的驱动（direct3d、gl、gl2、\
+使用完全支持 \-xineramascreen 的视频输出的驱动（direct3d、gl、gl_tiled、\
 vdpau、x11、xv、xvmc、corevideo）时，坐标是相对于 \-xineramascreen 选项\
 所给屏幕的值。
 .br
 .I 注意：
-该选项仅 x11、xmga、xv、xvmc、xvidix、gl、gl2、direct3d、\
+该选项仅 x11、xmga、xv、xvmc、xvidix、gl、gl_tiled、direct3d、\
 directx、fbdev、sdl、dfxfb 和 corevideo 视频输出驱动\
 支持。
 .sp 1
@@ -3547,15 +3565,15 @@ directx、fbdev、sdl、dfxfb 和 corevideo 视频输出驱动\
 .B "\-ontop\ "
 让播放器窗口保持位于其他窗口之上。\
 使用 X11 的视频输出驱动（除了 SDL），以及使用 directx、corevideo、quartz、\
-ggi 和 gl2 的驱动都支持。
+ggi 和 gl_tiled 的驱动都支持。
 .
 .TP
 .B \-panscan <0.0\-1.0>
 启用全景显示功能（裁剪诸如 16:9 影片的两边以适应 4:3 不带\
 黑边的显示方式）。\
 该范围内的参数值用来控制裁减多少图像。\
-只能与 xv, xmga, mga, gl, gl2, quartz, corevideo 和 xvidix 的\
-视频输出驱动一同起作用。
+只能与 directx、xv、xmga、mga、gl、gl_tiled、quartz、corevideo 和 xvidix 的\
+视频输出驱动一同使用。
 .br
 .I 注意：
 也允许 \-1 和 0 间的值，但这些值处于高度试验阶段，\
@@ -3568,8 +3586,7 @@ ggi 和 gl2 的驱动都支持。
 值为正数表示默认范围所乘的倍数。\
 值为负数表示可以放大至 \-panscanrange+1 所表示的因数。\
 例如 \-panscanrange \-3 允许缩放因子达到 4。\
-该功能是实验性的。\
-不要报告相关缺隐，除非在使用 \-vo gl。
+该功能是实验性的。
 .
 .TP
 .B \-refreshrate <Hz>
@@ -3649,7 +3666,7 @@ dga、x11、xv、sdl 和 directx 视频输出驱动支持该选项。\
 （因为其总是在所给屏幕上全屏显示），\
 \-geometry 是目前可用于此目的的最好\
 选项。\
-至少 direct3d、gl、gl2、x11、xv 和 corevideo 视频输出\
+至少 direct3d、gl、gl_tiled、x11、xv 和 corevideo 视频输出\
 驱动支持该选项。
 .
 .TP
@@ -4023,6 +4040,7 @@ Mac OS X CoreVideo 视频输出驱动
 .PD 0
 .RSs
 .IPs device_id=<数值>
+过时选项，可使用 \-xineramascreen 代替。
 选择用于全屏模式的显示设备，或将其设为 \-1 以总是使用视频窗口所在的屏幕\
 （默认值：\-1 \- 自动选择）。
 .IPs shared_buffer
@@ -4132,6 +4150,8 @@ OpenGL 视频输出驱动，简单版本。\
 2：SDL
 .br
 3：X11/EGL（高度处于实验阶段）
+.br
+4：OSX/Cocoa
 .RE
 .IPs (no)ati\-hack
 当使用了 PBO 时（当使用了 \-dr 或强制使用 \-pbo 时），\
@@ -4173,8 +4193,9 @@ OSD 的颜色（默认值是：0x00ffffff，对应不透明的白色）。
 需要 GLX_SGI_swap_control 支持以起作用。\
 某些（大多数/所有？）实现设备仅能在全屏模式下起作用。
 .IPs ycbcr
-使用 GL_MESA_ycbcr_texture 扩展组件将 YUV 转换为 RGB 格式。\
-在大多数情况下，该方法很可能比使用软件转换成 RGB 慢。
+使用 GL_APPLE_ycbcr_422 扩展组件将 YUV 转换为 RGB 格式。\
+如果指定了 yuv= 则默认为禁用，否则默认为自动检测。\
+注意该选项将启用一些特殊的设置以进入驱动程序中的一种特殊的快速通道。
 .IPs yuv=<n>
 选择 YUV 到 RGB 转换的类型。\
 默认方式是自动侦测，选取 0 到 2 之间的一个值。
@@ -4285,7 +4306,16 @@ GL_ARB_fragment_shader！）。\
 .IPs 3
 将画面并行排列的输入信号转换为四重缓冲的立体图像。\
 只有少数 OpenGL 显卡支持
+.IPs 4
+以按像素排列的方式将左右眼的图像混合在一起。\
+混合样式由 stipple 选项指定。
 .RE
+.IPs stipple=<以比特表示的方式>
+数值的最低 16 位用以指定所使用 4x4 排列样式（默认值：0x0f0f）。\
+可供尝试的示例：\
+0x0f0f, 0xf0f0：按水平线排列；
+0xaaaa, 0x5555：按垂直线排列；
+0xa5a5, 0x5a5a：交错网格排列
 .RE
 .sp 1
 .RS
@@ -4349,7 +4379,7 @@ GL_ARB_fragment_shader！）。\
 .PD 1
 .
 .TP
-.B "gl2\ \ \ \ "
+.B "gl_tiled \ \ \ "
 OpenGL 视频输出驱动的修改版。\
 支持大于最大纹理尺寸的视频，但是缺少\
 许多 GL 驱动的高级功能和优化选项，\
@@ -6094,7 +6124,17 @@ unsigned long long counter   /*用于保持同步, 每当有新
 收集并打印音频流的统计信息，尤其是音量信息。\
 这些统计信息特别用于帮助调节音量\
 以防止削波。\
-音量以 dB 为单位打印并与用于音量的音频过滤器兼容。
+音量以 dB 为单位打印并与用于音量的音频过滤器相兼容，\
+这些数值总是向 -0dB 方向取整。
+.sp 1
+‘n_samples’字段是过滤器读到的采样总数。\
+‘mean_volume’字段是均方值的平方根。\
+‘max_volume’字段的含义与其名完全一致（最大音量）。\
+‘histogram_Xdb’字段统计的是会有多少采样的值是 -XdB，此时 X 为\
+刚好低于最大音量的值。
+.sp 1
+例如，如果 max_volume 为 -7dB 并且 histogram_7dB 为 19，则‘volume=7’不会\
+导致削波，而‘volume=8’将在刚好 19 个采样中导致削波。
 .
 .
 .
@@ -10618,6 +10658,10 @@ H.264 的量化参数是基于对数尺度的。\
 通常情况下应使用该选项而非 qp。
 .
 .TP
+.B crf_max=<浮点值>
+当使用 CRF 和 VBV 时，限制 RF 最多为该值（可以导致 VBV 下溢！）。
+.
+.TP
 .B pass=<1\-3>
 启用 2 或 3 阶段编码模式。\
 推荐总是以 2 或 3 阶段编码模式编码，因为该模式使比特的\
@@ -10753,7 +10797,7 @@ trellis=0 fast_pskip。\
 .
 .TP
 .B keyint_min=<1\-keyint/2>
-设置 IDR 帧间的最小间隔（默认值：25）。\
+设置 IDR 帧间的最小间隔（默认值：自动）。\
 如果间隔中出现了场景切换，那么切换仍然编码为 I 帧，\
 但不产生新的画面组。\
 在 H.264 中，I 帧并不一定是封闭画面组的边界，\
@@ -10831,6 +10875,39 @@ B2 与前面所述的一样，但 B1 是从 IO 和 B2 预测出来的，\
 必须使用。
 .IPs "none\ "
 禁止使用 B 帧作为引用帧。
+.RE
+.PD 1
+.
+.TP
+.B (no)open_gop
+使用恢复点闭合图像组；只可用于 B 帧。
+.
+.TP
+.B (no)bluray_compat
+启用提供兼容性的破解逻辑以支持蓝光播放。
+.
+.TP
+.B (no)fake_interlaced
+将媒体流标记为隔行扫描模式，但以逐行扫描模式编码。这使编码 25p 和 30p 的蓝光\
+媒体流成为可能。在隔行扫描模式下忽略该选项。
+.
+.TP
+.B frame_packing=<0-5>
+指定立体视频中帧的排列方式。
+.PD 0
+.RSs
+.IPs 0
+花格式交替 - 左右眼画面的像素交替出现。
+.IPs 1
+按列交替 - 左右眼画面按像素列交替排列。
+.IPs 2
+按行交替 - 左右眼画面按像素行交替排列。
+.IPs 3
+边靠边排列 - 左眼画面在左边，右眼画面在右边。
+.IPs 4
+上下排列 - 左眼画面在上面，右眼画面在下边。
+.IPs 5
+按帧交替 - 每帧为单眼的画面。
 .RE
 .PD 1
 .
@@ -10993,9 +11070,9 @@ direct_pred=none 不仅运行速度较慢而且质量也较差。
 .IPs 0
 禁用（运行最快）
 .IPs 1
-盲目模式（质量稍好）
+基于权重的帧引用方式（质量较好）
 .IPs 2
-智能模式（质量最好）
+基于权重的帧引用方式 + 重复输出（质量最好）
 .RE
 .PD 1
 .
@@ -11069,7 +11146,7 @@ p4x4 只在 subq >= 5，并且分辨率低时才推荐使用。
 彻底性运动搜索或多六边形运动搜索的半径（默认值：16）
 .
 .TP
-.B subq=<0\-9>
+.B subq=<0\-11>
 调整亚像素优化质量。\
 该参数控制的是运动估计决策过程中质量与\
 速度间的权衡。\
@@ -11109,7 +11186,11 @@ subq=5 能比 subq=1 多压缩掉 10%。
 .IPs 8
 启用运动矢量的码率失真优化模式，以及 I 帧和 P 帧中的内部预测模式。
 .IPs 9
-启用运动矢量的码率失真优化模式，以及所有帧中的内部预测模式。（最佳）
+启用运动矢量的码率失真优化模式，以及所有帧中的内部预测模式。
+.IPs 10
+量化参数上码率失真模式；需要指定 trellis=2 并且 aq_mode=1 或更高的参数（最佳）。
+.IPs 11
+完全码率失真模式；禁用所有提前终止逻辑。
 .RE
 .PD 1
 .RS
@@ -11292,6 +11373,11 @@ Windows CMD.EXE 的用户如果尝试使用全部 CQM 列表时，\
 才可使用这个参数。
 .
 .TP
+.B (no)cpu_independent
+保证不同的 CPU 下有可重现的输出，而不是当有更好的算法时选择一个\
+不同的算法（默认值：启用）。
+.
+.TP
 .B threads=<0\-16>
 生成线程以在多个 CPU上 并行编码（默认值：0）。\
 该选项对于压缩质量稍有一些影响。\
@@ -11337,14 +11423,30 @@ Windows CMD.EXE 的用户如果尝试使用全部 CQM 列表时，\
 默认行为是使 SPS 和 PPS 在每个 IDR 帧前重复出现。
 .
 .TP
-.B (no)interlaced
-将视频内容作为隔行扫描内容对待。
+.B (no)tff
+启用隔行扫描模式，上半扫描场在前（默认值：禁用）
+.
+.TP
+.B (no)bff
+启用隔行扫描模式，下半扫描场在前（默认值：禁用）
+.
+.TP
+.B nal_hrd=<none|vbr|cbr>
+通知 HRD 信息（需要指定 vbv_bufsize）（默认值：无）。
+.
+.TP
+.B (no)pic_struct
+在图像计时 SEI 中强制使用 pic_struct（默认值：禁用）。
 .
 .TP
 .B (no)constrained_intra
 启用受限制的帧内预测模式（默认值：禁用）。\
 该选项稍稍降低压缩率，但对于 SVC 编码中的\
 基础编码层次是必须的。
+.
+.TP
+.B output_csp=<i420|i422|i444|rgb>
+指定输出信号的色彩空间（默认值：i420）。
 .
 .TP
 .B (no)aud
