@@ -50,6 +50,7 @@ int sync_video_packet(demux_stream_t *ds){
       goto eof_out;
     }
     next_nal = demux_getc(ds);
+    peek_nal_descriptor = demux_peekc(ds); // Lookahead for MPEG4 IDR detection
     if (next_nal < 0)
       goto eof_out;
     videobuf_code_len = 4;
@@ -94,6 +95,7 @@ int packet_start;
 
   // Save next packet code:
   next_nal = demux_getc(ds);
+  peek_nal_descriptor = demux_peekc(ds); // Lookahead for MPEG4 IDR detection
   if (next_nal < 0)
     goto eof_out;
   videobuf_code_len=4;
