@@ -37,6 +37,7 @@ int videobuf_len=0;
 int next_nal = -1;
 ///! legacy variable, 4 if stream is synced, 0 if not
 int videobuf_code_len=0;
+int peek_nal_descriptor = -1; //Lookahead for MPEG4 IDR frame detection
 
 #define MAX_SYNCLEN (10 * 1024 * 1024)
 // sync video stream, and returns next packet code
