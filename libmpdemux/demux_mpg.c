@@ -978,9 +978,15 @@ static void demux_seek_mpg(demuxer_t *demuxer, float rel_seek_secs,
           } else
           if(sh_video->format == 0x10000004) {	//mpeg4
             if(i==0x1B6) {			//vop (frame) startcode
-	      int pos = videobuf_len;
-	      if(!read_video_packet(d_video)) break; // EOF
-	      if((videobuffer[pos+4] & 0x3F) == 0) break;	//I-frame
+	      
+	      if ( (peek_nal_descriptor & 0xC0 ) == 0)
+	      // AJS 0x1B6 and then 0x00xxxxxx is an IDR keyframe
+	      break;
+	      //int pos = videobuf_len;
+	      //if(!read_video_packet(d_video)) break; // EOF
+	      //AJS this read may lookahead, but it may read too far
+	      //if((videobuffer[pos+4] & 0x3F) == 0) break;	//I-frame
+	      // AJS this bitwise-AND is backwards.
 	    }
           } else if(sh_video->format == 0x10000005){	//h264
             if((i & ~0x60) == 0x105) break;
