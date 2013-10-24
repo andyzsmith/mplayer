@@ -30,6 +30,7 @@ extern unsigned char* videobuffer;
 extern int videobuf_len;
 extern unsigned char videobuf_code[4];
 extern int videobuf_code_len;
+extern int peek_nal_descriptor; // Lookahead for MPEG4 IDR detection
 
 // sync video stream, and returns next packet code
 int sync_video_packet(demux_stream_t *ds);
